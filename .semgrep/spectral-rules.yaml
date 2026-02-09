@@ -1,0 +1,181 @@
+# =============================================================================
+# Spectral Custom Semgrep Rules
+# =============================================================================
+# These rules enforce Spectral's security and privacy requirements.
+# Run: semgrep --config=.semgrep/
+# =============================================================================
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Privacy / Telemetry Prevention
+  # ---------------------------------------------------------------------------
+  - id: no-telemetry-calls
+    languages: [rust, typescript, javascript]
+    message: 'Telemetry or analytics detected. Spectral must never send user data externally.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: analytics.$METHOD(...)
+          - pattern: telemetry.$METHOD(...)
+          - pattern: posthog.$METHOD(...)
+          - pattern: mixpanel.$METHOD(...)
+          - pattern: amplitude.$METHOD(...)
+          - pattern: segment.$METHOD(...)
+          - pattern: sentry.captureEvent(...)
+          - pattern: gtag(...)
+          - pattern: ga(...)
+
+  - id: no-external-data-transmission
+    languages: [rust]
+    message: "Potential external data transmission. Verify this doesn't send PII."
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: reqwest::Client::new().$METHOD($URL, ...)
+          - pattern: surf::$METHOD($URL, ...)
+    metadata:
+      references:
+        - 'Spectral Architecture: Local-only principle'
+
+  # ---------------------------------------------------------------------------
+  # Encryption / Security
+  # ---------------------------------------------------------------------------
+  - id: no-hardcoded-secrets
+    languages: [rust, typescript, javascript]
+    message: 'Potential hardcoded secret or API key detected.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $VAR = "sk-..."
+          - pattern: |
+              $VAR = "api_key_..."
+          - pattern: |
+              $VAR = "secret_..."
+          - pattern-regex: '(api[_-]?key|secret|password|token)\s*[:=]\s*["\x27][^\s"]{8,}'
+
+  - id: no-weak-crypto
+    languages: [rust]
+    message: 'Weak cryptographic algorithm detected. Use ChaCha20-Poly1305 or AES-256-GCM.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: Md5::new()
+          - pattern: Sha1::new()
+          - pattern: Des::new(...)
+          - pattern: Rc4::new(...)
+          - pattern: aes::Aes128::new(...)
+
+  - id: prefer-argon2id
+    languages: [rust]
+    message: 'Use Argon2id for password hashing, not bcrypt or scrypt.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: bcrypt::hash(...)
+          - pattern: scrypt::scrypt(...)
+
+  # ---------------------------------------------------------------------------
+  # Rust Safety
+  # ---------------------------------------------------------------------------
+  - id: no-unwrap-in-production
+    languages: [rust]
+    message: 'Avoid .unwrap() - use proper error handling with ? or .expect() with context.'
+    severity: WARNING
+    patterns:
+      - pattern: $EXPR.unwrap()
+    paths:
+      exclude:
+        - '**/tests/**'
+        - '**/*_test.rs'
+
+  - id: no-unsafe-blocks
+    languages: [rust]
+    message: 'Unsafe block detected. Document why this is necessary and safe.'
+    severity: WARNING
+    pattern: |
+      unsafe { ... }
+
+  - id: use-zeroize-for-secrets
+    languages: [rust]
+    message: 'Sensitive data should use Zeroize trait for secure memory clearing.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: |
+              let $VAR: String = $PASSWORD;
+          - pattern: |
+              let $VAR: Vec<u8> = $KEY;
+    metadata:
+      fix: 'Use zeroize::Zeroizing<T> wrapper for sensitive data'
+
+  # ---------------------------------------------------------------------------
+  # TypeScript/Svelte Safety
+  # ---------------------------------------------------------------------------
+  - id: no-innerhtml
+    languages: [typescript, javascript]
+    message: "innerHTML can lead to XSS. Use textContent or Svelte's {@html} with sanitization."
+    severity: ERROR
+    pattern: $EL.innerHTML = $VALUE
+
+  - id: no-eval
+    languages: [typescript, javascript]
+    message: 'eval() is dangerous and should never be used.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: new Function(...)
+
+  # Note: Svelte rules removed - Semgrep doesn't support Svelte language yet
+  # Use ESLint with eslint-plugin-svelte for Svelte-specific checks
+
+  # ---------------------------------------------------------------------------
+  # Prompt Injection Defense (LLM Safety)
+  # ---------------------------------------------------------------------------
+  - id: llm-prompt-injection-risk
+    languages: [rust, typescript, javascript]
+    message: 'User/external content passed to LLM. Ensure prompt injection defenses are applied.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PROMPT = $USER_INPUT + ...
+          - pattern: |
+              format!("... {} ...", $EMAIL_BODY, ...)
+          - pattern: |
+              `... ${$USER_DATA} ...`
+    metadata:
+      references:
+        - 'Spectral Architecture Section 9: Prompt injection defense'
+
+  # ---------------------------------------------------------------------------
+  # Database Safety
+  # ---------------------------------------------------------------------------
+  - id: use-parameterized-queries
+    languages: [rust]
+    message: 'Use parameterized queries with sqlx::query! macro, not string formatting.'
+    severity: ERROR
+    patterns:
+      - pattern: |
+          format!("SELECT ... {} ...", $VAR)
+      - pattern: |
+          format!("INSERT ... {} ...", $VAR)
+      - pattern: |
+          format!("UPDATE ... {} ...", $VAR)
+      - pattern: |
+          format!("DELETE ... {} ...", $VAR)
+
+  # ---------------------------------------------------------------------------
+  # Logging Safety
+  # ---------------------------------------------------------------------------
+  - id: no-pii-in-logs
+    languages: [rust]
+    message: 'Potential PII in logs. Use redaction or structured logging.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: tracing::info!(..., email = $EMAIL, ...)
+          - pattern: tracing::debug!(..., password = $PASS, ...)
+          - pattern: tracing::info!(..., ssn = $SSN, ...)
+          - pattern: tracing::info!(..., address = $ADDR, ...)

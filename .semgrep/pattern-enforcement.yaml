@@ -1,0 +1,210 @@
+# =============================================================================
+# Spectral Pattern Enforcement Rules
+# =============================================================================
+# These rules enforce the patterns defined in patterns.md
+# Run: semgrep --config=.semgrep/pattern-enforcement.yaml
+# =============================================================================
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Error Handling Patterns (patterns.md Section 1)
+  # ---------------------------------------------------------------------------
+  - id: no-anyhow-in-library-crates
+    languages: [rust]
+    message: 'Use `thiserror` in library crates, not `anyhow`. Reserve `anyhow` for src-tauri/src/ only.'
+    severity: ERROR
+    patterns:
+      - pattern: use anyhow::$X;
+    paths:
+      include:
+        - 'crates/**'
+      exclude:
+        - 'src-tauri/src/**'
+
+  - id: no-unwrap-in-production
+    languages: [rust]
+    message: 'Avoid `.unwrap()` - use `?` operator or `.expect("reason")` with context.'
+    severity: WARNING
+    pattern: $EXPR.unwrap()
+    paths:
+      exclude:
+        - '**/tests/**'
+        - '**/*_test.rs'
+        - '**/test_*.rs'
+        - '**/benches/**'
+
+  - id: prefer-expect-with-context
+    languages: [rust]
+    message: "Use `.expect()` with a descriptive message explaining why this can't fail."
+    severity: INFO
+    pattern: $EXPR.expect("")
+
+  # ---------------------------------------------------------------------------
+  # Logging Patterns (patterns.md Section 5)
+  # ---------------------------------------------------------------------------
+  - id: no-println-in-production
+    languages: [rust]
+    message: 'Use `tracing` macros (info!, debug!, etc.) instead of println!. See patterns.md Section 5.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: println!(...)
+          - pattern: eprintln!(...)
+    paths:
+      exclude:
+        - '**/tests/**'
+        - '**/*_test.rs'
+        - '**/build.rs'
+
+  - id: no-log-crate
+    languages: [rust]
+    message: 'Use `tracing` instead of the `log` crate. See patterns.md Section 5.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: log::info!(...)
+          - pattern: log::debug!(...)
+          - pattern: log::warn!(...)
+          - pattern: log::error!(...)
+          - pattern: log::trace!(...)
+
+  # ---------------------------------------------------------------------------
+  # Security Patterns (patterns.md Section 9 & 11)
+  # ---------------------------------------------------------------------------
+  - id: sensitive-data-needs-zeroizing
+    languages: [rust]
+    message: 'Sensitive data (passwords, keys) should use `Zeroizing<T>` wrapper. See patterns.md Section 9.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: |
+              let $VAR: [u8; 32] = $KEY;
+          - pattern: |
+              let $VAR: Vec<u8> = $SECRET;
+          - pattern: |
+              fn $FUNC(..., password: &str, ...) -> $RET { ... }
+    metadata:
+      fix: 'Use zeroize::Zeroizing<T> for sensitive data'
+
+  - id: no-pii-in-format-strings
+    languages: [rust]
+    message: 'Potential PII in format string. Use record IDs or hashed values. See patterns.md Section 5.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: format!($FMT, ..., email = $EMAIL, ...)
+          - pattern: format!($FMT, ..., password = $PASS, ...)
+          - pattern: format!($FMT, ..., ssn = $SSN, ...)
+          - pattern: tracing::info!($FMT, ..., email = $EMAIL, ...)
+          - pattern: tracing::debug!($FMT, ..., password = $PASS, ...)
+
+  # ---------------------------------------------------------------------------
+  # Database Patterns (patterns.md Section 10)
+  # ---------------------------------------------------------------------------
+  - id: use-sqlx-query-macro
+    languages: [rust]
+    message: 'Use `sqlx::query!` or `sqlx::query_as!` macro for compile-time checked queries. See patterns.md Section 10.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: sqlx::query($SQL)
+          - pattern: sqlx::query_as::<_, $TYPE>($SQL)
+    metadata:
+      fix: 'Use sqlx::query!() or sqlx::query_as!() macros instead'
+
+  - id: no-sql-string-formatting
+    languages: [rust]
+    message: 'SQL injection risk: never build SQL with string formatting. Use parameterized queries.'
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: format!("SELECT ${{...}}")
+          - pattern: format!("INSERT ${{...}}")
+          - pattern: format!("UPDATE ${{...}}")
+          - pattern: format!("DELETE ${{...}}")
+          - pattern: |
+              format!("... WHERE {} ...", $VAR)
+
+  # ---------------------------------------------------------------------------
+  # Async Patterns (patterns.md Section 2)
+  # ---------------------------------------------------------------------------
+  - id: async-without-cancellation
+    languages: [rust]
+    message: 'Long-running async operations should accept CancellationToken. See patterns.md Section 2.'
+    severity: INFO
+    patterns:
+      - pattern: |
+          pub async fn $FUNC(...) -> Result<$RET, $ERR> {
+            ...
+            loop { ... }
+            ...
+          }
+    metadata:
+      fix: 'Add `cancel: CancellationToken` parameter and check `cancel.is_cancelled()`'
+
+  # ---------------------------------------------------------------------------
+  # API Patterns (patterns.md Section 7)
+  # ---------------------------------------------------------------------------
+  - id: tauri-command-returns-result
+    languages: [rust]
+    message: 'Tauri commands that can fail should return Result<T, CommandError>. See patterns.md Section 7.'
+    severity: INFO
+    pattern: |
+      #[tauri::command]
+      $ASYNC fn $FUNC(...) -> $RET {
+        ...
+      }
+    metavariable-pattern:
+      metavariable: $RET
+      patterns:
+        - pattern-not: Result<$T, $E>
+    paths:
+      include:
+        - 'src-tauri/**'
+
+  # ---------------------------------------------------------------------------
+  # Frontend Patterns (patterns.md Section 8)
+  # ---------------------------------------------------------------------------
+  - id: wrap-tauri-invoke
+    languages: [typescript, javascript]
+    message: 'Wrap Tauri invoke calls in $lib/api/ modules. See patterns.md Section 7.'
+    severity: INFO
+    pattern: invoke($CMD, ...)
+    paths:
+      include:
+        - 'src/routes/**'
+        - 'src/lib/components/**'
+      exclude:
+        - 'src/lib/api/**'
+
+  # Note: Svelte rules removed - Semgrep doesn't support Svelte language yet
+  # Use ESLint with eslint-plugin-svelte for Svelte-specific pattern checks
+
+  # ---------------------------------------------------------------------------
+  # Testing Patterns (patterns.md Section 4)
+  # ---------------------------------------------------------------------------
+  - id: test-uses-unwrap
+    languages: [rust]
+    message: 'In tests, prefer `.expect()` with context over `.unwrap()` for better error messages.'
+    severity: INFO
+    pattern: $EXPR.unwrap()
+    paths:
+      include:
+        - '**/tests/**'
+        - '**/*_test.rs'
+
+  # ---------------------------------------------------------------------------
+  # Config Patterns (patterns.md Section 6)
+  # ---------------------------------------------------------------------------
+  - id: no-hardcoded-config-paths
+    languages: [rust]
+    message: 'Use `directories::ProjectDirs` for config paths, not hardcoded paths. See patterns.md Section 6.'
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: |
+              "$HOME/.config/spectral/..."
+          - pattern: |
+              "~/.config/spectral/..."
+          - pattern: |
+              PathBuf::from("$HOME/...")

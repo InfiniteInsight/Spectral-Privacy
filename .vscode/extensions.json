@@ -1,0 +1,23 @@
+{
+	"recommendations": [
+		// Required
+		"rust-lang.rust-analyzer",
+		"svelte.svelte-vscode",
+		"tauri-apps.tauri-vscode",
+		"tamasfe.even-better-toml",
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint",
+
+		// Recommended
+		"bradlc.vscode-tailwindcss",
+		"usernamehw.errorlens",
+		"eamodio.gitlens",
+		"serayuzgur.crates",
+		"Gruntfuggly.todo-tree",
+
+		// Security
+		"SonarSource.sonarlint-vscode",
+		"Semgrep.semgrep"
+	],
+	"unwantedRecommendations": []
+}

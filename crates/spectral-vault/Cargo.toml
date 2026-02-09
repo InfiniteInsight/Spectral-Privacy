@@ -1,0 +1,21 @@
+[package]
+name = "spectral-vault"
+description = "PII vault with ChaCha20-Poly1305 encryption and Argon2id key derivation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+chacha20poly1305.workspace = true
+argon2.workspace = true
+rand.workspace = true
+zeroize.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

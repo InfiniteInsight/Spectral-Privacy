@@ -1,0 +1,57 @@
+# Broker Definition Schema
+# ========================
+#
+# This file documents the schema for broker definition TOML files.
+# Each broker should have its own .toml file in this directory.
+#
+# License: CC-BY-SA 4.0
+
+# Required fields
+[schema]
+version = "1.0.0"
+
+# [broker]
+# id = "spokeo"                        # Unique identifier (lowercase, hyphenated)
+# name = "Spokeo"                      # Display name
+# url = "https://www.spokeo.com"       # Main website URL
+# category = "people-search"           # Category: people-search, background-check, marketing, etc.
+#
+# [broker.data_types]
+# # What PII this broker typically collects
+# name = true
+# address = true
+# phone = true
+# email = true
+# relatives = true
+# employment = false
+# court_records = false
+#
+# [broker.search]
+# method = "web"                       # web, api, email
+# url = "https://www.spokeo.com/search?q={name}&l={city},{state}"
+# requires_captcha = false
+# rate_limit_requests = 10             # Max requests per minute
+# rate_limit_window_seconds = 60
+#
+# [broker.removal]
+# method = "web-form"                  # web-form, email, api, mail
+# url = "https://www.spokeo.com/optout"
+# requires_verification = true         # Requires email/phone verification
+# verification_method = "email"        # email, phone, mail
+# estimated_days = 3                   # Typical processing time
+#
+# [broker.removal.form_fields]
+# # Map our PII fields to their form field names
+# url = "profileUrl"                   # The listing URL field
+# email = "email"                      # Verification email field
+#
+# [broker.jurisdictions]
+# # Which privacy laws apply and their specific requirements
+# ccpa = true                          # California Consumer Privacy Act
+# gdpr = false                         # General Data Protection Regulation (EU)
+# vcdpa = true                         # Virginia Consumer Data Protection Act
+#
+# [broker.notes]
+# # Freeform notes about this broker
+# challenges = "Requires finding profile URL first via search"
+# last_verified = "2024-01-15"

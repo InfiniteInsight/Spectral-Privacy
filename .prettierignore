@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+.svelte-kit/
+target/
+
+# Generated files
+src-tauri/gen/
+package-lock.json
+
+# User-specific settings
+.claude/settings.local.json
+
+# Documentation that may have custom formatting
+*.md

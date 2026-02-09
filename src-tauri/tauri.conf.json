@@ -1,0 +1,63 @@
+{
+	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+	"productName": "Spectral",
+	"version": "0.1.0",
+	"identifier": "app.spectral.desktop",
+	"build": {
+		"frontendDist": "../build",
+		"devUrl": "http://localhost:5173",
+		"beforeDevCommand": "npm run dev",
+		"beforeBuildCommand": "npm run build"
+	},
+	"app": {
+		"windows": [
+			{
+				"title": "Spectral",
+				"label": "main",
+				"width": 1200,
+				"height": 800,
+				"minWidth": 800,
+				"minHeight": 600,
+				"resizable": true,
+				"fullscreen": false,
+				"center": true,
+				"decorations": true,
+				"transparent": false,
+				"focus": true
+			}
+		],
+		"security": {
+			"csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": "all",
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		],
+		"category": "Utility",
+		"shortDescription": "Privacy protection through automated data broker removal",
+		"longDescription": "Spectral is an open-source, local-first privacy tool that helps you remove your personal information from data broker websites. All data stays on your device - no cloud, no telemetry.",
+		"linux": {
+			"appimage": {
+				"bundleMediaFramework": false
+			},
+			"deb": {
+				"depends": []
+			}
+		},
+		"macOS": {
+			"minimumSystemVersion": "10.15"
+		},
+		"windows": {
+			"certificateThumbprint": null,
+			"digestAlgorithm": "sha256",
+			"timestampUrl": ""
+		}
+	}
+}

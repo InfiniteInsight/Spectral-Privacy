@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+:root {
+	/* Base colors following patterns.md accessibility requirements */
+	--text-primary: #1a1a1a;
+	--text-secondary: #525252;
+	--text-muted: #737373;
+
+	--bg-primary: #ffffff;
+	--bg-secondary: #f5f5f5;
+
+	--border-default: #e5e5e5;
+	--border-focus: #2563eb;
+
+	/* Focus indicator - 3:1 contrast minimum */
+	--focus-ring: #2563eb;
+	--focus-ring-offset: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--text-primary: #fafafa;
+		--text-secondary: #a3a3a3;
+		--text-muted: #737373;
+
+		--bg-primary: #171717;
+		--bg-secondary: #262626;
+
+		--border-default: #404040;
+		--border-focus: #3b82f6;
+	}
+}
+
+/* Accessible focus styles */
+*:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: var(--focus-ring-offset);
+}
+
+/* Skip to content link for accessibility */
+.skip-link {
+	position: absolute;
+	top: -40px;
+	left: 0;
+	background: var(--bg-primary);
+	color: var(--text-primary);
+	padding: 8px;
+	z-index: 100;
+}
+
+.skip-link:focus {
+	top: 0;
+}
+
+/* Screen reader only utility */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Base body styles */
+body {
+	font-family: 'Inter', system-ui, sans-serif;
+	background-color: var(--bg-primary);
+	color: var(--text-primary);
+}

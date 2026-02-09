@@ -1,0 +1,12 @@
+# Build outputs
+build/
+.svelte-kit/
+target/
+node_modules/
+
+# Generated files
+src-tauri/gen/
+
+# Config files (handled separately)
+*.config.js
+*.config.ts

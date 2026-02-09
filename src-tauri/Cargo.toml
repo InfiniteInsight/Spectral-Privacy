@@ -1,0 +1,35 @@
+[package]
+name = "spectral-app"
+description = "Spectral - Privacy protection through automated data broker removal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "spectral_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+tauri.workspace = true
+tauri-plugin-log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tokio.workspace = true
+
+# Internal crates (uncomment as they are created)
+# spectral-vault = { path = "../crates/spectral-vault" }
+# spectral-db = { path = "../crates/spectral-db" }
+# spectral-auth = { path = "../crates/spectral-auth" }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

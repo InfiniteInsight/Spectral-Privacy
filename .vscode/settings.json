@@ -1,0 +1,110 @@
+{
+	// ==========================================================================
+	// Spectral VS Code Settings
+	// ==========================================================================
+
+	// Editor
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit",
+		"source.organizeImports": "explicit"
+	},
+
+	// Files
+	"files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+	"files.associations": {
+		"*.toml": "toml"
+	},
+
+	// Rust
+	"[rust]": {
+		"editor.defaultFormatter": "rust-lang.rust-analyzer",
+		"editor.formatOnSave": true
+	},
+	"rust-analyzer.linkedProjects": ["src-tauri/Cargo.toml"],
+	"rust-analyzer.check.command": "clippy",
+	"rust-analyzer.check.extraArgs": ["--all-targets", "--all-features"],
+	"rust-analyzer.cargo.features": "all",
+
+	// TypeScript / JavaScript
+	"[typescript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+
+	// Svelte
+	"[svelte]": {
+		"editor.defaultFormatter": "svelte.svelte-vscode"
+	},
+	"svelte.enable-ts-plugin": true,
+
+	// Tailwind
+	"tailwindCSS.includeLanguages": {
+		"svelte": "html"
+	},
+	"tailwindCSS.experimental.classRegex": [
+		["class=\"([^\"]*)", "([a-zA-Z0-9\\-:]+)"],
+		["class=\\{([^}]*)\\}", "\"([^\"]*)\""],
+		["cn\\(([^)]*)\\)", "\"([^\"]*)\""]
+	],
+
+	// ESLint
+	"eslint.validate": ["javascript", "typescript", "svelte"],
+
+	// TOML
+	"[toml]": {
+		"editor.defaultFormatter": "tamasfe.even-better-toml"
+	},
+
+	// Markdown
+	"[markdown]": {
+		"editor.wordWrap": "on",
+		"editor.quickSuggestions": {
+			"other": false,
+			"comments": false,
+			"strings": false
+		}
+	},
+
+	// Search exclusions
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/target": true,
+		"**/.svelte-kit": true,
+		"**/dist": true,
+		"**/coverage": true
+	},
+
+	// File nesting
+	"explorer.fileNesting.enabled": true,
+	"explorer.fileNesting.patterns": {
+		"package.json": "package-lock.json, npm-shrinkwrap.json, yarn.lock, pnpm-lock.yaml, .npmrc",
+		"Cargo.toml": "Cargo.lock, rust-toolchain.toml, .cargo",
+		"tsconfig.json": "tsconfig.*.json",
+		".gitignore": ".gitattributes, .mailmap",
+		"*.ts": "${capture}.test.ts, ${capture}.spec.ts",
+		"*.svelte": "${capture}.test.ts"
+	},
+
+	// Todo Tree
+	"todo-tree.general.tags": ["TODO", "FIXME", "HACK", "SECURITY", "PRIVACY", "XXX"],
+	"todo-tree.highlights.customHighlight": {
+		"SECURITY": {
+			"icon": "shield",
+			"foreground": "#ff0000",
+			"iconColour": "#ff0000"
+		},
+		"PRIVACY": {
+			"icon": "eye-closed",
+			"foreground": "#ff6600",
+			"iconColour": "#ff6600"
+		}
+	}
+}
