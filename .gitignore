@@ -119,3 +119,4 @@ vite.config.ts.timestamp-*
 *.temp
 *.log
 *.bak
+.worktrees/
