@@ -33,6 +33,7 @@ spectral-db = { path = "../crates/spectral-db" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
 regex.workspace = true
+once_cell.workspace = true
 
 [dev-dependencies]
 uuid.workspace = true

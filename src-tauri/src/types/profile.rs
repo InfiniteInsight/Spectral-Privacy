@@ -1,4 +1,5 @@
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use spectral_core::error::SpectralError;
 
@@ -66,6 +67,15 @@ pub struct ProfileSummary {
 
 // Validation functions
 
+// Compile regexes once using Lazy for performance
+static EMAIL_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+        .expect("Email regex should be valid")
+});
+
+static ZIP_CODE_REGEX: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"^\d{5}(-\d{4})?$").expect("ZIP code regex should be valid"));
+
 const US_STATES: &[&str] = &[
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS",
     "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY",
@@ -96,11 +106,7 @@ pub fn validate_name(name: &str) -> Result<(), SpectralError> {
 }
 
 pub fn validate_email(email: &str) -> Result<(), SpectralError> {
-    // Simplified RFC 5322 email validation
-    let re = regex::Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-        .map_err(|e| SpectralError::Validation(format!("Regex error: {}", e)))?;
-
-    if !re.is_match(email) {
+    if !EMAIL_REGEX.is_match(email) {
         return Err(SpectralError::Validation(
             "Invalid email format".to_string(),
         ));
@@ -111,7 +117,14 @@ pub fn validate_email(email: &str) -> Result<(), SpectralError> {
 
 pub fn validate_date_of_birth(dob: NaiveDate) -> Result<(), SpectralError> {
     let today = chrono::Local::now().date_naive();
-    let age = (today - dob).num_days() / 365;
+
+    // Calculate age properly accounting for leap years
+    let mut age = today.year() - dob.year();
+
+    // Subtract 1 if birthday hasn't occurred yet this year
+    if today.month() < dob.month() || (today.month() == dob.month() && today.day() < dob.day()) {
+        age -= 1;
+    }
 
     if age < 13 {
         return Err(SpectralError::Validation(
@@ -137,11 +150,7 @@ pub fn validate_us_state(state: &str) -> Result<(), SpectralError> {
 }
 
 pub fn validate_zip_code(zip: &str) -> Result<(), SpectralError> {
-    // Accept 5-digit or 5+4 format
-    let re = regex::Regex::new(r"^\d{5}(-\d{4})?$")
-        .map_err(|e| SpectralError::Validation(format!("Regex error: {}", e)))?;
-
-    if !re.is_match(zip) {
+    if !ZIP_CODE_REGEX.is_match(zip) {
         return Err(SpectralError::Validation(
             "Invalid ZIP code format (use 12345 or 12345-6789)".to_string(),
         ));
