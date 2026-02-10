@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 const host = process.env.TAURI_DEV_HOST;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 5175;
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
@@ -10,8 +11,8 @@ export default defineConfig({
 	// Vite options tailored for Tauri development
 	clearScreen: false,
 	server: {
-		port: 5175,
-		strictPort: true,
+		port,
+		strictPort: false,
 		host: host || false,
 		hmr: host
 			? {
