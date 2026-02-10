@@ -124,7 +124,9 @@
 				{#if selectedVault}
 					<div class="pt-4 border-t border-gray-200">
 						<p class="text-xs text-gray-500 text-center">
-							Last accessed: {new Date(selectedVault.last_accessed).toLocaleString()}
+							Last accessed: {selectedVault.last_accessed
+								? new Date(selectedVault.last_accessed).toLocaleString()
+								: 'Never'}
 						</p>
 					</div>
 				{/if}
