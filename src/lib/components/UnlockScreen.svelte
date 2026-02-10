@@ -4,6 +4,7 @@
 
 	let password = $state('');
 	let showPassword = $state(false);
+	let isTauri = $state(typeof window !== 'undefined' && '__TAURI__' in window);
 	let showCreateForm = $state(false);
 	let newVaultId = $state('');
 	let newVaultName = $state('');
@@ -52,6 +53,18 @@
 >
 	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
 		<h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Unlock Vault</h1>
+
+		{#if !isTauri}
+			<div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
+				<p class="text-yellow-800 text-sm font-medium mb-2">⚠️ Browser Mode</p>
+				<p class="text-yellow-700 text-xs">
+					Vault functionality requires the Tauri desktop app. Please run:
+					<code class="block mt-2 bg-yellow-100 px-2 py-1 rounded font-mono text-xs"
+						>cargo tauri dev</code
+					>
+				</p>
+			</div>
+		{/if}
 
 		{#if vaultStore.loading}
 			<div class="flex items-center justify-center py-8">
