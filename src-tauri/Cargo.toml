@@ -27,8 +27,9 @@ tokio.workspace = true
 
 # Internal crates (uncomment as they are created)
 spectral-vault = { path = "../crates/spectral-vault" }
-# spectral-db = { path = "../crates/spectral-db" }
+spectral-db = { path = "../crates/spectral-db" }
 # spectral-auth = { path = "../crates/spectral-auth" }
+directories.workspace = true
 
 [features]
 default = ["custom-protocol"]

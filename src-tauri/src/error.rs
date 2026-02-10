@@ -47,19 +47,16 @@ impl From<VaultError> for CommandError {
             VaultError::Locked => {
                 Self::new("VAULT_LOCKED", "Vault is locked and must be unlocked first")
             }
-            VaultError::InvalidPassword => {
-                Self::new("INVALID_PASSWORD", "Invalid password")
-            }
-            VaultError::VaultNotFound(path) => {
-                Self::with_details(
-                    "VAULT_NOT_FOUND",
-                    "Vault does not exist",
-                    serde_json::json!({ "path": path }),
-                )
-            }
-            VaultError::KeyDerivation(msg) => {
-                Self::new("KEY_DERIVATION_FAILED", format!("Key derivation failed: {msg}"))
-            }
+            VaultError::InvalidPassword => Self::new("INVALID_PASSWORD", "Invalid password"),
+            VaultError::VaultNotFound(path) => Self::with_details(
+                "VAULT_NOT_FOUND",
+                "Vault does not exist",
+                serde_json::json!({ "path": path }),
+            ),
+            VaultError::KeyDerivation(msg) => Self::new(
+                "KEY_DERIVATION_FAILED",
+                format!("Key derivation failed: {msg}"),
+            ),
             VaultError::Encryption(msg) => {
                 Self::new("ENCRYPTION_FAILED", format!("Encryption failed: {msg}"))
             }

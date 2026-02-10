@@ -4,6 +4,7 @@
 //! Core business logic lives in the `crates/` directory.
 
 mod error;
+mod state;
 
 use tauri::Manager;
 use tracing::info;
