@@ -16,6 +16,12 @@
 			>
 				✓ Vault Unlocked
 			</div>
+			<button
+				onclick={() => vaultStore.currentVaultId && vaultStore.lock(vaultStore.currentVaultId)}
+				class="mt-4 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+			>
+				Lock Vault
+			</button>
 		</div>
 	</div>
 {:else}
