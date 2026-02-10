@@ -1,0 +1,27 @@
+# FastPeopleSearch - Free People Search
+# Last verified: 2025-05-01
+
+[broker]
+id = "fastpeoplesearch"
+name = "FastPeopleSearch"
+url = "https://www.fastpeoplesearch.com"
+domain = "fastpeoplesearch.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 2
+recheck_interval_days = 30
+last_verified = "2025-05-01"
+
+[search]
+method = "url-template"
+template = "https://www.fastpeoplesearch.com/name/{first}-{last}_{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[removal]
+method = "web-form"
+url = "https://www.fastpeoplesearch.com/removal"
+confirmation = "automatic"
+notes = "Simple opt-out form. Usually processes within 24-48 hours. No email verification required."
+
+[removal.fields]
+listing_url = "{found_listing_url}"

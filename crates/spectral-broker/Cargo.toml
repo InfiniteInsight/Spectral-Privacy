@@ -1,0 +1,28 @@
+[package]
+name = "spectral-broker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Internal dependencies
+spectral-core = { path = "../spectral-core" }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+toml = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.0"

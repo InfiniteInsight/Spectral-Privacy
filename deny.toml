@@ -47,6 +47,7 @@ allow = [
   "ISC",
   "Zlib",
   "CC0-1.0",
+  "CDLA-Permissive-2.0",  # Community Data License - used by webpki-roots
   "Unicode-3.0",
   "Unlicense",
   "MPL-2.0",  # Mozilla Public License (file-level copyleft, acceptable)
@@ -98,7 +99,7 @@ deny = [
 
   # Weak crypto that should never be used for security
   { crate = "md5", wrappers = [] },
-  { crate = "sha1", wrappers = ["ring"] },  # Allow ring's internal use
+  { crate = "sha1", wrappers = [] },  # Block direct use of weak SHA-1
 
   # Unmaintained/problematic crates
   { crate = "openssl", wrappers = [] },  # Prefer rustls

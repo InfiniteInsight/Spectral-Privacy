@@ -1,0 +1,28 @@
+# Spokeo - People Search Engine
+# Last verified: 2025-05-01
+
+[broker]
+id = "spokeo"
+name = "Spokeo"
+url = "https://www.spokeo.com"
+domain = "spokeo.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2025-05-01"
+
+[search]
+method = "url-template"
+template = "https://www.spokeo.com/{first}-{last}/{state}/{city}"
+requires_fields = ["first_name", "last_name", "state", "city"]
+
+[removal]
+method = "web-form"
+url = "https://www.spokeo.com/optout"
+confirmation = "email-verification"
+notes = "Requires email verification. Link expires after 72 hours. Re-check after 3-5 business days."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"

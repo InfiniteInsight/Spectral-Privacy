@@ -1,67 +1,117 @@
 //! Spectral Database Layer
 //!
-//! Provides SQLite database access with planned migration to SQLCipher
-//! for encrypted storage. Uses SQLx for compile-time checked queries.
+//! Provides `SQLite` database access with `SQLCipher` encryption for at-rest data protection.
+//! Uses `SQLx` for compile-time checked queries and embedded migrations.
 //!
-//! # Design Principles
+//! # Architecture
 //!
-//! - All queries use the `sqlx::query!` macro for compile-time verification
-//! - Migrations are embedded and run automatically on startup
-//! - PII is encrypted at the application layer (spectral-vault), not database layer
-//! - Connection pooling with configurable limits
+//! - **Encryption**: All data is encrypted at rest using `SQLCipher` with `AES-256`
+//! - **Migrations**: SQL migrations are embedded and versioned using `SQLx`
+//! - **Connection Pooling**: Configurable connection pool with automatic cleanup
+//! - **Key Management**: Encryption keys are zeroized on drop to prevent memory leaks
 //!
 //! # Example
 //!
 //! ```ignore
-//! use spectral_db::Database;
+//! use spectral_db::{Database, migrations};
 //!
-//! let db = Database::open("spectral.db").await?;
+//! let key = vec![0u8; 32]; // In practice, derive from user password
+//! let db = Database::new("spectral.db", key).await?;
 //! db.run_migrations().await?;
 //! ```
+//!
+//! # Design Principles
+//!
+//! - PII is encrypted at the application layer (spectral-vault), not database layer
+//! - All queries use `sqlx::query!` macro for compile-time verification
+//! - Migrations run automatically on first connection
+//! - Connection pooling with configurable limits (default: 5 connections)
 
-use thiserror::Error;
+#![warn(missing_docs)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 
-/// Database errors
-#[derive(Debug, Error)]
-pub enum DatabaseError {
-    /// Failed to open or create database
-    #[error("failed to open database: {0}")]
-    Open(String),
+pub mod connection;
+pub mod error;
+pub mod migrations;
 
-    /// Migration failed
-    #[error("migration failed: {0}")]
-    Migration(String),
+// Re-export commonly used types
+pub use connection::EncryptedPool;
+pub use error::{DatabaseError, Result};
 
-    /// Query execution failed
-    #[error("query failed: {0}")]
-    Query(String),
+use std::path::Path;
 
-    /// Connection pool exhausted
-    #[error("connection pool exhausted")]
-    PoolExhausted,
-
-    /// Record not found
-    #[error("record not found")]
-    NotFound,
-}
-
-/// Result type for database operations
-pub type Result<T> = std::result::Result<T, DatabaseError>;
-
-/// Database connection wrapper
+/// High-level database interface with encryption and migrations.
+///
+/// This provides a convenient wrapper around `EncryptedPool` that handles
+/// initialization and migration automatically.
 #[derive(Debug)]
 pub struct Database {
-    // SQLx pool will be added here
-    _path: String,
+    pool: EncryptedPool,
 }
 
 impl Database {
-    /// Create a new database connection (placeholder)
-    pub fn new(path: &str) -> Self {
-        tracing::info!(path = %path, "Database initialized");
-        Self {
-            _path: path.to_string(),
-        }
+    /// Create a new database connection with encryption.
+    ///
+    /// This initializes an encrypted `SQLite` database at the specified path.
+    /// The encryption key must be exactly 32 bytes.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the database file (or `:memory:` for in-memory)
+    /// * `key` - 32-byte encryption key (will be zeroized on drop)
+    ///
+    /// # Errors
+    /// Returns `DatabaseError` if the database cannot be opened or the key is invalid.
+    pub async fn new(path: impl AsRef<Path>, key: Vec<u8>) -> Result<Self> {
+        let pool = EncryptedPool::new(path, key).await?;
+        Ok(Self { pool })
+    }
+
+    /// Run all pending database migrations.
+    ///
+    /// This should be called after creating a new database instance to ensure
+    /// the schema is up to date.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::Migration` if any migration fails.
+    pub async fn run_migrations(&self) -> Result<()> {
+        migrations::run_migrations(self.pool.pool()).await
+    }
+
+    /// Get the current schema version.
+    ///
+    /// Returns the number of applied migrations.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError` if the version cannot be queried.
+    pub async fn get_schema_version(&self) -> Result<i64> {
+        migrations::get_schema_version(self.pool.pool()).await
+    }
+
+    /// Get a reference to the underlying connection pool.
+    ///
+    /// This allows direct access to the `SQLx` pool for custom queries.
+    #[must_use]
+    pub fn pool(&self) -> &sqlx::Pool<sqlx::Sqlite> {
+        self.pool.pool()
+    }
+
+    /// Verify that the database is accessible with the provided key.
+    ///
+    /// # Errors
+    /// Returns `DatabaseError::InvalidKey` if the key is incorrect.
+    pub async fn verify_key(&self) -> Result<()> {
+        self.pool.verify_key().await
+    }
+
+    /// Close the database connection gracefully.
+    ///
+    /// This ensures all connections are properly closed and resources are cleaned up.
+    pub async fn close(self) {
+        self.pool.close().await;
     }
 }
 
@@ -69,9 +119,71 @@ impl Database {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_database_new() {
-        let db = Database::new(":memory:");
-        assert!(db._path == ":memory:");
+    #[tokio::test]
+    async fn test_database_creation() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+
+        db.verify_key().await.expect("verify encryption key");
+    }
+
+    #[tokio::test]
+    async fn test_database_migrations() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+
+        let version_before = db.get_schema_version().await.expect("get version");
+        assert_eq!(version_before, 0);
+
+        db.run_migrations().await.expect("run migrations");
+
+        let version_after = db.get_schema_version().await.expect("get version");
+        assert_eq!(version_after, 1);
+    }
+
+    #[tokio::test]
+    async fn test_database_schema() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+
+        db.run_migrations().await.expect("run migrations");
+
+        // Verify all tables exist
+        let tables: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '_sqlx_migrations' ORDER BY name"
+        )
+        .fetch_all(db.pool())
+        .await
+        .expect("query tables");
+
+        assert_eq!(tables, vec!["audit_log", "broker_results", "profiles"]);
+
+        // Verify profiles table schema
+        let profile_columns: Vec<String> =
+            sqlx::query_scalar("SELECT name FROM pragma_table_info('profiles') ORDER BY cid")
+                .fetch_all(db.pool())
+                .await
+                .expect("query columns");
+
+        assert_eq!(
+            profile_columns,
+            vec!["id", "data", "nonce", "created_at", "updated_at"]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_database_close() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+
+        db.close().await; // Should not panic
     }
 }

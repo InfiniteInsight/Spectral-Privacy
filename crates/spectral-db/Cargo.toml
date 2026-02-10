@@ -9,6 +9,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+spectral-core = { path = "../spectral-core" }
 sqlx.workspace = true
 thiserror.workspace = true
 serde.workspace = true
@@ -16,6 +17,8 @@ tracing.workspace = true
 tokio.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+zeroize.workspace = true
+hex = "0.4"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

@@ -1,0 +1,35 @@
+# BeenVerified - Background Check & People Search
+# Last verified: 2025-05-01
+
+[broker]
+id = "beenverified"
+name = "BeenVerified"
+url = "https://www.beenverified.com"
+domain = "beenverified.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2025-05-01"
+
+[search]
+method = "web-form"
+url = "https://www.beenverified.com/search"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.fields]
+first_name = "{first}"
+last_name = "{last}"
+state = "{state}"
+
+[removal]
+method = "web-form"
+url = "https://www.beenverified.com/app/optout/search"
+confirmation = "email-verification"
+notes = "Requires finding your listing URL first, then email verification. May take 5-7 business days."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"

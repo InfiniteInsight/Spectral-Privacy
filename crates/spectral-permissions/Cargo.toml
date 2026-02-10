@@ -1,0 +1,31 @@
+[package]
+name = "spectral-permissions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Internal dependencies
+spectral-core = { path = "../spectral-core" }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

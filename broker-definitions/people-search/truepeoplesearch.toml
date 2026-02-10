@@ -1,0 +1,36 @@
+# TruePeopleSearch - Free Public Records Search
+# Last verified: 2025-05-01
+
+[broker]
+id = "truepeoplesearch"
+name = "TruePeopleSearch"
+url = "https://www.truepeoplesearch.com"
+domain = "truepeoplesearch.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2025-05-01"
+
+[search]
+method = "url-template"
+template = "https://www.truepeoplesearch.com/results?name={first}%20{last}&citystatezip={city}%2C%20{state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[removal]
+method = "email"
+email = "support@truepeoplesearch.com"
+subject = "Removal Request - {full_name}"
+body = """
+I am requesting the removal of my personal information from your website.
+
+Listing URL: {found_listing_url}
+Name: {full_name}
+Email: {user_email}
+
+Please confirm when this information has been removed.
+
+Thank you.
+"""
+response_days = 7
+notes = "Send email with listing URL. Usually responds within 3-5 business days."

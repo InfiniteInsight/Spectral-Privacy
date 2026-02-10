@@ -1,0 +1,29 @@
+# Whitepages - Phone Number & Address Lookup
+# Last verified: 2025-05-01
+
+[broker]
+id = "whitepages"
+name = "Whitepages"
+url = "https://www.whitepages.com"
+domain = "whitepages.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2025-05-01"
+
+[search]
+method = "url-template"
+template = "https://www.whitepages.com/name/{first}-{last}/{city}-{state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[removal]
+method = "web-form"
+url = "https://www.whitepages.com/suppression-requests"
+confirmation = "email-verification"
+notes = "Must verify phone number via SMS or email. Takes 24-72 hours to process."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+phone = "{user_phone}"
