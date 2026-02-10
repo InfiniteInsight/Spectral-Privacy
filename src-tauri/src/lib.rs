@@ -8,6 +8,7 @@ mod error;
 mod metadata;
 pub mod state;
 
+#[cfg(debug_assertions)]
 use tauri::Manager;
 use tracing::info;
 
@@ -55,6 +56,10 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     window.open_devtools();
                 }
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                let _ = app;
             }
             Ok(())
         })
