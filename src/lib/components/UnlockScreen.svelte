@@ -169,6 +169,7 @@ Computed style test: <span class="bg-red-500 text-white px-2">Should be red</spa
 							onclick={() => (showCreateForm = false)}
 							disabled={vaultStore.loading}
 							class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+							style="border: 1px solid #d1d5db; color: #374151; padding: 0.5rem 1rem; border-radius: 0.375rem;"
 						>
 							Cancel
 						</button>
@@ -176,6 +177,7 @@ Computed style test: <span class="bg-red-500 text-white px-2">Should be red</spa
 							type="submit"
 							disabled={vaultStore.loading || !newVaultId || !newVaultName || !newVaultPassword}
 							class="flex-1 bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+							style="background-color: #0284c7; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500;"
 						>
 							{vaultStore.loading ? 'Creating...' : 'Create Vault'}
 						</button>
@@ -257,6 +259,7 @@ Computed style test: <span class="bg-red-500 text-white px-2">Should be red</spa
 					type="submit"
 					disabled={vaultStore.loading || !password}
 					class="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+					style="background-color: #0284c7; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; width: 100%;"
 				>
 					{vaultStore.loading ? 'Unlocking...' : 'Unlock'}
 				</button>
