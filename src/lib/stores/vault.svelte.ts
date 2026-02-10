@@ -12,7 +12,7 @@
  * @module $lib/stores/vault
  */
 
-import { listVaults, unlockVault, lockVault } from '$lib/api/vault';
+import { listVaults, unlockVault, lockVault, createVault } from '$lib/api/vault';
 import type { VaultInfo } from '$lib/api/vault';
 
 /**
@@ -80,6 +80,27 @@ function createVaultStore() {
 				}
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to load vaults';
+			} finally {
+				state.loading = false;
+			}
+		},
+
+		/**
+		 * Create a new vault
+		 *
+		 * @param vaultId - Unique vault identifier
+		 * @param displayName - Human-readable vault name
+		 * @param password - Master password
+		 * @throws {Error} If creation fails
+		 */
+		async createVault(vaultId: string, displayName: string, password: string) {
+			state.loading = true;
+			state.error = null;
+			try {
+				await createVault(vaultId, displayName, password);
+			} catch (err) {
+				state.error = err instanceof Error ? err.message : 'Failed to create vault';
+				throw err;
 			} finally {
 				state.loading = false;
 			}

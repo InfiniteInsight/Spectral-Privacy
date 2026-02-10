@@ -4,6 +4,10 @@
 
 	let password = $state('');
 	let showPassword = $state(false);
+	let showCreateForm = $state(false);
+	let newVaultId = $state('');
+	let newVaultName = $state('');
+	let newVaultPassword = $state('');
 
 	const selectedVault = $derived(
 		vaultStore.availableVaults.find((v) => v.vault_id === vaultStore.currentVaultId)
@@ -24,6 +28,23 @@
 			console.error('Unlock failed:', err);
 		}
 	}
+
+	async function handleCreateVault() {
+		if (!newVaultId || !newVaultName || !newVaultPassword) return;
+
+		try {
+			await vaultStore.createVault(newVaultId, newVaultName, newVaultPassword);
+			// Clear form
+			newVaultId = '';
+			newVaultName = '';
+			newVaultPassword = '';
+			showCreateForm = false;
+			// Reload vaults
+			await vaultStore.loadVaults();
+		} catch (err) {
+			console.error('Create vault failed:', err);
+		}
+	}
 </script>
 
 <div
@@ -37,10 +58,93 @@
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
 			</div>
 		{:else if vaultStore.availableVaults.length === 0}
-			<div class="text-center py-8">
-				<p class="text-gray-600 mb-4">No vaults found</p>
-				<p class="text-sm text-gray-500">Create a vault to get started</p>
-			</div>
+			{#if !showCreateForm}
+				<div class="text-center py-8">
+					<p class="text-gray-600 mb-4">No vaults found</p>
+					<p class="text-sm text-gray-500 mb-6">Create a vault to get started</p>
+					<button
+						onclick={() => (showCreateForm = true)}
+						class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+					>
+						Create Vault
+					</button>
+				</div>
+			{:else}
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						handleCreateVault();
+					}}
+					class="space-y-4"
+				>
+					<div>
+						<label for="vault-id" class="block text-sm font-medium text-gray-700 mb-2">
+							Vault ID
+						</label>
+						<input
+							id="vault-id"
+							type="text"
+							bind:value={newVaultId}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+							placeholder="my-vault"
+							disabled={vaultStore.loading}
+						/>
+						<p class="text-xs text-gray-500 mt-1">Lowercase letters, numbers, and hyphens only</p>
+					</div>
+
+					<div>
+						<label for="vault-name" class="block text-sm font-medium text-gray-700 mb-2">
+							Display Name
+						</label>
+						<input
+							id="vault-name"
+							type="text"
+							bind:value={newVaultName}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+							placeholder="My Vault"
+							disabled={vaultStore.loading}
+						/>
+					</div>
+
+					<div>
+						<label for="new-password" class="block text-sm font-medium text-gray-700 mb-2">
+							Password
+						</label>
+						<input
+							id="new-password"
+							type="password"
+							bind:value={newVaultPassword}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+							placeholder="Choose a strong password"
+							disabled={vaultStore.loading}
+						/>
+					</div>
+
+					{#if vaultStore.error}
+						<div class="bg-red-50 border border-red-200 rounded-md p-3">
+							<p class="text-sm text-red-800">{vaultStore.error}</p>
+						</div>
+					{/if}
+
+					<div class="flex gap-2">
+						<button
+							type="button"
+							onclick={() => (showCreateForm = false)}
+							disabled={vaultStore.loading}
+							class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+						>
+							Cancel
+						</button>
+						<button
+							type="submit"
+							disabled={vaultStore.loading || !newVaultId || !newVaultName || !newVaultPassword}
+							class="flex-1 bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+						>
+							{vaultStore.loading ? 'Creating...' : 'Create Vault'}
+						</button>
+					</div>
+				</form>
+			{/if}
 		{:else}
 			<form
 				onsubmit={(e) => {
