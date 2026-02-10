@@ -1,19 +1,7 @@
 <script lang="ts">
 	import { UnlockScreen } from '$lib/components';
 	import { vaultStore } from '$lib/stores';
-
-	// Debug logging
-	console.log('Page loaded');
-	console.log('vaultStore:', vaultStore);
-	console.log('isCurrentVaultUnlocked:', vaultStore.isCurrentVaultUnlocked);
 </script>
-
-<div
-	class="debug-info"
-	style="position: fixed; top: 0; left: 0; background: yellow; padding: 10px; z-index: 9999;"
->
-	Debug: isUnlocked={vaultStore.isCurrentVaultUnlocked}
-</div>
 
 {#if vaultStore.isCurrentVaultUnlocked}
 	<!-- Dashboard Placeholder -->
