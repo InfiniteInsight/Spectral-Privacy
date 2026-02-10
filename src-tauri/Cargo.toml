@@ -33,7 +33,9 @@ spectral-db = { path = "../crates/spectral-db" }
 directories.workspace = true
 
 [dev-dependencies]
+uuid.workspace = true
 tempfile.workspace = true
+tauri = { workspace = true, features = ["test"] }
 
 [features]
 default = ["custom-protocol"]

@@ -43,9 +43,11 @@ impl EncryptedPool {
         })?;
 
         // Build connection options with SQLCipher pragmas
+        // Note: SQLCipher requires hex keys to be prefixed with "x'" and suffixed with "'"
+        let key_hex = format!("\"x'{}'\"", hex::encode(&*key));
         let connect_options = SqliteConnectOptions::from_str(path_str)
             .map_err(|e| DatabaseError::Open(format!("invalid connection string: {e}")))?
-            .pragma("key", hex::encode(&*key))
+            .pragma("key", key_hex)
             .pragma("cipher_page_size", "4096")
             .pragma("kdf_iter", "256000")
             .pragma("cipher_hmac_algorithm", "HMAC_SHA512")

@@ -3,10 +3,10 @@
 //! This is the thin application shell that registers commands and manages windows.
 //! Core business logic lives in the `crates/` directory.
 
-mod commands;
+pub mod commands;
 mod error;
 mod metadata;
-mod state;
+pub mod state;
 
 use tauri::Manager;
 use tracing::info;
