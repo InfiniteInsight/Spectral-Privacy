@@ -21,28 +21,35 @@ export interface VaultStatus {
  */
 export interface VaultInfo {
 	vault_id: string;
-	display_name?: string;
-	created_at: number;
-	last_accessed?: number;
+	display_name: string;
+	created_at: string;
+	last_accessed: string;
+	unlocked: boolean;
 }
 
 /**
  * Error response from vault commands
  */
 export interface CommandError {
+	code: string;
 	message: string;
-	code?: string;
+	details?: unknown;
 }
 
 /**
  * Create a new vault with the specified ID and password
  *
  * @param vaultId - Unique identifier for the vault
+ * @param displayName - Display name for the vault
  * @param password - Master password for the vault
  * @throws {CommandError} If vault creation fails
  */
-export async function createVault(vaultId: string, password: string): Promise<void> {
-	return invoke('vault_create', { vaultId, password });
+export async function createVault(
+	vaultId: string,
+	displayName: string,
+	password: string
+): Promise<void> {
+	return invoke<void>('vault_create', { vaultId, displayName, password });
 }
 
 /**
@@ -53,7 +60,7 @@ export async function createVault(vaultId: string, password: string): Promise<vo
  * @throws {CommandError} If unlock fails (wrong password, vault not found, etc.)
  */
 export async function unlockVault(vaultId: string, password: string): Promise<void> {
-	return invoke('vault_unlock', { vaultId, password });
+	return invoke<void>('vault_unlock', { vaultId, password });
 }
 
 /**
@@ -63,7 +70,7 @@ export async function unlockVault(vaultId: string, password: string): Promise<vo
  * @throws {CommandError} If lock fails
  */
 export async function lockVault(vaultId: string): Promise<void> {
-	return invoke('vault_lock', { vaultId });
+	return invoke<void>('vault_lock', { vaultId });
 }
 
 /**
@@ -74,7 +81,7 @@ export async function lockVault(vaultId: string): Promise<void> {
  * @throws {CommandError} If status check fails
  */
 export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
-	return invoke('vault_status', { vaultId });
+	return invoke<VaultStatus>('vault_status', { vaultId });
 }
 
 /**
@@ -84,5 +91,5 @@ export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
  * @throws {CommandError} If listing fails
  */
 export async function listVaults(): Promise<VaultInfo[]> {
-	return invoke('vault_list');
+	return invoke<VaultInfo[]>('list_vaults');
 }
