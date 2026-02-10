@@ -5,6 +5,10 @@
 	let password = $state('');
 	let showPassword = $state(false);
 
+	const selectedVault = $derived(
+		vaultStore.availableVaults.find((v) => v.vault_id === vaultStore.currentVaultId)
+	);
+
 	onMount(async () => {
 		await vaultStore.loadVaults();
 	});
@@ -15,8 +19,9 @@
 		try {
 			await vaultStore.unlock(vaultStore.currentVaultId, password);
 			password = ''; // Clear password on success
-		} catch {
-			// Error already set in store
+		} catch (err) {
+			// Error already set in store, but log for debugging
+			console.error('Unlock failed:', err);
 		}
 	}
 </script>
@@ -54,11 +59,13 @@
 							id="vault-select"
 							value={vaultStore.currentVaultId}
 							onchange={(e) => vaultStore.setCurrentVault(e.currentTarget.value)}
+							disabled={vaultStore.loading}
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
 						>
 							{#each vaultStore.availableVaults as vault}
 								<option value={vault.vault_id}>
 									{vault.display_name}
+									{vault.unlocked ? ' (Unlocked)' : ''}
 								</option>
 							{/each}
 						</select>
@@ -81,6 +88,7 @@
 							id="password"
 							type={showPassword ? 'text' : 'password'}
 							bind:value={password}
+							autocomplete="current-password"
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
 							placeholder="Enter vault password"
 							disabled={vaultStore.loading}
@@ -89,6 +97,7 @@
 							type="button"
 							onclick={() => (showPassword = !showPassword)}
 							class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+							aria-label={showPassword ? 'Hide password' : 'Show password'}
 						>
 							{showPassword ? 'Hide' : 'Show'}
 						</button>
@@ -110,6 +119,15 @@
 				>
 					{vaultStore.loading ? 'Unlocking...' : 'Unlock'}
 				</button>
+
+				<!-- Last Accessed Info -->
+				{#if selectedVault}
+					<div class="pt-4 border-t border-gray-200">
+						<p class="text-xs text-gray-500 text-center">
+							Last accessed: {new Date(selectedVault.last_accessed).toLocaleString()}
+						</p>
+					</div>
+				{/if}
 			</form>
 		{/if}
 	</div>
