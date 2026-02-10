@@ -96,3 +96,63 @@ async fn test_full_vault_lifecycle() {
     assert_eq!(vaults[0].display_name, "Test Vault");
     assert!(vaults[0].unlocked);
 }
+
+#[tokio::test]
+async fn test_multiple_vaults() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault1_id = Uuid::new_v4().to_string();
+    let vault2_id = Uuid::new_v4().to_string();
+    let password1 = "password-1"; // pragma: allowlist secret
+    let password2 = "password-2"; // pragma: allowlist secret
+
+    // 1. Create vault1 and vault2
+    vault_create(
+        state.clone(),
+        vault1_id.clone(),
+        "Vault 1".to_string(),
+        password1.to_string(),
+    )
+    .await
+    .expect("create vault1");
+
+    vault_create(
+        state.clone(),
+        vault2_id.clone(),
+        "Vault 2".to_string(),
+        password2.to_string(),
+    )
+    .await
+    .expect("create vault2");
+
+    // 2. Verify both unlocked
+    let vaults = list_vaults(state.clone()).await.expect("list vaults");
+    assert_eq!(vaults.len(), 2);
+    assert!(vaults.iter().all(|v| v.unlocked));
+
+    // 3. Lock vault1
+    vault_lock(state.clone(), vault1_id.clone())
+        .await
+        .expect("lock vault1");
+
+    // 4. Verify vault2 still unlocked
+    let status1 = vault_status(state.clone(), vault1_id.clone())
+        .await
+        .expect("get status1");
+    let status2 = vault_status(state.clone(), vault2_id.clone())
+        .await
+        .expect("get status2");
+
+    assert!(!status1.unlocked);
+    assert!(status2.unlocked);
+
+    // 5. Verify list shows correct states
+    let vaults = list_vaults(state.clone()).await.expect("list vaults");
+    assert_eq!(vaults.len(), 2);
+
+    let vault1_info = vaults.iter().find(|v| v.vault_id == vault1_id).unwrap();
+    let vault2_info = vaults.iter().find(|v| v.vault_id == vault2_id).unwrap();
+
+    assert!(!vault1_info.unlocked);
+    assert!(vault2_info.unlocked);
+}
