@@ -9,21 +9,37 @@ import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Check if we're running in Tauri environment
+ * Uses multiple detection methods for reliability
  */
 function isTauriAvailable(): boolean {
-	return typeof window !== 'undefined' && '__TAURI__' in window;
+	if (typeof window === 'undefined') return false;
+
+	// Check multiple ways Tauri might be available
+	return (
+		'__TAURI__' in window ||
+		'__TAURI_INTERNALS__' in window ||
+		!!(window as any).__TAURI__ ||
+		!!(window as any).__TAURI_INTERNALS__
+	);
 }
 
 /**
  * Wrapper around invoke that checks Tauri availability
  */
 async function safeInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-	if (!isTauriAvailable()) {
-		throw new Error(
-			'Tauri is not available. This application must be run in the Tauri desktop app, not in a regular browser.'
-		);
+	try {
+		// Just try to invoke - let Tauri handle its own errors
+		return await invoke<T>(command, args);
+	} catch (error) {
+		// Add context to Tauri errors
+		console.error('Vault command failed:', {
+			command,
+			args,
+			error,
+			isTauriDetected: isTauriAvailable()
+		});
+		throw error;
 	}
-	return invoke<T>(command, args);
 }
 
 /**
