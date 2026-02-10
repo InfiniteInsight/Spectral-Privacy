@@ -31,7 +31,6 @@ pub struct VaultInfo {
 ///
 /// Creates vault directory, initializes encrypted database, and stores metadata.
 #[tauri::command]
-#[allow(dead_code)] // Will be registered in Task 10
 pub async fn vault_create(
     state: State<'_, AppState>,
     vault_id: String,
@@ -85,7 +84,6 @@ pub async fn vault_create(
 /// Loads encrypted database and inserts into unlocked vaults.
 /// Idempotent: returns success if already unlocked.
 #[tauri::command]
-#[allow(dead_code)] // Will be registered in Task 10
 pub async fn vault_unlock(
     state: State<'_, AppState>,
     vault_id: String,
@@ -131,7 +129,6 @@ pub async fn vault_unlock(
 /// Removes vault from unlocked state. Vault's Drop impl zeroizes keys.
 /// Idempotent: returns success if already locked.
 #[tauri::command]
-#[allow(dead_code)] // Will be registered in Task 10
 pub async fn vault_lock(state: State<'_, AppState>, vault_id: String) -> Result<(), CommandError> {
     info!("Locking vault: {}", vault_id);
 
@@ -146,7 +143,6 @@ pub async fn vault_lock(state: State<'_, AppState>, vault_id: String) -> Result<
 ///
 /// Returns whether vault exists, is unlocked, and display name.
 #[tauri::command]
-#[allow(dead_code)] // Will be registered in Task 10
 pub async fn vault_status(
     state: State<'_, AppState>,
     vault_id: String,
@@ -174,7 +170,6 @@ pub async fn vault_status(
 ///
 /// Scans vault directory and returns metadata for each vault.
 #[tauri::command]
-#[allow(dead_code)] // Will be registered in Task 10
 pub async fn list_vaults(state: State<'_, AppState>) -> Result<Vec<VaultInfo>, CommandError> {
     info!("Listing all vaults");
 

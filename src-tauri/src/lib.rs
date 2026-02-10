@@ -43,7 +43,11 @@ pub fn run() {
 
     info!("Starting Spectral v{}", env!("CARGO_PKG_VERSION"));
 
+    // Initialize application state
+    let app_state = state::AppState::new();
+
     tauri::Builder::default()
+        .manage(app_state)
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -54,7 +58,15 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![health_check, get_version])
+        .invoke_handler(tauri::generate_handler![
+            health_check,
+            get_version,
+            commands::vault::vault_create,
+            commands::vault::vault_unlock,
+            commands::vault::vault_lock,
+            commands::vault::vault_status,
+            commands::vault::list_vaults,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
