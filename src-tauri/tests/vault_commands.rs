@@ -156,3 +156,97 @@ async fn test_multiple_vaults() {
     assert!(!vault1_info.unlocked);
     assert!(vault2_info.unlocked);
 }
+
+#[tokio::test]
+async fn test_vault_already_exists() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault_id = Uuid::new_v4().to_string();
+
+    // Create vault
+    vault_create(
+        state.clone(),
+        vault_id.clone(),
+        "Test".to_string(),
+        "password".to_string(),
+    )
+    .await
+    .expect("create vault");
+
+    // Try to create same vault again
+    let result = vault_create(
+        state.clone(),
+        vault_id.clone(),
+        "Test".to_string(),
+        "password".to_string(),
+    )
+    .await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, "VAULT_ALREADY_EXISTS");
+}
+
+#[tokio::test]
+async fn test_vault_not_found() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault_id = Uuid::new_v4().to_string();
+
+    // Try to unlock non-existent vault
+    let result = vault_unlock(state.clone(), vault_id.clone(), "password".to_string()).await;
+
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.code, "VAULT_NOT_FOUND");
+}
+
+#[tokio::test]
+async fn test_vault_status_nonexistent() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault_id = Uuid::new_v4().to_string();
+
+    let status = vault_status(state.clone(), vault_id)
+        .await
+        .expect("get status");
+
+    assert!(!status.exists);
+    assert!(!status.unlocked);
+    assert!(status.display_name.is_none());
+}
+
+#[tokio::test]
+async fn test_vault_lock_idempotent() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault_id = Uuid::new_v4().to_string();
+
+    // Lock non-existent/already-locked vault should succeed
+    vault_lock(state.clone(), vault_id)
+        .await
+        .expect("lock vault");
+}
+
+#[tokio::test]
+async fn test_vault_unlock_idempotent() {
+    let (app, _temp_dir) = create_test_app();
+    let state: State<AppState> = app.state();
+    let vault_id = Uuid::new_v4().to_string();
+    let password = "password-123"; // pragma: allowlist secret
+
+    // Create and verify unlocked
+    vault_create(
+        state.clone(),
+        vault_id.clone(),
+        "Test".to_string(),
+        password.to_string(),
+    )
+    .await
+    .expect("create vault");
+
+    // Unlock again (already unlocked) should succeed
+    vault_unlock(state.clone(), vault_id, password.to_string())
+        .await
+        .expect("unlock again");
+}
