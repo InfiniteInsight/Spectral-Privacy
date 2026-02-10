@@ -97,7 +97,7 @@ function createVaultStore() {
 			state.error = null;
 			try {
 				await unlockVault(vaultId, password);
-				state.unlockedVaultIds.add(vaultId);
+				state.unlockedVaultIds = new Set([...state.unlockedVaultIds, vaultId]);
 				state.currentVaultId = vaultId;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to unlock vault';
@@ -117,7 +117,9 @@ function createVaultStore() {
 			state.error = null;
 			try {
 				await lockVault(vaultId);
-				state.unlockedVaultIds.delete(vaultId);
+				const newUnlocked = new Set(state.unlockedVaultIds);
+				newUnlocked.delete(vaultId);
+				state.unlockedVaultIds = newUnlocked;
 				if (state.currentVaultId === vaultId) {
 					state.currentVaultId = null;
 				}
@@ -135,6 +137,7 @@ function createVaultStore() {
 		 */
 		setCurrentVault(vaultId: string | null) {
 			state.currentVaultId = vaultId;
+			state.error = null;
 		},
 
 		/**
