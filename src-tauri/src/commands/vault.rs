@@ -11,7 +11,6 @@ use tracing::{info, warn};
 
 /// Response for vault_status command.
 #[derive(Debug, Serialize)]
-#[allow(dead_code)] // Will be used in Task 8
 pub struct VaultStatus {
     pub exists: bool,
     pub unlocked: bool,
@@ -142,4 +141,32 @@ pub async fn vault_lock(state: State<'_, AppState>, vault_id: String) -> Result<
 
     info!("Vault locked: {}", vault_id);
     Ok(())
+}
+
+/// Get status of a specific vault.
+///
+/// Returns whether vault exists, is unlocked, and display name.
+#[tauri::command]
+#[allow(dead_code)] // Will be registered in Task 10
+pub async fn vault_status(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<VaultStatus, CommandError> {
+    let exists = state.vault_exists(&vault_id);
+    let unlocked = state.is_vault_unlocked(&vault_id);
+
+    let display_name = if exists {
+        let metadata_path = state.vault_metadata_path(&vault_id);
+        VaultMetadata::read_from_file(&metadata_path)
+            .ok()
+            .map(|m| m.display_name)
+    } else {
+        None
+    };
+
+    Ok(VaultStatus {
+        exists,
+        unlocked,
+        display_name,
+    })
 }
