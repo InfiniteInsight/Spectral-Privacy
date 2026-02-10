@@ -61,5 +61,35 @@ export default [
 			...svelte.configs.recommended.rules,
 			'svelte/no-at-html-tags': 'error'
 		}
+	},
+	{
+		files: ['**/*.svelte.ts', '**/*.svelte.js'],
+		languageOptions: {
+			parser: tsparser,
+			parserOptions: {
+				ecmaVersion: 'latest',
+				sourceType: 'module'
+			},
+			globals: {
+				...globals.browser,
+				$state: 'readonly',
+				$derived: 'readonly',
+				$effect: 'readonly',
+				$props: 'readonly',
+				$bindable: 'readonly',
+				$inspect: 'readonly'
+			}
+		},
+		plugins: {
+			'@typescript-eslint': tseslint
+		},
+		rules: {
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+			],
+			'@typescript-eslint/no-explicit-any': 'warn',
+			'no-console': ['warn', { allow: ['warn', 'error'] }]
+		}
 	}
 ];

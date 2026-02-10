@@ -7,3 +7,4 @@
  */
 
 export * from './app';
+export { vaultStore } from './vault.svelte';
