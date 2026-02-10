@@ -221,7 +221,7 @@ Use Tauri's managed state for shared resources:
 // src-tauri/src/lib.rs
 pub fn run() {
     tauri::Builder::default()
-        .manage(AppState::default())
+        .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             unlock_vault,
             lock_vault,
@@ -231,27 +231,69 @@ pub fn run() {
         .expect("error running tauri app");
 }
 
-#[derive(Default)]
 pub struct AppState {
-    vault: RwLock<Option<Arc<Vault>>>,
+    /// Base directory for all vaults: ~/.local/share/spectral/vaults/
+    vaults_dir: PathBuf,
+    /// Currently unlocked vaults: vault_id -> Vault
+    /// Multiple family members can have vaults unlocked simultaneously
+    unlocked_vaults: RwLock<HashMap<String, Arc<Vault>>>,
     scanner: RwLock<Option<Arc<Scanner>>>,
     config: RwLock<Config>,
 }
 
-// Access in commands
+impl AppState {
+    pub fn new() -> Self {
+        let dirs = directories::ProjectDirs::from("com", "spectral", "spectral")
+            .expect("failed to determine project directories");
+        let vaults_dir = dirs.data_dir().join("vaults");
+
+        Self {
+            vaults_dir,
+            unlocked_vaults: RwLock::new(HashMap::new()),
+            scanner: RwLock::new(None),
+            config: RwLock::new(Config::default()),
+        }
+    }
+}
+
+// Access in commands - all commands take vault_id for explicit security
 #[tauri::command]
 async fn scan_broker(
     state: State<'_, AppState>,
+    vault_id: String,
     broker_id: String,
 ) -> Result<ScanResult, CommandError> {
-    let vault = state.vault.read().await
-        .as_ref()
+    let vaults = state.unlocked_vaults.read().await;
+    let vault = vaults
+        .get(&vault_id)
         .ok_or(CommandError::vault_locked())?
         .clone();
 
     // ...
 }
 ```
+
+**Multi-Vault Filesystem Structure:**
+
+Each vault is stored in its own directory with metadata:
+
+```
+~/.local/share/spectral/vaults/
+├── {vault-id-1}/
+│   ├── metadata.json      # { "name": "Alice", "created_at": "..." }
+│   ├── vault.db           # SQLite database with encrypted profiles
+│   └── .vault_salt        # Argon2 salt (32 bytes)
+└── {vault-id-2}/
+    ├── metadata.json      # { "name": "Bob", "created_at": "..." }
+    ├── vault.db
+    └── .vault_salt
+```
+
+**Design Rationale:**
+- **Explicit vault_id in all commands** for security (no ambient authority)
+- **HashMap allows multiple concurrent unlocked vaults** for family use
+- **RwLock for concurrent reads** (multiple commands can check status)
+- **Each vault is self-contained** in its directory for easy backup/migration
 
 ### Frontend State (Svelte)
 
@@ -290,33 +332,92 @@ Place shared stores in `$lib/stores/`:
 ```typescript
 // $lib/stores/vault.ts
 import { writable, derived } from 'svelte/store';
+import * as vaultApi from '$lib/api/vault';
+import type { VaultInfo } from '$lib/types';
 
 interface VaultState {
-  isUnlocked: boolean;
-  profile: UserProfile | null;
+  /// Currently selected vault ID (user can switch between family members)
+  currentVaultId: string | null;
+  /// List of all available vaults
+  availableVaults: VaultInfo[];
+  /// Which vaults are currently unlocked
+  unlockedVaultIds: Set<string>;
 }
 
 function createVaultStore() {
   const { subscribe, set, update } = writable<VaultState>({
-    isUnlocked: false,
-    profile: null,
+    currentVaultId: null,
+    availableVaults: [],
+    unlockedVaultIds: new Set(),
   });
 
   return {
     subscribe,
-    unlock: async (password: string) => {
-      const profile = await invoke('unlock_vault', { password });
-      set({ isUnlocked: true, profile });
+
+    /// Load list of available vaults from disk
+    async loadVaults() {
+      const vaults = await vaultApi.listVaults();
+      update(state => ({ ...state, availableVaults: vaults }));
     },
-    lock: async () => {
-      await invoke('lock_vault');
-      set({ isUnlocked: false, profile: null });
+
+    /// Set the current active vault
+    setCurrentVault(vaultId: string) {
+      update(state => ({ ...state, currentVaultId: vaultId }));
+    },
+
+    /// Unlock a vault
+    async unlock(vaultId: string, password: string) {
+      await vaultApi.unlockVault(vaultId, password);
+      update(state => ({
+        ...state,
+        currentVaultId: vaultId,
+        unlockedVaultIds: new Set([...state.unlockedVaultIds, vaultId]),
+      }));
+    },
+
+    /// Lock a vault
+    async lock(vaultId: string) {
+      await vaultApi.lockVault(vaultId);
+      update(state => {
+        const newUnlocked = new Set(state.unlockedVaultIds);
+        newUnlocked.delete(vaultId);
+        return {
+          ...state,
+          unlockedVaultIds: newUnlocked,
+          // Clear current if we locked it
+          currentVaultId: state.currentVaultId === vaultId ? null : state.currentVaultId,
+        };
+      });
     },
   };
 }
 
-export const vault = createVaultStore();
-export const isVaultUnlocked = derived(vault, $v => $v.isUnlocked);
+export const vaultStore = createVaultStore();
+
+// Derived stores for common checks
+export const currentVaultId = derived(vaultStore, $v => $v.currentVaultId);
+export const isCurrentVaultUnlocked = derived(
+  vaultStore,
+  $v => $v.currentVaultId !== null && $v.unlockedVaultIds.has($v.currentVaultId)
+);
+```
+
+**Usage in components:**
+
+```svelte
+<script lang="ts">
+  import { vaultStore, currentVaultId, isCurrentVaultUnlocked } from '$lib/stores/vault';
+  import { scanBroker } from '$lib/api/broker';
+
+  async function handleScan(brokerId: string) {
+    if (!$currentVaultId) {
+      throw new Error('No vault selected');
+    }
+
+    // currentVaultId is passed to all vault-requiring operations
+    const result = await scanBroker($currentVaultId, brokerId);
+  }
+</script>
 ```
 
 ---
@@ -717,20 +818,121 @@ async fn scan_broker(
 }
 ```
 
+### Vault Command Patterns
+
+**All vault-related commands must include `vault_id` parameter for explicit security:**
+
+```rust
+// Vault lifecycle commands
+#[tauri::command]
+async fn vault_create(
+    state: State<'_, AppState>,
+    vault_id: String,
+    display_name: String,
+    password: String,
+) -> Result<(), CommandError> {
+    // Create new vault at vaults_dir/{vault_id}/
+}
+
+#[tauri::command]
+async fn vault_unlock(
+    state: State<'_, AppState>,
+    vault_id: String,
+    password: String,
+) -> Result<(), CommandError> {
+    // Derive key, open database, insert into unlocked_vaults
+}
+
+#[tauri::command]
+async fn vault_lock(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<(), CommandError> {
+    // Remove from unlocked_vaults, key auto-zeroized
+}
+
+#[tauri::command]
+async fn vault_status(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<VaultStatus, CommandError> {
+    // Return { exists: bool, unlocked: bool }
+}
+
+#[tauri::command]
+async fn list_vaults(
+    state: State<'_, AppState>,
+) -> Result<Vec<VaultInfo>, CommandError> {
+    // Scan vaults_dir, read metadata.json from each
+}
+
+// Profile operations - also take vault_id
+#[tauri::command]
+async fn create_profile(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<String, CommandError> {
+    let vaults = state.unlocked_vaults.read().await;
+    let vault = vaults.get(&vault_id)
+        .ok_or(CommandError::vault_locked())?;
+
+    let profile_id = vault.create_profile().await?;
+    Ok(profile_id)
+}
+```
+
+**Security rationale:**
+- Explicit `vault_id` prevents confused deputy attacks
+- No ambient authority (no "active vault" state)
+- Clear audit trail of which vault each operation targets
+- Frontend maintains current vault ID in local state
+
 ### Frontend API Wrapper
 
 Wrap Tauri commands in `$lib/api/`:
 
 ```typescript
+// $lib/api/vault.ts
+import { invoke } from '@tauri-apps/api/core';
+import type { VaultStatus, VaultInfo } from '$lib/types';
+
+export async function createVault(
+  vaultId: string,
+  displayName: string,
+  password: string
+): Promise<void> {
+  return invoke('vault_create', { vaultId, displayName, password });
+}
+
+export async function unlockVault(
+  vaultId: string,
+  password: string
+): Promise<void> {
+  return invoke('vault_unlock', { vaultId, password });
+}
+
+export async function lockVault(vaultId: string): Promise<void> {
+  return invoke('vault_lock', { vaultId });
+}
+
+export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
+  return invoke('vault_status', { vaultId });
+}
+
+export async function listVaults(): Promise<VaultInfo[]> {
+  return invoke('list_vaults');
+}
+
 // $lib/api/broker.ts
 import { invoke } from '@tauri-apps/api/core';
 import type { ScanResult, ScanOptions, BrokerDefinition } from '$lib/types';
 
 export async function scanBroker(
+  vaultId: string,
   brokerId: string,
   options?: ScanOptions
 ): Promise<ScanResult> {
-  return invoke('scan_broker', { brokerId, options });
+  return invoke('scan_broker', { vaultId, brokerId, options });
 }
 
 export async function scanBrokers(brokerIds: string[]): Promise<ScanResult[]> {
