@@ -127,3 +127,19 @@ pub async fn vault_unlock(
     info!("Vault unlocked successfully: {}", vault_id);
     Ok(())
 }
+
+/// Lock a vault.
+///
+/// Removes vault from unlocked state. Vault's Drop impl zeroizes keys.
+/// Idempotent: returns success if already locked.
+#[tauri::command]
+#[allow(dead_code)] // Will be registered in Task 10
+pub async fn vault_lock(state: State<'_, AppState>, vault_id: String) -> Result<(), CommandError> {
+    info!("Locking vault: {}", vault_id);
+
+    // Remove from unlocked vaults (Drop impl zeroizes keys)
+    state.remove_vault(&vault_id);
+
+    info!("Vault locked: {}", vault_id);
+    Ok(())
+}
