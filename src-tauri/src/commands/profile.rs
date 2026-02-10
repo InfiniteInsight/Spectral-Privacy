@@ -53,7 +53,13 @@ pub async fn profile_create(
         .date_of_birth
         .map(|d| encrypt_string(&d.to_string(), key))
         .transpose()?;
-    profile.address = Some(encrypt_string(&input.address_line1, key)?);
+    // Combine address lines if address_line2 exists
+    let full_address = if let Some(ref line2) = input.address_line2 {
+        format!("{}\n{}", input.address_line1, line2)
+    } else {
+        input.address_line1.clone()
+    };
+    profile.address = Some(encrypt_string(&full_address, key)?);
     profile.city = Some(encrypt_string(&input.city, key)?);
     profile.state = Some(encrypt_string(&input.state, key)?);
     profile.zip_code = Some(encrypt_string(&input.zip_code, key)?);
@@ -139,12 +145,19 @@ pub async fn profile_get(
         .map(|f| f.decrypt(key))
         .transpose()?
         .and_then(|s: String| s.parse().ok());
-    let address_line1 = profile
+    // Decrypt and split address into two lines
+    let (address_line1, address_line2) = profile
         .address
         .as_ref()
         .map(|f| f.decrypt(key))
         .transpose()?
-        .unwrap_or_default();
+        .map(|address_str: String| {
+            let address_parts: Vec<&str> = address_str.split('\n').collect();
+            let line1 = address_parts.first().unwrap_or(&"").to_string();
+            let line2 = address_parts.get(1).map(|s| s.to_string());
+            (line1, line2)
+        })
+        .unwrap_or((String::new(), None));
     let city = profile
         .city
         .as_ref()
@@ -172,7 +185,7 @@ pub async fn profile_get(
         email,
         date_of_birth,
         address_line1,
-        address_line2: None, // Not stored in vault profile currently
+        address_line2,
         city,
         state: state_code,
         zip_code,
@@ -226,7 +239,13 @@ pub async fn profile_update(
         .date_of_birth
         .map(|d| encrypt_string(&d.to_string(), key))
         .transpose()?;
-    profile.address = Some(encrypt_string(&input.address_line1, key)?);
+    // Combine address lines if address_line2 exists
+    let full_address = if let Some(ref line2) = input.address_line2 {
+        format!("{}\n{}", input.address_line1, line2)
+    } else {
+        input.address_line1.clone()
+    };
+    profile.address = Some(encrypt_string(&full_address, key)?);
     profile.city = Some(encrypt_string(&input.city, key)?);
     profile.state = Some(encrypt_string(&input.state, key)?);
     profile.zip_code = Some(encrypt_string(&input.zip_code, key)?);
@@ -291,12 +310,14 @@ pub async fn profile_list(
         let first_name = profile
             .first_name
             .as_ref()
-            .and_then(|f| f.decrypt(key).ok())
+            .map(|f| f.decrypt(key))
+            .transpose()?
             .unwrap_or_default();
         let last_name = profile
             .last_name
             .as_ref()
-            .and_then(|f| f.decrypt(key).ok())
+            .map(|f| f.decrypt(key))
+            .transpose()?
             .unwrap_or_default();
         let full_name = format!("{} {}", first_name, last_name).trim().to_string();
 
@@ -304,7 +325,8 @@ pub async fn profile_list(
         let email = profile
             .email
             .as_ref()
-            .and_then(|f| f.decrypt(key).ok())
+            .map(|f| f.decrypt(key))
+            .transpose()?
             .unwrap_or_default();
 
         summaries.push(ProfileSummary {
