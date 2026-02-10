@@ -8,6 +8,25 @@
 import { invoke } from '@tauri-apps/api/core';
 
 /**
+ * Check if we're running in Tauri environment
+ */
+function isTauriAvailable(): boolean {
+	return typeof window !== 'undefined' && '__TAURI__' in window;
+}
+
+/**
+ * Wrapper around invoke that checks Tauri availability
+ */
+async function safeInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+	if (!isTauriAvailable()) {
+		throw new Error(
+			'Tauri is not available. This application must be run in the Tauri desktop app, not in a regular browser.'
+		);
+	}
+	return invoke<T>(command, args);
+}
+
+/**
  * Vault status information
  */
 export interface VaultStatus {
@@ -49,7 +68,7 @@ export async function createVault(
 	displayName: string,
 	password: string
 ): Promise<void> {
-	return invoke<void>('vault_create', { vaultId, displayName, password });
+	return safeInvoke<void>('vault_create', { vaultId, displayName, password });
 }
 
 /**
@@ -60,7 +79,7 @@ export async function createVault(
  * @throws {CommandError} If unlock fails (wrong password, vault not found, etc.)
  */
 export async function unlockVault(vaultId: string, password: string): Promise<void> {
-	return invoke<void>('vault_unlock', { vaultId, password });
+	return safeInvoke<void>('vault_unlock', { vaultId, password });
 }
 
 /**
@@ -70,7 +89,7 @@ export async function unlockVault(vaultId: string, password: string): Promise<vo
  * @throws {CommandError} If lock fails
  */
 export async function lockVault(vaultId: string): Promise<void> {
-	return invoke<void>('vault_lock', { vaultId });
+	return safeInvoke<void>('vault_lock', { vaultId });
 }
 
 /**
@@ -81,7 +100,7 @@ export async function lockVault(vaultId: string): Promise<void> {
  * @throws {CommandError} If status check fails
  */
 export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
-	return invoke<VaultStatus>('vault_status', { vaultId });
+	return safeInvoke<VaultStatus>('vault_status', { vaultId });
 }
 
 /**
@@ -91,5 +110,5 @@ export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
  * @throws {CommandError} If listing fails
  */
 export async function listVaults(): Promise<VaultInfo[]> {
-	return invoke<VaultInfo[]>('list_vaults');
+	return safeInvoke<VaultInfo[]>('list_vaults');
 }
