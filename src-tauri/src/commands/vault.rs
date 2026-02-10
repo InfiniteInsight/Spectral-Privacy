@@ -51,17 +51,29 @@ pub async fn vault_create(
         ));
     }
 
-    // Create vault directory
+    // Create vault directory (async)
     let vault_dir = state.vault_dir(&vault_id);
-    std::fs::create_dir_all(&vault_dir)?;
+    tokio::fs::create_dir_all(&vault_dir).await?;
 
     // Create encrypted vault database
+    // If this fails, we need to clean up the directory
     let db_path = state.vault_db_path(&vault_id);
-    let vault = Vault::create(&password, &db_path).await?;
+    let vault = match Vault::create(&password, &db_path).await {
+        Ok(v) => v,
+        Err(e) => {
+            // Clean up directory on failure
+            tokio::fs::remove_dir_all(&vault_dir).await.ok();
+            return Err(e.into());
+        }
+    };
 
-    // Write metadata
+    // Write metadata (with cleanup on failure)
     let metadata = VaultMetadata::new(vault_id.clone(), display_name);
-    metadata.write_to_file(state.vault_metadata_path(&vault_id))?;
+    if let Err(e) = metadata.write_to_file(state.vault_metadata_path(&vault_id)) {
+        // Clean up on metadata write failure
+        tokio::fs::remove_dir_all(&vault_dir).await.ok();
+        return Err(e.into());
+    }
 
     // Insert into unlocked vaults
     state.insert_vault(vault_id.clone(), Arc::new(vault));
