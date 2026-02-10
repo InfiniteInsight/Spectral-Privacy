@@ -1,0 +1,116 @@
+<script lang="ts">
+	import { vaultStore } from '$lib/stores';
+	import { onMount } from 'svelte';
+
+	let password = $state('');
+	let showPassword = $state(false);
+
+	onMount(async () => {
+		await vaultStore.loadVaults();
+	});
+
+	async function handleUnlock() {
+		if (!vaultStore.currentVaultId || !password) return;
+
+		try {
+			await vaultStore.unlock(vaultStore.currentVaultId, password);
+			password = ''; // Clear password on success
+		} catch {
+			// Error already set in store
+		}
+	}
+</script>
+
+<div
+	class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4"
+>
+	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+		<h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Unlock Vault</h1>
+
+		{#if vaultStore.loading}
+			<div class="flex items-center justify-center py-8">
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+			</div>
+		{:else if vaultStore.availableVaults.length === 0}
+			<div class="text-center py-8">
+				<p class="text-gray-600 mb-4">No vaults found</p>
+				<p class="text-sm text-gray-500">Create a vault to get started</p>
+			</div>
+		{:else}
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleUnlock();
+				}}
+				class="space-y-4"
+			>
+				<!-- Vault Selection -->
+				{#if vaultStore.availableVaults.length > 1}
+					<div>
+						<label for="vault-select" class="block text-sm font-medium text-gray-700 mb-2">
+							Select Vault
+						</label>
+						<select
+							id="vault-select"
+							value={vaultStore.currentVaultId}
+							onchange={(e) => vaultStore.setCurrentVault(e.currentTarget.value)}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+						>
+							{#each vaultStore.availableVaults as vault}
+								<option value={vault.vault_id}>
+									{vault.display_name}
+								</option>
+							{/each}
+						</select>
+					</div>
+				{:else}
+					<div class="text-center py-2">
+						<p class="text-lg font-medium text-gray-900">
+							{vaultStore.availableVaults[0].display_name}
+						</p>
+					</div>
+				{/if}
+
+				<!-- Password Input -->
+				<div>
+					<label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+						Password
+					</label>
+					<div class="relative">
+						<input
+							id="password"
+							type={showPassword ? 'text' : 'password'}
+							bind:value={password}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+							placeholder="Enter vault password"
+							disabled={vaultStore.loading}
+						/>
+						<button
+							type="button"
+							onclick={() => (showPassword = !showPassword)}
+							class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+						>
+							{showPassword ? 'Hide' : 'Show'}
+						</button>
+					</div>
+				</div>
+
+				<!-- Error Display -->
+				{#if vaultStore.error}
+					<div class="bg-red-50 border border-red-200 rounded-md p-3">
+						<p class="text-sm text-red-800">{vaultStore.error}</p>
+					</div>
+				{/if}
+
+				<!-- Unlock Button -->
+				<button
+					type="submit"
+					disabled={vaultStore.loading || !password}
+					class="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+				>
+					{vaultStore.loading ? 'Unlocking...' : 'Unlock'}
+				</button>
+			</form>
+		{/if}
+	</div>
+</div>
