@@ -7,6 +7,7 @@ pub mod commands;
 mod error;
 mod metadata;
 pub mod state;
+pub mod types;
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
