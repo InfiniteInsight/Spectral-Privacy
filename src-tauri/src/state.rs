@@ -40,6 +40,14 @@ impl AppState {
 
     /// Get the directory path for a specific vault.
     pub fn vault_dir(&self, vault_id: &str) -> PathBuf {
+        // Validate vault_id to prevent path traversal
+        if vault_id.contains('/') || vault_id.contains('\\') || vault_id.contains("..") {
+            panic!("Invalid vault_id: must not contain path separators or '..'");
+        }
+        if vault_id.is_empty() {
+            panic!("Invalid vault_id: must not be empty");
+        }
+
         self.vaults_dir.join(vault_id)
     }
 
@@ -142,5 +150,26 @@ mod tests {
         let state = AppState::new();
         // Vault not in HashMap should return false
         assert!(!state.is_vault_unlocked("test-vault-id"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid vault_id")]
+    fn test_vault_id_path_traversal() {
+        let state = AppState::new();
+        state.vault_dir("../../../etc/passwd");
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid vault_id")]
+    fn test_vault_id_with_slash() {
+        let state = AppState::new();
+        state.vault_dir("vault/subdir");
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid vault_id")]
+    fn test_vault_id_empty() {
+        let state = AppState::new();
+        state.vault_dir("");
     }
 }
