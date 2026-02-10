@@ -4,7 +4,20 @@
 
 	let password = $state('');
 	let showPassword = $state(false);
-	let isTauri = $state(typeof window !== 'undefined' && '__TAURI__' in window);
+
+	// More robust Tauri detection
+	let isTauri = $state(false);
+
+	onMount(() => {
+		// Check multiple ways Tauri might be available
+		isTauri = !!(
+			(typeof window !== 'undefined' && '__TAURI__' in window) ||
+			(typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) ||
+			(typeof window !== 'undefined' && (window as any).__TAURI__)
+		);
+		console.log('Tauri detected:', isTauri);
+		console.log('window.__TAURI__:', (window as any).__TAURI__);
+	});
 	let showCreateForm = $state(false);
 	let newVaultId = $state('');
 	let newVaultName = $state('');
@@ -54,6 +67,16 @@
 	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
 		<h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Unlock Vault</h1>
 
+		<!-- Debug Info (remove after fixing) -->
+		<details class="mb-4 text-xs">
+			<summary class="cursor-pointer text-gray-500">Debug Info</summary>
+			<pre class="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+isTauri: {isTauri}
+window.__TAURI__: {typeof window !== 'undefined' ? '__TAURI__' in window : 'N/A'}
+Computed style test: <span class="bg-red-500 text-white px-2">Should be red</span>
+			</pre>
+		</details>
+
 		{#if !isTauri}
 			<div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
 				<p class="text-yellow-800 text-sm font-medium mb-2">⚠️ Browser Mode</p>
@@ -78,6 +101,7 @@
 					<button
 						onclick={() => (showCreateForm = true)}
 						class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+						style="background-color: #0284c7; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500;"
 					>
 						Create Vault
 					</button>
