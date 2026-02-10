@@ -81,3 +81,49 @@ pub async fn vault_create(
     info!("Vault created successfully: {}", vault_id);
     Ok(())
 }
+
+/// Unlock an existing vault with password.
+///
+/// Loads encrypted database and inserts into unlocked vaults.
+/// Idempotent: returns success if already unlocked.
+#[tauri::command]
+#[allow(dead_code)] // Will be registered in Task 10
+pub async fn vault_unlock(
+    state: State<'_, AppState>,
+    vault_id: String,
+    password: String,
+) -> Result<(), CommandError> {
+    info!("Unlocking vault: {}", vault_id);
+
+    // Check if vault exists
+    if !state.vault_exists(&vault_id) {
+        warn!("Vault not found: {}", vault_id);
+        return Err(CommandError::new(
+            "VAULT_NOT_FOUND",
+            format!("Vault '{}' does not exist", vault_id),
+        ));
+    }
+
+    // Check if already unlocked (idempotent)
+    if state.is_vault_unlocked(&vault_id) {
+        info!("Vault already unlocked: {}", vault_id);
+        return Ok(());
+    }
+
+    // Unlock vault
+    let db_path = state.vault_db_path(&vault_id);
+    let vault = Vault::unlock(&password, &db_path).await?;
+
+    // Update last_accessed in metadata
+    let metadata_path = state.vault_metadata_path(&vault_id);
+    if let Ok(mut metadata) = VaultMetadata::read_from_file(&metadata_path) {
+        metadata.touch();
+        metadata.write_to_file(&metadata_path).ok();
+    }
+
+    // Insert into unlocked vaults
+    state.insert_vault(vault_id.clone(), Arc::new(vault));
+
+    info!("Vault unlocked successfully: {}", vault_id);
+    Ok(())
+}
