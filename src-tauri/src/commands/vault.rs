@@ -19,7 +19,6 @@ pub struct VaultStatus {
 
 /// Response for list_vaults command.
 #[derive(Debug, Serialize)]
-#[allow(dead_code)] // Will be used in Task 9
 pub struct VaultInfo {
     pub vault_id: String,
     pub display_name: String,
@@ -169,4 +168,56 @@ pub async fn vault_status(
         unlocked,
         display_name,
     })
+}
+
+/// List all available vaults.
+///
+/// Scans vault directory and returns metadata for each vault.
+#[tauri::command]
+#[allow(dead_code)] // Will be registered in Task 10
+pub async fn list_vaults(state: State<'_, AppState>) -> Result<Vec<VaultInfo>, CommandError> {
+    info!("Listing all vaults");
+
+    let mut vaults = Vec::new();
+
+    // Scan vaults directory
+    let entries = match std::fs::read_dir(&state.vaults_dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Vaults directory doesn't exist yet, return empty list
+            return Ok(vaults);
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        // Read metadata
+        let metadata_path = path.join("metadata.json");
+        let metadata = match VaultMetadata::read_from_file(&metadata_path) {
+            Ok(m) => m,
+            Err(e) => {
+                warn!("Failed to read metadata for {:?}: {}", path, e);
+                continue;
+            }
+        };
+
+        // Check if unlocked
+        let unlocked = state.is_vault_unlocked(&metadata.vault_id);
+
+        vaults.push(VaultInfo {
+            vault_id: metadata.vault_id,
+            display_name: metadata.display_name,
+            created_at: metadata.created_at.to_rfc3339(),
+            last_accessed: metadata.last_accessed.to_rfc3339(),
+            unlocked,
+        });
+    }
+
+    info!("Found {} vaults", vaults.len());
+    Ok(vaults)
 }
