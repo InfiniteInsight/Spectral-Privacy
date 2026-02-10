@@ -137,7 +137,7 @@ impl UserProfile {
     pub async fn load(db: &Database, id: &ProfileId, key: &[u8; 32]) -> Result<Self> {
         // Query the database
         let row = sqlx::query_as::<_, (Vec<u8>, Vec<u8>)>(
-            "SELECT data, nonce FROM profiles WHERE id = ?"
+            "SELECT data, nonce FROM profiles WHERE id = ?",
         )
         .bind(id.as_str())
         .fetch_optional(db.pool())
@@ -191,7 +191,7 @@ impl UserProfile {
     /// Returns error if database operation fails.
     pub async fn list_ids(db: &Database) -> Result<Vec<ProfileId>> {
         let rows = sqlx::query_scalar::<_, String>(
-            "SELECT id FROM profiles WHERE id != '__vault_verification__' ORDER BY created_at"
+            "SELECT id FROM profiles WHERE id != '__vault_verification__' ORDER BY created_at",
         )
         .fetch_all(db.pool())
         .await
@@ -236,8 +236,7 @@ mod tests {
         let mut profile = UserProfile::new(ProfileId::generate());
 
         profile.email = Some(encrypt_string("test@example.com", &key).expect("encrypt email"));
-        profile.full_name =
-            Some(encrypt_string("John Doe", &key).expect("encrypt full name"));
+        profile.full_name = Some(encrypt_string("John Doe", &key).expect("encrypt full name"));
 
         assert!(profile.email.is_some());
         assert!(profile.full_name.is_some());

@@ -24,12 +24,16 @@ anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tokio.workspace = true
+chrono.workspace = true
 
 # Internal crates (uncomment as they are created)
 spectral-vault = { path = "../crates/spectral-vault" }
 spectral-db = { path = "../crates/spectral-db" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [features]
 default = ["custom-protocol"]

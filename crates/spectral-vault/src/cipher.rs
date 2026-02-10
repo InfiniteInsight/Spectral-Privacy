@@ -178,15 +178,15 @@ mod tests {
         assert_eq!(decrypted, original);
     }
 
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    struct TestData {
+        name: String,
+        age: u32,
+    }
+
     #[test]
     fn test_encrypt_decrypt_generic() {
         let key = test_key();
-
-        #[derive(Debug, PartialEq, Serialize, Deserialize)]
-        struct TestData {
-            name: String,
-            age: u32,
-        }
 
         let original = TestData {
             name: "Alice".to_string(),

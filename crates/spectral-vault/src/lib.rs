@@ -296,9 +296,7 @@ impl Vault {
     /// # Errors
     /// Returns `VaultError::Locked` if the vault is not unlocked.
     pub fn database(&self) -> Result<&Database> {
-        self.db
-            .as_ref()
-            .ok_or(VaultError::Locked)
+        self.db.as_ref().ok_or(VaultError::Locked)
     }
 
     /// Require that the vault is unlocked.
@@ -334,17 +332,14 @@ impl Vault {
     /// Verify the password by decrypting the verification token.
     async fn verify_password(db: &Database, key: &[u8; 32]) -> Result<()> {
         let row = sqlx::query_as::<_, (Vec<u8>, Vec<u8>)>(
-            "SELECT data, nonce FROM profiles WHERE id = '__vault_verification__'"
+            "SELECT data, nonce FROM profiles WHERE id = '__vault_verification__'",
         )
         .fetch_optional(db.pool())
         .await
         .map_err(spectral_db::DatabaseError::from)?
         .ok_or(VaultError::InvalidPassword)?;
 
-        let nonce: [u8; 12] = row
-            .1
-            .try_into()
-            .map_err(|_| VaultError::InvalidPassword)?;
+        let nonce: [u8; 12] = row.1.try_into().map_err(|_| VaultError::InvalidPassword)?;
 
         let encrypted = EncryptedField::<String>::from_raw(row.0, nonce);
         let token = encrypted.decrypt(key)?;
@@ -378,7 +373,7 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    async fn test_vault_path() -> (TempDir, PathBuf) {
+    fn test_vault_path() -> (TempDir, PathBuf) {
         let temp_dir = TempDir::new().expect("create temp dir");
         let db_path = temp_dir.path().join("test_vault.db");
         (temp_dir, db_path)
@@ -386,7 +381,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_create() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -401,7 +396,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_unlock_correct_password() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         // Create vault
@@ -420,7 +415,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_unlock_wrong_password() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "correct_password";
         let wrong_password = "wrong_password";
 
@@ -442,7 +437,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_unlock_nonexistent() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
 
         let result = Vault::unlock("password", &db_path).await;
 
@@ -455,7 +450,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_create_duplicate() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         // Create vault
@@ -478,7 +473,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_lock() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -493,7 +488,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_locked_operations_fail() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -523,7 +518,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_load_profile() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -538,7 +533,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_save_and_load_profile() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -570,7 +565,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_profile() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -578,7 +573,10 @@ mod tests {
             .expect("create vault");
 
         let profile_id = vault.create_profile().await.expect("create profile");
-        vault.delete_profile(&profile_id).await.expect("delete profile");
+        vault
+            .delete_profile(&profile_id)
+            .await
+            .expect("delete profile");
 
         let result = vault.load_profile(&profile_id).await;
         assert!(result.is_err());
@@ -586,7 +584,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_profiles() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         let vault = Vault::create(password, &db_path)
@@ -605,7 +603,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_profile_persists_across_lock_unlock() {
-        let (_temp_dir, db_path) = test_vault_path().await;
+        let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";
 
         // Create vault and profile
