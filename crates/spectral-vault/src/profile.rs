@@ -28,6 +28,7 @@ pub struct UserProfile {
     /// Email address
     pub email: Option<EncryptedField<String>>,
     /// Phone number
+    #[deprecated(note = "Use phone_numbers instead")]
     pub phone: Option<EncryptedField<String>>,
     /// Street address
     pub address: Option<EncryptedField<String>>,
@@ -52,7 +53,20 @@ pub struct UserProfile {
     /// Social media usernames (JSON array)
     pub social_media: Option<EncryptedField<Vec<String>>>,
     /// Previous addresses (JSON array)
-    pub previous_addresses: Option<EncryptedField<Vec<String>>>,
+    #[deprecated(note = "Use previous_addresses_v2 instead")]
+    pub previous_addresses_v1: Option<EncryptedField<Vec<String>>>,
+    /// Phase 2: Phone numbers with type classification
+    #[serde(default)]
+    pub phone_numbers: Vec<PhoneNumber>,
+    /// Phase 2: Previous addresses with structured data
+    #[serde(default, rename = "previous_addresses_v2")]
+    pub previous_addresses_v2: Vec<PreviousAddress>,
+    /// Phase 2: Aliases or alternative names
+    #[serde(default)]
+    pub aliases: Vec<EncryptedField<String>>,
+    /// Phase 2: Relatives and family members
+    #[serde(default)]
+    pub relatives: Vec<Relative>,
     /// Profile creation timestamp
     pub created_at: Timestamp,
     /// Profile last update timestamp
@@ -129,6 +143,7 @@ pub struct Relative {
 impl UserProfile {
     /// Create a new empty user profile.
     #[must_use]
+    #[allow(deprecated)]
     pub fn new(id: ProfileId) -> Self {
         let now = Timestamp::now();
         Self {
@@ -150,7 +165,12 @@ impl UserProfile {
             job_title: None,
             education: None,
             social_media: None,
-            previous_addresses: None,
+            previous_addresses_v1: None,
+            // Phase 2 fields
+            phone_numbers: Vec::new(),
+            previous_addresses_v2: Vec::new(),
+            aliases: Vec::new(),
+            relatives: Vec::new(),
             created_at: now,
             updated_at: now,
         }
@@ -528,5 +548,38 @@ mod tests {
         let decrypted = deserialized.name.decrypt(&key).expect("decrypt");
         assert_eq!(decrypted, "Jane Doe");
         assert_eq!(deserialized.relationship, RelationshipType::Spouse);
+    }
+
+    #[tokio::test]
+    async fn test_profile_with_phase2_fields() {
+        let key = test_key();
+        let db = Database::new(":memory:", key.to_vec())
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        let id = ProfileId::generate();
+        let mut profile = UserProfile::new(id.clone());
+
+        // Add Phase 2 fields
+        profile.phone_numbers = vec![PhoneNumber {
+            number: encrypt_string("555-1234", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        }];
+
+        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+
+        profile.relatives = vec![Relative {
+            name: encrypt_string("Jane", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        }];
+
+        // Save and reload
+        profile.save(&db, &key).await.expect("save");
+        let loaded = UserProfile::load(&db, &id, &key).await.expect("load");
+
+        assert_eq!(loaded.phone_numbers.len(), 1);
+        assert_eq!(loaded.aliases.len(), 1);
+        assert_eq!(loaded.relatives.len(), 1);
     }
 }
