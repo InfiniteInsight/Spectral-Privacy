@@ -266,6 +266,37 @@ impl SearchMethod {
     }
 }
 
+/// CSS selectors for web form elements.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FormSelectors {
+    /// Selector for listing URL input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub listing_url_input: Option<String>,
+
+    /// Selector for email input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_input: Option<String>,
+
+    /// Selector for first name input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_name_input: Option<String>,
+
+    /// Selector for last name input
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_name_input: Option<String>,
+
+    /// Selector for submit button
+    pub submit_button: String,
+
+    /// Selector for CAPTCHA iframe or container
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_frame: Option<String>,
+
+    /// Selector for success confirmation message
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub success_indicator: Option<String>,
+}
+
 /// Methods for removal/opt-out from a broker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "method", rename_all = "kebab-case")]
@@ -277,6 +308,8 @@ pub enum RemovalMethod {
         url: String,
         /// Form field mappings (e.g., "`listing_url`" -> "`{found_listing_url}`")
         fields: HashMap<String, String>,
+        /// CSS selectors for form elements
+        form_selectors: FormSelectors,
         /// Confirmation method
         confirmation: ConfirmationType,
         /// Additional notes or instructions
@@ -318,7 +351,12 @@ impl RemovalMethod {
     /// Validate the removal method configuration.
     fn validate(&self, broker_id: &BrokerId) -> Result<()> {
         match self {
-            Self::WebForm { url, fields, .. } => Self::validate_web_form(broker_id, url, fields),
+            Self::WebForm {
+                url,
+                fields,
+                form_selectors,
+                ..
+            } => Self::validate_web_form(broker_id, url, fields, form_selectors),
             Self::Email {
                 email,
                 subject,
@@ -338,19 +376,29 @@ impl RemovalMethod {
         broker_id: &BrokerId,
         url: &str,
         fields: &HashMap<String, String>,
+        form_selectors: &FormSelectors,
     ) -> Result<()> {
         if url.is_empty() {
             return Err(BrokerError::ValidationError {
                 broker_id: broker_id.to_string(),
-                reason: "WebForm removal URL cannot be empty".to_string(),
+                reason: "removal.url cannot be empty for web-form method".to_string(),
             });
         }
+
         if fields.is_empty() {
             return Err(BrokerError::ValidationError {
                 broker_id: broker_id.to_string(),
-                reason: "WebForm removal requires at least one field".to_string(),
+                reason: "removal.fields cannot be empty for web-form method".to_string(),
             });
         }
+
+        if form_selectors.submit_button.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "removal.form_selectors.submit_button is required".to_string(),
+            });
+        }
+
         Ok(())
     }
 
@@ -479,9 +527,19 @@ mod tests {
         // Valid web form
         let mut fields = HashMap::new();
         fields.insert("email".to_string(), "{user_email}".to_string());
+        let form_selectors = FormSelectors {
+            listing_url_input: Some("#listing-url".to_string()),
+            email_input: Some("input[name='email']".to_string()),
+            first_name_input: None,
+            last_name_input: None,
+            submit_button: "button[type='submit']".to_string(),
+            captcha_frame: None,
+            success_indicator: Some(".success".to_string()),
+        };
         let method = RemovalMethod::WebForm {
             url: "https://example.com/optout".to_string(),
             fields,
+            form_selectors,
             confirmation: ConfirmationType::EmailVerification,
             notes: String::new(),
         };
@@ -490,9 +548,19 @@ mod tests {
         // Empty URL should fail
         let mut fields = HashMap::new();
         fields.insert("email".to_string(), "{user_email}".to_string());
+        let form_selectors = FormSelectors {
+            listing_url_input: Some("#listing-url".to_string()),
+            email_input: Some("input[name='email']".to_string()),
+            first_name_input: None,
+            last_name_input: None,
+            submit_button: "button[type='submit']".to_string(),
+            captcha_frame: None,
+            success_indicator: Some(".success".to_string()),
+        };
         let method = RemovalMethod::WebForm {
             url: String::new(),
             fields,
+            form_selectors,
             confirmation: ConfirmationType::EmailVerification,
             notes: String::new(),
         };
@@ -525,6 +593,16 @@ mod tests {
         let mut fields = HashMap::new();
         fields.insert("email".to_string(), "{user_email}".to_string());
 
+        let form_selectors = FormSelectors {
+            listing_url_input: Some("#listing-url".to_string()),
+            email_input: Some("input[name='email']".to_string()),
+            first_name_input: None,
+            last_name_input: None,
+            submit_button: "button[type='submit']".to_string(),
+            captcha_frame: None,
+            success_indicator: Some(".success".to_string()),
+        };
+
         let definition = BrokerDefinition {
             broker: BrokerMetadata {
                 id: broker_id.clone(),
@@ -544,6 +622,7 @@ mod tests {
             removal: RemovalMethod::WebForm {
                 url: "https://test.com/optout".to_string(),
                 fields,
+                form_selectors,
                 confirmation: ConfirmationType::EmailVerification,
                 notes: String::new(),
             },

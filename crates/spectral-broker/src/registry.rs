@@ -241,7 +241,9 @@ impl Default for BrokerRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::definition::{BrokerMetadata, ConfirmationType, RemovalMethod, SearchMethod};
+    use crate::definition::{
+        BrokerMetadata, ConfirmationType, FormSelectors, RemovalMethod, SearchMethod,
+    };
     use chrono::NaiveDate;
     use spectral_core::PiiField;
     use std::collections::HashMap;
@@ -273,6 +275,15 @@ mod tests {
             removal: RemovalMethod::WebForm {
                 url: "https://test.com/optout".to_string(),
                 fields,
+                form_selectors: FormSelectors {
+                    listing_url_input: Some("#listing-url".to_string()),
+                    email_input: Some("input[name='email']".to_string()),
+                    first_name_input: None,
+                    last_name_input: None,
+                    submit_button: "button[type='submit']".to_string(),
+                    captcha_frame: None,
+                    success_indicator: Some(".success".to_string()),
+                },
                 confirmation: ConfirmationType::EmailVerification,
                 notes: String::new(),
             },

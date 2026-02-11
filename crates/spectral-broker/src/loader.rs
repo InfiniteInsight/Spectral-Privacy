@@ -245,6 +245,11 @@ notes = "Test notes"
 
 [removal.fields]
 email = "{{user_email}}"
+
+[removal.form_selectors]
+email_input = "input[name='email']"
+submit_button = "button[type='submit']"
+success_indicator = ".success"
 "#
         );
 
