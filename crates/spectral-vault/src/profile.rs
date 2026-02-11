@@ -59,6 +59,73 @@ pub struct UserProfile {
     pub updated_at: Timestamp,
 }
 
+/// Type of phone number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum PhoneType {
+    /// Mobile/cellular phone
+    Mobile,
+    /// Home phone
+    Home,
+    /// Work/office phone
+    Work,
+}
+
+/// Phone number with type classification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhoneNumber {
+    /// Encrypted phone number
+    pub number: EncryptedField<String>,
+    /// Type of phone number
+    pub phone_type: PhoneType,
+}
+
+/// Previous address with date range.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviousAddress {
+    /// Address line 1 (street)
+    pub address_line1: EncryptedField<String>,
+    /// Address line 2 (apt/suite) - optional
+    pub address_line2: Option<EncryptedField<String>>,
+    /// City
+    pub city: EncryptedField<String>,
+    /// State/province
+    pub state: EncryptedField<String>,
+    /// ZIP/postal code
+    pub zip_code: EncryptedField<String>,
+    /// Start date (YYYY-MM-DD format)
+    pub lived_from: Option<String>,
+    /// End date (YYYY-MM-DD format)
+    pub lived_to: Option<String>,
+}
+
+/// Type of relationship to a relative.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum RelationshipType {
+    /// Spouse (married partner)
+    Spouse,
+    /// Partner (unmarried partner)
+    Partner,
+    /// Parent
+    Parent,
+    /// Child
+    Child,
+    /// Sibling (brother or sister)
+    Sibling,
+    /// Other relationship
+    Other,
+}
+
+/// Relative or family member information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Relative {
+    /// Encrypted name of relative
+    pub name: EncryptedField<String>,
+    /// Type of relationship
+    pub relationship: RelationshipType,
+}
+
 impl UserProfile {
     /// Create a new empty user profile.
     #[must_use]
@@ -271,7 +338,7 @@ mod tests {
         let email = loaded
             .email
             .as_ref()
-            .unwrap()
+            .expect("email should be present")
             .decrypt(&key)
             .expect("decrypt email");
         assert_eq!(email, "test@example.com");
@@ -279,7 +346,7 @@ mod tests {
         let name = loaded
             .full_name
             .as_ref()
-            .unwrap()
+            .expect("full name should be present")
             .decrypt(&key)
             .expect("decrypt name");
         assert_eq!(name, "Alice Smith");
@@ -398,5 +465,68 @@ mod tests {
         profile.touch();
 
         assert!(profile.updated_at > original_time);
+    }
+
+    #[test]
+    fn test_phone_number_serialization() {
+        let key = test_key();
+        let phone = PhoneNumber {
+            number: encrypt_string("555-123-4567", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        };
+
+        let json = serde_json::to_string(&phone).expect("serialize");
+        let deserialized: PhoneNumber = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted = deserialized.number.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted, "555-123-4567");
+        assert_eq!(deserialized.phone_type, PhoneType::Mobile);
+    }
+
+    #[test]
+    fn test_previous_address_serialization() {
+        let key = test_key();
+        let address = PreviousAddress {
+            address_line1: encrypt_string("123 Old St", &key).expect("encrypt"),
+            address_line2: Some(encrypt_string("Apt 4B", &key).expect("encrypt")),
+            city: encrypt_string("Boston", &key).expect("encrypt"),
+            state: encrypt_string("MA", &key).expect("encrypt"),
+            zip_code: encrypt_string("02101", &key).expect("encrypt"),
+            lived_from: Some("2015-01-01".to_string()),
+            lived_to: Some("2020-12-31".to_string()),
+        };
+
+        let json = serde_json::to_string(&address).expect("serialize");
+        let deserialized: PreviousAddress = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted_line1 = deserialized.address_line1.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted_line1, "123 Old St");
+        let decrypted_line2 = deserialized
+            .address_line2
+            .as_ref()
+            .expect("address_line2 should be present")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(decrypted_line2, "Apt 4B");
+        let decrypted_city = deserialized.city.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted_city, "Boston");
+        assert_eq!(deserialized.lived_from, Some("2015-01-01".to_string()));
+        assert_eq!(deserialized.lived_to, Some("2020-12-31".to_string()));
+    }
+
+    #[test]
+    fn test_relative_serialization() {
+        let key = test_key();
+        let relative = Relative {
+            name: encrypt_string("Jane Doe", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        };
+
+        let json = serde_json::to_string(&relative).expect("serialize");
+        let deserialized: Relative = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted = deserialized.name.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted, "Jane Doe");
+        assert_eq!(deserialized.relationship, RelationshipType::Spouse);
     }
 }
