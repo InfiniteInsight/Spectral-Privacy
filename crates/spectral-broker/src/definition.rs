@@ -318,82 +318,98 @@ impl RemovalMethod {
     /// Validate the removal method configuration.
     fn validate(&self, broker_id: &BrokerId) -> Result<()> {
         match self {
-            Self::WebForm {
-                url,
-                fields,
-                confirmation: _,
-                notes: _,
-            } => {
-                if url.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "WebForm removal URL cannot be empty".to_string(),
-                    });
-                }
-                if fields.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "WebForm removal requires at least one field".to_string(),
-                    });
-                }
-            }
+            Self::WebForm { url, fields, .. } => Self::validate_web_form(broker_id, url, fields),
             Self::Email {
                 email,
                 subject,
                 body,
                 response_days,
-                notes: _,
-            } => {
-                if email.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Email removal requires email address".to_string(),
-                    });
-                }
-                if subject.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Email removal requires subject template".to_string(),
-                    });
-                }
-                if body.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Email removal requires body template".to_string(),
-                    });
-                }
-                if *response_days == 0 || *response_days > 90 {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: format!("response_days must be 1-90, got {response_days}"),
-                    });
-                }
-            }
+                ..
+            } => Self::validate_email(broker_id, email, subject, body, *response_days),
             Self::Phone {
                 phone,
                 instructions,
-            } => {
-                if phone.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Phone removal requires phone number".to_string(),
-                    });
-                }
-                if instructions.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Phone removal requires instructions".to_string(),
-                    });
-                }
-            }
-            Self::Manual { instructions } => {
-                if instructions.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Manual removal requires instructions".to_string(),
-                    });
-                }
-            }
+            } => Self::validate_phone(broker_id, phone, instructions),
+            Self::Manual { instructions } => Self::validate_manual(broker_id, instructions),
+        }
+    }
+
+    fn validate_web_form(
+        broker_id: &BrokerId,
+        url: &str,
+        fields: &HashMap<String, String>,
+    ) -> Result<()> {
+        if url.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "WebForm removal URL cannot be empty".to_string(),
+            });
+        }
+        if fields.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "WebForm removal requires at least one field".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_email(
+        broker_id: &BrokerId,
+        email: &str,
+        subject: &str,
+        body: &str,
+        response_days: u32,
+    ) -> Result<()> {
+        if email.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Email removal requires email address".to_string(),
+            });
+        }
+        if subject.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Email removal requires subject template".to_string(),
+            });
+        }
+        if body.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Email removal requires body template".to_string(),
+            });
+        }
+        if response_days == 0 || response_days > 90 {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: format!("response_days must be 1-90, got {response_days}"),
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_phone(broker_id: &BrokerId, phone: &str, instructions: &str) -> Result<()> {
+        if phone.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Phone removal requires phone number".to_string(),
+            });
+        }
+        if instructions.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Phone removal requires instructions".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_manual(broker_id: &BrokerId, instructions: &str) -> Result<()> {
+        if instructions.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Manual removal requires instructions".to_string(),
+            });
         }
         Ok(())
     }
