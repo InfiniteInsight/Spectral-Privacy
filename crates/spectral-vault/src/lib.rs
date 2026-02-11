@@ -42,7 +42,7 @@ pub mod profile;
 
 pub use cipher::{encrypt_string, EncryptedField};
 pub use error::{Result, VaultError};
-pub use profile::UserProfile;
+pub use profile::{CompletenessTier, ProfileCompleteness, UserProfile};
 
 use spectral_core::types::{ProfileId, Timestamp};
 use spectral_db::Database;

@@ -341,6 +341,39 @@ pub async fn profile_list(
     Ok(summaries)
 }
 
+/// Get profile completeness score.
+///
+/// Returns completeness metrics for the first profile in the vault.
+#[tauri::command]
+pub async fn get_profile_completeness(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<spectral_vault::ProfileCompleteness, CommandError> {
+    info!("Getting profile completeness for vault: {}", vault_id);
+
+    // Get vault
+    let vault = state.get_vault(&vault_id).ok_or_else(|| {
+        CommandError::new(
+            "VAULT_NOT_UNLOCKED",
+            format!("Vault '{}' is not unlocked", vault_id),
+        )
+    })?;
+
+    // Get all profile IDs
+    let profile_ids = vault.list_profiles().await?;
+
+    // Get the first profile (for now, assumes single profile)
+    let profile_id = profile_ids
+        .first()
+        .ok_or_else(|| CommandError::new("NO_PROFILE", "No profile found in vault"))?;
+
+    // Load profile
+    let profile = vault.load_profile(profile_id).await?;
+
+    // Calculate and return completeness
+    Ok(profile.completeness_score())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
