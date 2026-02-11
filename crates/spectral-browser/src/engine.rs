@@ -1,6 +1,8 @@
+use crate::actions::{extract_domain, BrowserActions};
 use crate::error::{BrowserError, Result};
 use crate::fingerprint::FingerprintConfig;
 use chromiumoxide::browser::{Browser, BrowserConfig};
+use chromiumoxide::page::{Page, ScreenshotParams};
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -75,6 +77,109 @@ impl BrowserEngine {
             fingerprint,
             rate_limiter: Arc::new(RwLock::new(RateLimiter::new(1000))), // 1 second default
         })
+    }
+
+    /// Create a new page
+    async fn new_page(&self) -> Result<Page> {
+        self.browser
+            .new_page("about:blank")
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))
+    }
+}
+
+#[async_trait::async_trait]
+impl BrowserActions for BrowserEngine {
+    async fn navigate(&self, url: &str) -> Result<()> {
+        // Check rate limit
+        let domain = extract_domain(url)?;
+        self.rate_limiter
+            .write()
+            .await
+            .check_and_update(&domain)
+            .await?;
+
+        let page = self.new_page().await?;
+
+        page.goto(url)
+            .await
+            .map_err(|e| BrowserError::NavigationError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn fill_field(&self, selector: &str, value: &str) -> Result<()> {
+        let page = self.new_page().await?;
+
+        let element = page
+            .find_element(selector)
+            .await
+            .map_err(|e| BrowserError::SelectorNotFound(e.to_string()))?;
+
+        element
+            .type_str(value)
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn click(&self, selector: &str) -> Result<()> {
+        let page = self.new_page().await?;
+
+        let element = page
+            .find_element(selector)
+            .await
+            .map_err(|e| BrowserError::SelectorNotFound(e.to_string()))?;
+
+        element
+            .click()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn wait_for_selector(&self, selector: &str, timeout_ms: u64) -> Result<()> {
+        let page = self.new_page().await?;
+
+        tokio::time::timeout(
+            Duration::from_millis(timeout_ms),
+            page.find_element(selector),
+        )
+        .await
+        .map_err(|_| BrowserError::Timeout(format!("Selector {} not found", selector)))?
+        .map_err(|e| BrowserError::SelectorNotFound(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn extract_text(&self, selector: &str) -> Result<String> {
+        let page = self.new_page().await?;
+
+        let element = page
+            .find_element(selector)
+            .await
+            .map_err(|e| BrowserError::SelectorNotFound(e.to_string()))?;
+
+        let text = element
+            .inner_text()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?
+            .unwrap_or_default();
+
+        Ok(text)
+    }
+
+    async fn screenshot(&self) -> Result<Vec<u8>> {
+        let page = self.new_page().await?;
+
+        let screenshot = page
+            .screenshot(ScreenshotParams::builder().build())
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        Ok(screenshot)
     }
 }
 
