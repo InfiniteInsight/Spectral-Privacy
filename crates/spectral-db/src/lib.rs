@@ -37,6 +37,7 @@
 pub mod connection;
 pub mod error;
 pub mod migrations;
+pub mod removal_attempts;
 
 // Re-export commonly used types
 pub use connection::EncryptedPool;
@@ -142,7 +143,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 1);
+        assert_eq!(version_after, 2);
     }
 
     #[tokio::test]
@@ -162,7 +163,15 @@ mod tests {
         .await
         .expect("query tables");
 
-        assert_eq!(tables, vec!["audit_log", "broker_results", "profiles"]);
+        assert_eq!(
+            tables,
+            vec![
+                "audit_log",
+                "broker_results",
+                "profiles",
+                "removal_attempts"
+            ]
+        );
 
         // Verify profiles table schema
         let profile_columns: Vec<String> =

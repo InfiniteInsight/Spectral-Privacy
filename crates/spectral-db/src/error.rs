@@ -35,6 +35,10 @@ pub enum DatabaseError {
     #[error("invalid encryption key")]
     InvalidKey,
 
+    /// Serialization/deserialization failed.
+    #[error("serialization error: {0}")]
+    SerializationError(String),
+
     /// Underlying `SQLx` error.
     #[error("database error: {0}")]
     Sqlx(#[from] sqlx::Error),
