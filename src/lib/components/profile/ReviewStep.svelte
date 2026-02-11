@@ -108,6 +108,82 @@
 				<dt class="text-gray-500">Current Address</dt>
 				<dd class="text-gray-900">{fullAddress()}</dd>
 			</div>
+			<!-- Phone Numbers -->
+			{#if data.phone_numbers && data.phone_numbers.length > 0}
+				<div>
+					<dt class="text-gray-500">Phone Numbers</dt>
+					<dd class="text-gray-900">
+						{#each data.phone_numbers as phone}
+							<div>{phone.number} ({phone.phone_type})</div>
+						{/each}
+					</dd>
+				</div>
+			{/if}
+			<!-- Previous Addresses -->
+			{#if data.previous_addresses && data.previous_addresses.length > 0}
+				<div>
+					<dt class="text-gray-500">Previous Addresses</dt>
+					<dd class="text-gray-900">
+						{#each data.previous_addresses as addr}
+							<div class="mb-2">
+								<div>{addr.address_line1}</div>
+								{#if addr.address_line2}
+									<div>{addr.address_line2}</div>
+								{/if}
+								<div>{addr.city}, {addr.state} {addr.zip_code}</div>
+								{#if addr.lived_from || addr.lived_to}
+									<div class="text-xs text-gray-500">
+										{addr.lived_from ?? '?'} – {addr.lived_to ?? '?'}
+									</div>
+								{/if}
+							</div>
+						{/each}
+					</dd>
+				</div>
+			{/if}
+		</dl>
+	</div>
+
+	<!-- Additional Information Section -->
+	<div class="border border-gray-200 rounded-lg p-4">
+		<div class="flex items-center justify-between mb-3">
+			<h3 class="text-base font-medium text-gray-900">Additional Information</h3>
+			<button
+				onclick={() => onEdit(3)}
+				class="text-sm text-primary-600 hover:text-primary-700 font-medium"
+				style="color: #0284c7;"
+			>
+				Edit
+			</button>
+		</div>
+		<dl class="space-y-2 text-sm">
+			<!-- Aliases -->
+			{#if data.aliases && data.aliases.length > 0}
+				<div>
+					<dt class="text-gray-500">Aliases</dt>
+					<dd class="text-gray-900">
+						{#each data.aliases as alias}
+							<div>{alias}</div>
+						{/each}
+					</dd>
+				</div>
+			{/if}
+			<!-- Relatives -->
+			{#if data.relatives && data.relatives.length > 0}
+				<div>
+					<dt class="text-gray-500">Family Members</dt>
+					<dd class="text-gray-900">
+						{#each data.relatives as relative}
+							<div>{relative.name} ({relative.relationship})</div>
+						{/each}
+					</dd>
+				</div>
+			{/if}
+			{#if (!data.aliases || data.aliases.length === 0) && (!data.relatives || data.relatives.length === 0)}
+				<div>
+					<dt class="text-gray-500">No additional information</dt>
+				</div>
+			{/if}
 		</dl>
 	</div>
 

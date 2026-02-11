@@ -159,10 +159,9 @@ export const profileAPI = {
 /**
  * Get profile completeness score
  *
- * @param vaultId - The vault ID containing the profile
  * @returns {ProfileCompleteness} Completeness metrics for the profile
  * @throws {CommandError} If vault is not unlocked or no profile exists
  */
-export async function getProfileCompleteness(vaultId: string): Promise<ProfileCompleteness> {
-	return invoke<ProfileCompleteness>('get_profile_completeness', { vault_id: vaultId });
+export async function getProfileCompleteness(): Promise<ProfileCompleteness> {
+	return invoke<ProfileCompleteness>('get_profile_completeness');
 }
