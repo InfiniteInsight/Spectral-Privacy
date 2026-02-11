@@ -140,6 +140,35 @@ pub struct Relative {
     pub relationship: RelationshipType,
 }
 
+/// Profile completeness tier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum CompletenessTier {
+    /// 0-30 points: Limited information
+    Minimal,
+    /// 31-60 points: Basic information
+    Basic,
+    /// 61-85 points: Good information
+    Good,
+    /// 86-100 points: Excellent information
+    Excellent,
+}
+
+/// Profile completeness metrics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileCompleteness {
+    /// Raw score (0-100)
+    pub score: u32,
+    /// Maximum possible score
+    pub max_score: u32,
+    /// Percentage (0-100)
+    pub percentage: u32,
+    /// Completeness tier
+    pub tier: CompletenessTier,
+    /// User-friendly message
+    pub message: String,
+}
+
 impl UserProfile {
     /// Create a new empty user profile.
     #[must_use]
@@ -295,6 +324,95 @@ impl UserProfile {
     /// Update the profile's `updated_at` timestamp.
     pub fn touch(&mut self) {
         self.updated_at = Timestamp::now();
+    }
+
+    /// Calculate profile completeness score.
+    ///
+    /// Scoring breakdown:
+    /// - Core identity (40 points): `first_name` (15), `last_name` (15), email (10)
+    /// - Current location (30 points): address (10), city (10), state+zip (10)
+    /// - Enhanced matching (30 points): phones (10), `prev_addresses` (10), dob (5), aliases (3), relatives (2)
+    #[must_use]
+    pub fn completeness_score(&self) -> ProfileCompleteness {
+        let mut score = 0u32;
+
+        // Core identity (40 points)
+        if self.first_name.is_some() {
+            score += 15;
+        }
+        if self.last_name.is_some() {
+            score += 15;
+        }
+        if self.email.is_some() {
+            score += 10;
+        }
+
+        // Current location (30 points)
+        if self.address.is_some() {
+            score += 10;
+        }
+        if self.city.is_some() {
+            score += 10;
+        }
+        if self.state.is_some() && self.zip_code.is_some() {
+            score += 10;
+        }
+
+        // Enhanced matching (30 points)
+        if !self.phone_numbers.is_empty() {
+            score += 10;
+        }
+        if !self.previous_addresses_v2.is_empty() {
+            score += 10;
+        }
+        if self.date_of_birth.is_some() {
+            score += 5;
+        }
+        if !self.aliases.is_empty() {
+            score += 3;
+        }
+        if !self.relatives.is_empty() {
+            score += 2;
+        }
+
+        let tier = Self::score_to_tier(score);
+
+        ProfileCompleteness {
+            score,
+            max_score: 100,
+            percentage: score,
+            tier,
+            message: Self::tier_message(tier),
+        }
+    }
+
+    fn score_to_tier(score: u32) -> CompletenessTier {
+        match score {
+            0..=30 => CompletenessTier::Minimal,
+            31..=60 => CompletenessTier::Basic,
+            61..=85 => CompletenessTier::Good,
+            _ => CompletenessTier::Excellent,
+        }
+    }
+
+    fn tier_message(tier: CompletenessTier) -> String {
+        match tier {
+            CompletenessTier::Minimal => {
+                "Limited removal coverage - consider adding more information".to_string()
+            }
+            CompletenessTier::Basic => {
+                "Basic removal coverage - adding contact info and addresses will improve results"
+                    .to_string()
+            }
+            CompletenessTier::Good => {
+                "Good removal coverage - you've provided solid information for effective removal"
+                    .to_string()
+            }
+            CompletenessTier::Excellent => {
+                "Excellent removal coverage - comprehensive information enables maximum removal effectiveness"
+                    .to_string()
+            }
+        }
     }
 }
 
@@ -581,5 +699,74 @@ mod tests {
         assert_eq!(loaded.phone_numbers.len(), 1);
         assert_eq!(loaded.aliases.len(), 1);
         assert_eq!(loaded.relatives.len(), 1);
+    }
+
+    #[test]
+    fn test_completeness_tier_minimal() {
+        let profile = UserProfile::new(ProfileId::generate());
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Minimal);
+        assert_eq!(completeness.score, 0);
+        assert_eq!(completeness.percentage, 0);
+    }
+
+    #[test]
+    fn test_completeness_tier_basic() {
+        let key = test_key();
+        let mut profile = UserProfile::new(ProfileId::generate());
+
+        profile.first_name = Some(encrypt_string("John", &key).expect("encrypt"));
+        profile.last_name = Some(encrypt_string("Doe", &key).expect("encrypt"));
+        profile.email = Some(encrypt_string("john@example.com", &key).expect("encrypt"));
+
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Basic);
+        assert_eq!(completeness.score, 40); // 15+15+10
+    }
+
+    #[test]
+    fn test_completeness_tier_excellent() {
+        let key = test_key();
+        let mut profile = UserProfile::new(ProfileId::generate());
+
+        // Core identity (40 points)
+        profile.first_name = Some(encrypt_string("John", &key).expect("encrypt"));
+        profile.last_name = Some(encrypt_string("Doe", &key).expect("encrypt"));
+        profile.email = Some(encrypt_string("john@example.com", &key).expect("encrypt"));
+
+        // Current location (30 points)
+        profile.address = Some(encrypt_string("123 Main", &key).expect("encrypt"));
+        profile.city = Some(encrypt_string("Chicago", &key).expect("encrypt"));
+        profile.state = Some(encrypt_string("IL", &key).expect("encrypt"));
+        profile.zip_code = Some(encrypt_string("60601", &key).expect("encrypt"));
+
+        // Enhanced matching (30 points)
+        profile.phone_numbers = vec![PhoneNumber {
+            number: encrypt_string("555-1234", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        }];
+        profile.previous_addresses_v2 = vec![PreviousAddress {
+            address_line1: encrypt_string("456 Oak", &key).expect("encrypt"),
+            address_line2: None,
+            city: encrypt_string("Seattle", &key).expect("encrypt"),
+            state: encrypt_string("WA", &key).expect("encrypt"),
+            zip_code: encrypt_string("98101", &key).expect("encrypt"),
+            lived_from: Some("2020-01-01".to_string()),
+            lived_to: Some("2022-12-31".to_string()),
+        }];
+        profile.date_of_birth = Some(encrypt_string("1990-01-01", &key).expect("encrypt"));
+        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+        profile.relatives = vec![Relative {
+            name: encrypt_string("Jane", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        }];
+
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Excellent);
+        assert_eq!(completeness.score, 100);
+        assert_eq!(completeness.percentage, 100);
     }
 }
