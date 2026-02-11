@@ -8,5 +8,6 @@ pub mod engine;
 pub mod error;
 pub mod fingerprint;
 
+pub use actions::BrowserActions;
 pub use engine::BrowserEngine;
 pub use error::{BrowserError, Result};

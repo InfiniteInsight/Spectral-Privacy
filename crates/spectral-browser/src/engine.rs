@@ -39,12 +39,11 @@ impl RateLimiter {
 
 /// Browser automation engine
 pub struct BrowserEngine {
-    #[allow(dead_code)]
     browser: Browser,
     #[allow(dead_code)]
     fingerprint: FingerprintConfig,
-    #[allow(dead_code)]
     rate_limiter: Arc<RwLock<RateLimiter>>,
+    current_page: Arc<RwLock<Option<Page>>>,
 }
 
 impl BrowserEngine {
@@ -76,15 +75,28 @@ impl BrowserEngine {
             browser,
             fingerprint,
             rate_limiter: Arc::new(RwLock::new(RateLimiter::new(1000))), // 1 second default
+            current_page: Arc::new(RwLock::new(None)),
         })
     }
 
-    /// Create a new page
-    async fn new_page(&self) -> Result<Page> {
-        self.browser
-            .new_page("about:blank")
-            .await
-            .map_err(|e| BrowserError::ChromiumError(e.to_string()))
+    /// Get or create the current page
+    async fn get_page(&self) -> Result<Page> {
+        let mut page_lock = self.current_page.write().await;
+
+        if page_lock.is_none() {
+            let page = self
+                .browser
+                .new_page("about:blank")
+                .await
+                .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+            *page_lock = Some(page);
+        }
+
+        // SAFETY: We just ensured page_lock is Some in the if block above
+        Ok(page_lock
+            .as_ref()
+            .expect("current_page should be Some after initialization")
+            .clone())
     }
 }
 
@@ -99,7 +111,7 @@ impl BrowserActions for BrowserEngine {
             .check_and_update(&domain)
             .await?;
 
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         page.goto(url)
             .await
@@ -109,7 +121,7 @@ impl BrowserActions for BrowserEngine {
     }
 
     async fn fill_field(&self, selector: &str, value: &str) -> Result<()> {
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         let element = page
             .find_element(selector)
@@ -125,7 +137,7 @@ impl BrowserActions for BrowserEngine {
     }
 
     async fn click(&self, selector: &str) -> Result<()> {
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         let element = page
             .find_element(selector)
@@ -141,7 +153,7 @@ impl BrowserActions for BrowserEngine {
     }
 
     async fn wait_for_selector(&self, selector: &str, timeout_ms: u64) -> Result<()> {
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         tokio::time::timeout(
             Duration::from_millis(timeout_ms),
@@ -155,7 +167,7 @@ impl BrowserActions for BrowserEngine {
     }
 
     async fn extract_text(&self, selector: &str) -> Result<String> {
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         let element = page
             .find_element(selector)
@@ -172,7 +184,7 @@ impl BrowserActions for BrowserEngine {
     }
 
     async fn screenshot(&self) -> Result<Vec<u8>> {
-        let page = self.new_page().await?;
+        let page = self.get_page().await?;
 
         let screenshot = page
             .screenshot(ScreenshotParams::builder().build())
