@@ -8,9 +8,50 @@
 import { invoke } from '@tauri-apps/api/core';
 
 /**
+ * Phone number with type classification
+ */
+export interface PhoneNumber {
+	number: string;
+	phone_type: 'Mobile' | 'Home' | 'Work';
+}
+
+/**
+ * Previous address with date range
+ */
+export interface PreviousAddress {
+	address_line1: string;
+	address_line2?: string;
+	city: string;
+	state: string;
+	zip_code: string;
+	lived_from?: string; // YYYY-MM-DD
+	lived_to?: string; // YYYY-MM-DD
+}
+
+/**
+ * Relative or family member
+ */
+export interface Relative {
+	name: string;
+	relationship: 'Spouse' | 'Partner' | 'Parent' | 'Child' | 'Sibling' | 'Other';
+}
+
+/**
+ * Profile completeness metrics
+ */
+export interface ProfileCompleteness {
+	score: number;
+	max_score: number;
+	percentage: number;
+	tier: 'Minimal' | 'Basic' | 'Good' | 'Excellent';
+	message: string;
+}
+
+/**
  * Profile input data for create/update operations
  */
 export interface ProfileInput {
+	// Phase 1 fields
 	first_name: string;
 	middle_name?: string;
 	last_name: string;
@@ -21,6 +62,12 @@ export interface ProfileInput {
 	city: string;
 	state: string; // US state code (e.g., "CA")
 	zip_code: string;
+
+	// Phase 2 fields
+	phone_numbers?: PhoneNumber[];
+	previous_addresses?: PreviousAddress[];
+	aliases?: string[];
+	relatives?: Relative[];
 }
 
 /**
@@ -108,3 +155,14 @@ export const profileAPI = {
 		return await invoke<ProfileSummary[]>('profile_list', { vault_id: vaultId });
 	}
 };
+
+/**
+ * Get profile completeness score
+ *
+ * @param vaultId - The vault ID containing the profile
+ * @returns {ProfileCompleteness} Completeness metrics for the profile
+ * @throws {CommandError} If vault is not unlocked or no profile exists
+ */
+export async function getProfileCompleteness(vaultId: string): Promise<ProfileCompleteness> {
+	return invoke<ProfileCompleteness>('get_profile_completeness', { vault_id: vaultId });
+}
