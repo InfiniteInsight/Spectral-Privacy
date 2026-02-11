@@ -29,6 +29,30 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
   # Add advisory IDs to ignore here with justification
   # "RUSTSEC-2020-0071",  # Example: time crate - acceptable for our use case
+
+  # Chromiumoxide 0.7 uses async-std, which is unmaintained but acceptable for browser automation
+  "RUSTSEC-2025-0052",  # async-std - chromiumoxide dependency, no alternative until chromiumoxide updates
+
+  # Tauri GTK3 dependencies - unmaintained but required for Linux support
+  "RUSTSEC-2024-0413",  # atk - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0416",  # atk-sys - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0370",  # fxhash - tauri dependency, no upgrade path available
+  "RUSTSEC-2024-0411",  # cairo-rs - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0412",  # cairo-sys-rs - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0414",  # gdk - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0415",  # gdk-pixbuf - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0417",  # gdk-sys - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0418",  # gio - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0419",  # gtk - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2024-0420",  # gtk-sys - tauri GTK3 bindings, no upgrade path available
+  "RUSTSEC-2025-0057",  # fxhash - tauri dependency, no upgrade path available
+
+  # Unmaintained crates with no security impact
+  "RUSTSEC-2025-0075",  # proc-macro-error - used by many macro crates, no security risk
+  "RUSTSEC-2025-0080",  # unic-char-property - tauri's urlpattern dependency, no upgrade path
+  "RUSTSEC-2025-0081",  # unic-char-range - tauri's urlpattern dependency, no upgrade path
+  "RUSTSEC-2025-0098",  # unic-ucd-version - tauri's urlpattern dependency, no upgrade path
+  "RUSTSEC-2025-0100",  # unic-ucd-ident - tauri's urlpattern dependency, no upgrade path
 ]
 
 # =============================================================================
@@ -74,6 +98,11 @@ name = "spectral-auth"
 expression = "AGPL-3.0-only"
 license-files = []
 
+[[licenses.clarify]]
+name = "spectral-browser"
+expression = "AGPL-3.0-only"
+license-files = []
+
 # Ring uses custom license text
 [[licenses.clarify]]
 name = "ring"
@@ -99,7 +128,7 @@ deny = [
 
   # Weak crypto that should never be used for security
   { crate = "md5", wrappers = [] },
-  { crate = "sha1", wrappers = [] },  # Block direct use of weak SHA-1
+  { crate = "sha1", wrappers = ["tungstenite"] },  # Block direct use; allow for WebSocket protocol (RFC 6455 requirement)
 
   # Unmaintained/problematic crates
   { crate = "openssl", wrappers = [] },  # Prefer rustls
@@ -109,6 +138,44 @@ deny = [
 skip = [
   # Common version conflicts during transitions
   # { crate = "syn", version = "1" },
+
+  # Chromiumoxide dependency conflicts (temporary until chromiumoxide updates)
+  { crate = "async-channel", version = "=1.9.0", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "base64", version = "=0.21.7", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "bitflags", version = "=1.3.2", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "event-listener", version = "=2.5.3", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "linux-raw-sys", version = "=0.4.15", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "rustix", version = "=0.38.44", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "winnow", version = "=0.7.14", reason = "chromiumoxide 0.7 uses older version" },
+  { crate = "winreg", version = "=0.52.0", reason = "chromiumoxide 0.7 uses older version" },
+
+  # Pre-existing dependency conflicts in Tauri ecosystem
+  { crate = "dirs-sys", version = "=0.4.1", reason = "directories 5.0 uses older version than tauri/wry dirs 6.0" },
+  { crate = "getrandom", version = "=0.1.16", reason = "old rand 0.7 from tauri's phf_generator uses getrandom 0.1" },
+  { crate = "getrandom", version = "=0.2.17", reason = "chacha20poly1305 ecosystem uses getrandom 0.2" },
+  { crate = "windows_x86_64_msvc", version = "=0.48.5", reason = "multiple windows-sys versions in tauri/chromiumoxide" },
+  { crate = "windows_x86_64_msvc", version = "=0.52.6", reason = "multiple windows-sys versions in tauri/chromiumoxide" },
+  { crate = "hashbrown", version = "=0.13.2", reason = "older versions from phf ecosystem" },
+  { crate = "hashbrown", version = "=0.15.2", reason = "older versions from phf ecosystem" },
+  { crate = "heck", version = "=0.4.1", reason = "sqlx uses older version" },
+  { crate = "indexmap", version = "=2.5.0", reason = "older versions from various dependencies" },
+  { crate = "phf", version = "=0.8.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf", version = "=0.10.1", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_codegen", version = "=0.8.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_generator", version = "=0.8.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_generator", version = "=0.10.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_macros", version = "=0.8.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_shared", version = "=0.8.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "phf_shared", version = "=0.10.0", reason = "tauri uses older phf for HTML parsing" },
+  { crate = "proc-macro-crate", version = "=1.3.1", reason = "older versions from various macro dependencies" },
+  { crate = "rand", version = "=0.7.3", reason = "tauri's phf_generator uses old rand" },
+  { crate = "rand_chacha", version = "=0.2.2", reason = "tauri's phf_generator uses old rand" },
+  { crate = "rand_core", version = "=0.5.1", reason = "tauri's phf_generator uses old rand" },
+  { crate = "serde_spanned", version = "=0.8.1", reason = "embed-resource uses older toml version" },
+  { crate = "siphasher", version = "=0.3.11", reason = "older phf versions use old siphasher" },
+  { crate = "syn", version = "=1.0.109", reason = "many older macros still use syn 1.x" },
+  { crate = "thiserror", version = "=1.0.69", reason = "workspace uses thiserror 2.x but some deps use 1.x" },
+  { crate = "thiserror-impl", version = "=1.0.69", reason = "workspace uses thiserror 2.x but some deps use 1.x" },
 ]
 
 # Tree of dependencies to skip duplicate checking for
