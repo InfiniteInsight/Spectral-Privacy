@@ -43,6 +43,7 @@ pub mod definition;
 pub mod error;
 pub mod loader;
 pub mod registry;
+pub mod removal;
 
 // Re-export commonly used types
 pub use definition::{
