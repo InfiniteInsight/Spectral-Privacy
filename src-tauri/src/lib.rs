@@ -7,6 +7,7 @@ pub mod commands;
 mod error;
 mod metadata;
 pub mod state;
+pub mod types;
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
@@ -71,6 +72,10 @@ pub fn run() {
             commands::vault::vault_lock,
             commands::vault::vault_status,
             commands::vault::list_vaults,
+            commands::profile::profile_create,
+            commands::profile::profile_get,
+            commands::profile::profile_update,
+            commands::profile::profile_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

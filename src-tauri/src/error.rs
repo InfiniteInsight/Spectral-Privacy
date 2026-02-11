@@ -3,6 +3,7 @@
 #![allow(dead_code)] // Used by vault commands (implemented in later tasks)
 
 use serde::Serialize;
+use spectral_core::error::SpectralError;
 use spectral_vault::VaultError;
 
 /// Serializable error for Tauri IPC commands.
@@ -83,6 +84,39 @@ impl From<VaultError> for CommandError {
 impl From<std::io::Error> for CommandError {
     fn from(err: std::io::Error) -> Self {
         Self::new("FILESYSTEM_ERROR", format!("Filesystem error: {err}"))
+    }
+}
+
+/// Convert SpectralError to CommandError.
+impl From<SpectralError> for CommandError {
+    fn from(err: SpectralError) -> Self {
+        match err {
+            SpectralError::Config(config_err) => {
+                Self::new("CONFIG_ERROR", format!("Configuration error: {config_err}"))
+            }
+            SpectralError::Vault(msg) => Self::new("VAULT_ERROR", format!("Vault error: {msg}")),
+            SpectralError::Database(msg) => {
+                Self::new("DATABASE_ERROR", format!("Database error: {msg}"))
+            }
+            SpectralError::Broker(msg) => Self::new("BROKER_ERROR", format!("Broker error: {msg}")),
+            SpectralError::Llm(msg) => Self::new("LLM_ERROR", format!("LLM error: {msg}")),
+            SpectralError::Browser(msg) => {
+                Self::new("BROWSER_ERROR", format!("Browser error: {msg}"))
+            }
+            SpectralError::Network(msg) => {
+                Self::new("NETWORK_ERROR", format!("Network error: {msg}"))
+            }
+            SpectralError::PermissionDenied(msg) => {
+                Self::new("PERMISSION_DENIED", format!("Permission denied: {msg}"))
+            }
+            SpectralError::Validation(msg) => {
+                Self::new("VALIDATION_ERROR", format!("Validation failed: {msg}"))
+            }
+            SpectralError::Io(io_err) => Self::new("IO_ERROR", format!("I/O error: {io_err}")),
+            SpectralError::Internal(msg) => {
+                Self::new("INTERNAL_ERROR", format!("Internal error: {msg}"))
+            }
+        }
     }
 }
 

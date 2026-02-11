@@ -27,10 +27,13 @@ tokio.workspace = true
 chrono.workspace = true
 
 # Internal crates (uncomment as they are created)
+spectral-core = { path = "../crates/spectral-core" }
 spectral-vault = { path = "../crates/spectral-vault" }
 spectral-db = { path = "../crates/spectral-db" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
+regex.workspace = true
+once_cell.workspace = true
 
 [dev-dependencies]
 uuid.workspace = true

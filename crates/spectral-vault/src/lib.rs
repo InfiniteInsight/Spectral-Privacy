@@ -299,6 +299,22 @@ impl Vault {
         self.db.as_ref().ok_or(VaultError::Locked)
     }
 
+    /// Get the encryption key for field-level encryption.
+    ///
+    /// This is used by application code that needs to encrypt individual fields
+    /// before storing them in the profile.
+    ///
+    /// # Errors
+    /// Returns `VaultError::Locked` if the vault is not unlocked.
+    ///
+    /// # Security Note
+    /// The returned key should be used immediately and not stored.
+    /// It's a reference to zeroized memory that will be cleared when the vault is locked.
+    pub fn encryption_key(&self) -> Result<&[u8; 32]> {
+        // Zeroizing<[u8; 32]> derefs to &[u8; 32]
+        self.key.as_ref().ok_or(VaultError::Locked).map(|k| &**k)
+    }
+
     /// Require that the vault is unlocked.
     fn require_unlocked(&self) -> Result<()> {
         if !self.is_unlocked() {
