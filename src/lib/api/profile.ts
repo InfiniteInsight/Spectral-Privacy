@@ -65,7 +65,7 @@ export const profileAPI = {
 	 * @throws {CommandError} If validation fails or vault is not unlocked
 	 */
 	async create(vaultId: string, input: ProfileInput): Promise<ProfileOutput> {
-		return await invoke<ProfileOutput>('profile_create', { vault_id: vaultId, input });
+		return await invoke<ProfileOutput>('profile_create', { vaultId, input });
 	},
 
 	/**
@@ -77,7 +77,7 @@ export const profileAPI = {
 	 * @throws {CommandError} If profile not found or vault is not unlocked
 	 */
 	async get(vaultId: string, profileId: string): Promise<ProfileOutput> {
-		return await invoke<ProfileOutput>('profile_get', { vault_id: vaultId, profile_id: profileId });
+		return await invoke<ProfileOutput>('profile_get', { vaultId, profileId });
 	},
 
 	/**
@@ -91,8 +91,8 @@ export const profileAPI = {
 	 */
 	async update(vaultId: string, profileId: string, input: ProfileInput): Promise<ProfileOutput> {
 		return await invoke<ProfileOutput>('profile_update', {
-			vault_id: vaultId,
-			profile_id: profileId,
+			vaultId,
+			profileId,
 			input
 		});
 	},
@@ -105,6 +105,6 @@ export const profileAPI = {
 	 * @throws {CommandError} If vault is not unlocked
 	 */
 	async list(vaultId: string): Promise<ProfileSummary[]> {
-		return await invoke<ProfileSummary[]>('profile_list', { vault_id: vaultId });
+		return await invoke<ProfileSummary[]>('profile_list', { vaultId });
 	}
 };
