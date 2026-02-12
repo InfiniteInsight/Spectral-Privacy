@@ -30,6 +30,7 @@ chrono.workspace = true
 spectral-core = { path = "../crates/spectral-core" }
 spectral-vault = { path = "../crates/spectral-vault" }
 spectral-db = { path = "../crates/spectral-db" }
+spectral-broker = { path = "../crates/spectral-broker" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
 regex.workspace = true
