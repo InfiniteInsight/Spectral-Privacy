@@ -22,6 +22,9 @@ pub enum ScanError {
     #[error("Selectors outdated for broker {broker_id}: {reason}")]
     SelectorsOutdated { broker_id: BrokerId, reason: String },
 
+    #[error("Profile data error for broker {broker_id}: {reason}")]
+    ProfileDataError { broker_id: BrokerId, reason: String },
+
     #[error("Insufficient profile data for broker {broker_id}, missing: {missing_fields:?}")]
     InsufficientProfileData {
         broker_id: BrokerId,
