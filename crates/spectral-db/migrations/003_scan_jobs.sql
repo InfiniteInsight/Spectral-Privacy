@@ -27,6 +27,7 @@ CREATE TABLE broker_scans (
 );
 
 CREATE INDEX idx_broker_scans_job ON broker_scans(scan_job_id);
+CREATE INDEX idx_broker_scans_broker ON broker_scans(broker_id);
 
 -- Findings are potential matches found on broker sites
 CREATE TABLE findings (
