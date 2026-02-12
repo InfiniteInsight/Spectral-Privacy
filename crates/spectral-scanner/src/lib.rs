@@ -4,8 +4,10 @@
 //! presents findings for user verification, and integrates with the removal system.
 
 pub mod error;
+pub mod url_builder;
 
 pub use error::{Result, ScanError};
+pub use url_builder::build_search_url;
 
 #[cfg(test)]
 mod tests {
