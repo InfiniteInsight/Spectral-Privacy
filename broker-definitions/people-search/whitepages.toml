@@ -27,3 +27,12 @@ notes = "Must verify phone number via SMS or email. Takes 24-72 hours to process
 listing_url = "{found_listing_url}"
 email = "{user_email}"
 phone = "{user_phone}"
+
+[removal.form_selectors]
+listing_url_input = "#url"
+email_input = "#email"
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+submit_button = "button.submit-btn"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message"
