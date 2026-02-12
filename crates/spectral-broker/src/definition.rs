@@ -209,58 +209,77 @@ impl SearchMethod {
             Self::UrlTemplate {
                 template,
                 requires_fields,
-            } => {
-                if template.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "URL template cannot be empty".to_string(),
-                    });
-                }
-                if requires_fields.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "UrlTemplate requires at least one PII field".to_string(),
-                    });
-                }
-            }
+            } => Self::validate_url_template(broker_id, template, requires_fields),
             Self::WebForm {
                 url,
                 fields,
                 requires_fields,
-            } => {
-                if url.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "WebForm URL cannot be empty".to_string(),
-                    });
-                }
-                if fields.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "WebForm requires at least one field mapping".to_string(),
-                    });
-                }
-                if requires_fields.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "WebForm requires at least one PII field".to_string(),
-                    });
-                }
-            }
+            } => Self::validate_web_form_search(broker_id, url, fields, requires_fields),
             Self::Manual { url, instructions } => {
-                if url.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Manual search URL cannot be empty".to_string(),
-                    });
-                }
-                if instructions.is_empty() {
-                    return Err(BrokerError::ValidationError {
-                        broker_id: broker_id.to_string(),
-                        reason: "Manual search instructions cannot be empty".to_string(),
-                    });
-                }
+                Self::validate_manual_search(broker_id, url, instructions)
             }
+        }
+    }
+
+    fn validate_url_template(
+        broker_id: &BrokerId,
+        template: &str,
+        requires_fields: &[PiiField],
+    ) -> Result<()> {
+        if template.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "URL template cannot be empty".to_string(),
+            });
+        }
+        if requires_fields.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "UrlTemplate requires at least one PII field".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_web_form_search(
+        broker_id: &BrokerId,
+        url: &str,
+        fields: &HashMap<String, String>,
+        requires_fields: &[PiiField],
+    ) -> Result<()> {
+        if url.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "WebForm URL cannot be empty".to_string(),
+            });
+        }
+        if fields.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "WebForm requires at least one field mapping".to_string(),
+            });
+        }
+        if requires_fields.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "WebForm requires at least one PII field".to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_manual_search(broker_id: &BrokerId, url: &str, instructions: &str) -> Result<()> {
+        if url.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Manual search URL cannot be empty".to_string(),
+            });
+        }
+        if instructions.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "Manual search instructions cannot be empty".to_string(),
+            });
         }
         Ok(())
     }

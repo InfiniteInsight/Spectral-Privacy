@@ -48,17 +48,18 @@ VALID_JURISDICTIONS = {
 }
 
 
-def validate_broker_toml(filepath: Path) -> list[str]:
-    """Validate a single broker TOML file. Returns list of errors."""
-    errors = []
-
+def _load_toml(filepath: Path) -> tuple[dict | None, list[str]]:
+    """Load TOML file and return data or errors."""
     try:
         with open(filepath, "rb") as f:
-            data = tomllib.load(f)
+            return tomllib.load(f), []
     except tomllib.TOMLDecodeError as e:
-        return [f"Invalid TOML syntax: {e}"]
+        return None, [f"Invalid TOML syntax: {e}"]
 
-    # Check required sections and fields
+
+def _validate_required_fields(data: dict) -> list[str]:
+    """Check required sections and fields are present."""
+    errors = []
     for section, fields in REQUIRED_FIELDS.items():
         if section not in data:
             errors.append(f"Missing required section: [{section}]")
@@ -66,72 +67,100 @@ def validate_broker_toml(filepath: Path) -> list[str]:
         for field in fields:
             if field not in data[section]:
                 errors.append(f"Missing required field: {section}.{field}")
+    return errors
+
+
+def _validate_broker_section(broker: dict) -> list[str]:
+    """Validate the broker section fields."""
+    errors = []
+
+    # Validate category
+    if "category" in broker and broker["category"] not in VALID_CATEGORIES:
+        errors.append(
+            f"Invalid category '{broker['category']}'. "
+            f"Must be one of: {', '.join(sorted(VALID_CATEGORIES))}"
+        )
+
+    # Validate domain format
+    if "domain" in broker:
+        domain = broker["domain"]
+        if not domain or " " in domain or domain.startswith("http"):
+            errors.append(
+                f"Invalid domain '{domain}'. Should be just the domain (e.g., 'spokeo.com')"
+            )
+
+    # Validate ID format
+    if "id" in broker:
+        broker_id = broker["id"]
+        if not broker_id.replace("-", "").replace("_", "").isalnum():
+            errors.append(f"Invalid broker ID '{broker_id}'. Use lowercase alphanumeric with hyphens.")
+        if broker_id != broker_id.lower():
+            errors.append(f"Broker ID '{broker_id}' must be lowercase.")
+
+    return errors
+
+
+def _validate_removal_section(removal: dict) -> list[str]:
+    """Validate the removal section fields."""
+    errors = []
+
+    # Validate method
+    if "method" in removal:
+        method = removal["method"]
+        methods = [method] if isinstance(method, str) else method if isinstance(method, list) else []
+
+        if not methods and "method" in removal:
+            errors.append("removal.method must be a string or array of strings")
+
+        for m in methods:
+            if m not in VALID_REMOVAL_METHODS:
+                errors.append(
+                    f"Invalid removal method '{m}'. "
+                    f"Must be one of: {', '.join(sorted(VALID_REMOVAL_METHODS))}"
+                )
+
+    # Validate URL if present
+    if "url" in removal:
+        url = removal["url"]
+        if not url.startswith(("http://", "https://")):
+            errors.append(f"removal.url must be a full URL, got '{url}'")
+
+    return errors
+
+
+def _validate_jurisdictions(jurisdictions: list) -> list[str]:
+    """Validate jurisdictions section."""
+    errors = []
+    for jurisdiction in jurisdictions:
+        if isinstance(jurisdiction, dict) and "law" in jurisdiction:
+            if jurisdiction["law"] not in VALID_JURISDICTIONS:
+                errors.append(
+                    f"Invalid jurisdiction '{jurisdiction['law']}'. "
+                    f"Must be one of: {', '.join(sorted(VALID_JURISDICTIONS))}"
+                )
+    return errors
+
+
+def validate_broker_toml(filepath: Path) -> list[str]:
+    """Validate a single broker TOML file. Returns list of errors."""
+    data, errors = _load_toml(filepath)
+    if not data:
+        return errors
+
+    # Check required fields
+    errors.extend(_validate_required_fields(data))
 
     # Validate broker section
     if "broker" in data:
-        broker = data["broker"]
-
-        # Validate category
-        if "category" in broker:
-            if broker["category"] not in VALID_CATEGORIES:
-                errors.append(
-                    f"Invalid category '{broker['category']}'. "
-                    f"Must be one of: {', '.join(sorted(VALID_CATEGORIES))}"
-                )
-
-        # Validate domain format
-        if "domain" in broker:
-            domain = broker["domain"]
-            if not domain or " " in domain or domain.startswith("http"):
-                errors.append(
-                    f"Invalid domain '{domain}'. Should be just the domain (e.g., 'spokeo.com')"
-                )
-
-        # Validate ID format (lowercase, hyphens)
-        if "id" in broker:
-            broker_id = broker["id"]
-            if not broker_id.replace("-", "").replace("_", "").isalnum():
-                errors.append(f"Invalid broker ID '{broker_id}'. Use lowercase alphanumeric with hyphens.")
-            if broker_id != broker_id.lower():
-                errors.append(f"Broker ID '{broker_id}' must be lowercase.")
+        errors.extend(_validate_broker_section(data["broker"]))
 
     # Validate removal section
     if "removal" in data:
-        removal = data["removal"]
+        errors.extend(_validate_removal_section(data["removal"]))
 
-        # Validate method
-        if "method" in removal:
-            method = removal["method"]
-            if isinstance(method, str):
-                methods = [method]
-            elif isinstance(method, list):
-                methods = method
-            else:
-                errors.append("removal.method must be a string or array of strings")
-                methods = []
-
-            for m in methods:
-                if m not in VALID_REMOVAL_METHODS:
-                    errors.append(
-                        f"Invalid removal method '{m}'. "
-                        f"Must be one of: {', '.join(sorted(VALID_REMOVAL_METHODS))}"
-                    )
-
-        # Validate URL if present
-        if "url" in removal:
-            url = removal["url"]
-            if not url.startswith(("http://", "https://")):
-                errors.append(f"removal.url must be a full URL, got '{url}'")
-
-    # Validate jurisdictions if present
+    # Validate jurisdictions
     if "jurisdictions" in data:
-        for jurisdiction in data["jurisdictions"]:
-            if isinstance(jurisdiction, dict) and "law" in jurisdiction:
-                if jurisdiction["law"] not in VALID_JURISDICTIONS:
-                    errors.append(
-                        f"Invalid jurisdiction '{jurisdiction['law']}'. "
-                        f"Must be one of: {', '.join(sorted(VALID_JURISDICTIONS))}"
-                    )
+        errors.extend(_validate_jurisdictions(data["jurisdictions"]))
 
     return errors
 
