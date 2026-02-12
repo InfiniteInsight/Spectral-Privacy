@@ -1,76 +1,92 @@
 <script lang="ts">
 	/* eslint-disable no-unused-vars */
-	import { FormField, DisabledFieldNotice } from './shared';
-	import type { ProfileInput } from '$lib/api';
+	import type { ProfileInput, PhoneNumber } from '$lib/api/profile';
 
 	interface Props {
-		data: Partial<ProfileInput>;
-		onchange: (data: Partial<ProfileInput>) => void;
+		profile: Partial<ProfileInput>;
+		onUpdate: (updates: Partial<ProfileInput>) => void;
 	}
 
-	let { data = $bindable({}), onchange }: Props = $props();
-	/* eslint-enable no-unused-vars */
+	let { profile, onUpdate }: Props = $props();
 
-	// Validation state
-	let errors = $state<Record<string, string>>({});
+	let phoneNumbers = $state<PhoneNumber[]>(profile.phone_numbers || []);
 
-	// Validate email
-	function validateEmail(value: string): string {
-		if (!value.trim()) return 'Email is required';
-
-		// Simplified RFC 5322 email validation
-		const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-		if (!emailRegex.test(value)) return 'Invalid email format';
-
-		if (value.length > 254) return 'Email is too long';
-
-		return '';
+	function addPhoneNumber() {
+		phoneNumbers = [...phoneNumbers, { number: '', phone_type: 'Mobile' }];
 	}
 
-	// Handle email change
-	function handleEmailChange(value: string) {
-		data.email = value;
-		errors.email = validateEmail(value);
-		onchange(data);
+	function removePhoneNumber(index: number) {
+		phoneNumbers = phoneNumbers.filter((_, i) => i !== index);
+		onUpdate({ phone_numbers: phoneNumbers });
 	}
 
-	// Expose validation function for parent
+	function updatePhoneNumber(index: number, field: keyof PhoneNumber, value: unknown) {
+		phoneNumbers = phoneNumbers.map((phone, i) =>
+			i === index ? { ...phone, [field]: value } : phone
+		);
+		onUpdate({ phone_numbers: phoneNumbers });
+	}
+
 	export function validate(): boolean {
-		const newErrors: Record<string, string> = {};
-
-		newErrors.email = validateEmail(data.email || '');
-
-		errors = newErrors;
-
-		return !Object.values(newErrors).some((err) => err !== '');
+		// All fields optional - always valid
+		return true;
 	}
 </script>
 
-<div class="space-y-4">
+<div class="space-y-6">
 	<div>
-		<h2 class="text-xl font-semibold text-gray-900 mb-2">Contact Information</h2>
-		<p class="text-sm text-gray-600 mb-6">
-			Provide your email address. This is used to match your information on data broker sites.
-		</p>
+		<label class="block text-sm font-medium mb-2" for="email"> Email Address </label>
+		<input
+			id="email"
+			type="email"
+			value={profile.email || ''}
+			oninput={(e) => onUpdate({ email: e.currentTarget.value })}
+			class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+			placeholder="your.email@example.com"
+		/>
+		<p class="text-xs text-gray-600 mt-1">Used to match records on data broker sites</p>
 	</div>
 
-	<FormField
-		label="Email Address"
-		id="email"
-		type="email"
-		value={data.email || ''}
-		error={errors.email}
-		required={true}
-		placeholder="john.doe@example.com"
-		onchange={handleEmailChange}
-	/>
-
-	<DisabledFieldNotice fieldName="Phone Numbers" />
-
-	<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-		<p class="text-xs text-blue-800">
-			<strong>Why we need this:</strong> Data brokers often index profiles by email address. Providing
-			your email helps us find and remove more of your information.
+	<div>
+		<label class="block text-sm font-medium mb-2"> Phone Numbers </label>
+		<p class="text-sm text-gray-600 mb-3">
+			Adding phone numbers helps identify records across more data brokers
 		</p>
+
+		{#if phoneNumbers.length > 0}
+			<div class="space-y-2 mb-3">
+				{#each phoneNumbers as phone, i (i)}
+					<div class="flex gap-2">
+						<input
+							type="tel"
+							value={phone.number}
+							oninput={(e) => updatePhoneNumber(i, 'number', e.currentTarget.value)}
+							class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+							placeholder="(555) 123-4567"
+						/>
+						<select
+							value={phone.phone_type}
+							onchange={(e) => updatePhoneNumber(i, 'phone_type', e.currentTarget.value)}
+							class="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+						>
+							<option value="Mobile">Mobile</option>
+							<option value="Home">Home</option>
+							<option value="Work">Work</option>
+						</select>
+						<button
+							onclick={() => removePhoneNumber(i)}
+							class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+							aria-label="Remove phone number"
+						>
+							Remove
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		<button onclick={addPhoneNumber} class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+			+ Add Phone Number
+		</button>
 	</div>
 </div>

@@ -28,6 +28,7 @@ pub struct UserProfile {
     /// Email address
     pub email: Option<EncryptedField<String>>,
     /// Phone number
+    #[deprecated(note = "Use phone_numbers instead")]
     pub phone: Option<EncryptedField<String>>,
     /// Street address
     pub address: Option<EncryptedField<String>>,
@@ -52,16 +53,126 @@ pub struct UserProfile {
     /// Social media usernames (JSON array)
     pub social_media: Option<EncryptedField<Vec<String>>>,
     /// Previous addresses (JSON array)
-    pub previous_addresses: Option<EncryptedField<Vec<String>>>,
+    #[deprecated(note = "Use previous_addresses_v2 instead")]
+    pub previous_addresses_v1: Option<EncryptedField<Vec<String>>>,
+    /// Phase 2: Phone numbers with type classification
+    #[serde(default)]
+    pub phone_numbers: Vec<PhoneNumber>,
+    /// Phase 2: Previous addresses with structured data
+    #[serde(default, rename = "previous_addresses_v2")]
+    pub previous_addresses_v2: Vec<PreviousAddress>,
+    /// Phase 2: Aliases or alternative names
+    #[serde(default)]
+    pub aliases: Vec<EncryptedField<String>>,
+    /// Phase 2: Relatives and family members
+    #[serde(default)]
+    pub relatives: Vec<Relative>,
     /// Profile creation timestamp
     pub created_at: Timestamp,
     /// Profile last update timestamp
     pub updated_at: Timestamp,
 }
 
+/// Type of phone number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum PhoneType {
+    /// Mobile/cellular phone
+    Mobile,
+    /// Home phone
+    Home,
+    /// Work/office phone
+    Work,
+}
+
+/// Phone number with type classification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhoneNumber {
+    /// Encrypted phone number
+    pub number: EncryptedField<String>,
+    /// Type of phone number
+    pub phone_type: PhoneType,
+}
+
+/// Previous address with date range.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviousAddress {
+    /// Address line 1 (street)
+    pub address_line1: EncryptedField<String>,
+    /// Address line 2 (apt/suite) - optional
+    pub address_line2: Option<EncryptedField<String>>,
+    /// City
+    pub city: EncryptedField<String>,
+    /// State/province
+    pub state: EncryptedField<String>,
+    /// ZIP/postal code
+    pub zip_code: EncryptedField<String>,
+    /// Start date (YYYY-MM-DD format)
+    pub lived_from: Option<String>,
+    /// End date (YYYY-MM-DD format)
+    pub lived_to: Option<String>,
+}
+
+/// Type of relationship to a relative.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum RelationshipType {
+    /// Spouse (married partner)
+    Spouse,
+    /// Partner (unmarried partner)
+    Partner,
+    /// Parent
+    Parent,
+    /// Child
+    Child,
+    /// Sibling (brother or sister)
+    Sibling,
+    /// Other relationship
+    Other,
+}
+
+/// Relative or family member information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Relative {
+    /// Encrypted name of relative
+    pub name: EncryptedField<String>,
+    /// Type of relationship
+    pub relationship: RelationshipType,
+}
+
+/// Profile completeness tier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum CompletenessTier {
+    /// 0-30 points: Limited information
+    Minimal,
+    /// 31-60 points: Basic information
+    Basic,
+    /// 61-85 points: Good information
+    Good,
+    /// 86-100 points: Excellent information
+    Excellent,
+}
+
+/// Profile completeness metrics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProfileCompleteness {
+    /// Raw score (0-100)
+    pub score: u32,
+    /// Maximum possible score
+    pub max_score: u32,
+    /// Percentage (0-100)
+    pub percentage: u32,
+    /// Completeness tier
+    pub tier: CompletenessTier,
+    /// User-friendly message
+    pub message: String,
+}
+
 impl UserProfile {
     /// Create a new empty user profile.
     #[must_use]
+    #[allow(deprecated)]
     pub fn new(id: ProfileId) -> Self {
         let now = Timestamp::now();
         Self {
@@ -83,7 +194,12 @@ impl UserProfile {
             job_title: None,
             education: None,
             social_media: None,
-            previous_addresses: None,
+            previous_addresses_v1: None,
+            // Phase 2 fields
+            phone_numbers: Vec::new(),
+            previous_addresses_v2: Vec::new(),
+            aliases: Vec::new(),
+            relatives: Vec::new(),
             created_at: now,
             updated_at: now,
         }
@@ -209,6 +325,95 @@ impl UserProfile {
     pub fn touch(&mut self) {
         self.updated_at = Timestamp::now();
     }
+
+    /// Calculate profile completeness score.
+    ///
+    /// Scoring breakdown:
+    /// - Core identity (40 points): `first_name` (15), `last_name` (15), email (10)
+    /// - Current location (30 points): address (10), city (10), state+zip (10)
+    /// - Enhanced matching (30 points): phones (10), `prev_addresses` (10), dob (5), aliases (3), relatives (2)
+    #[must_use]
+    pub fn completeness_score(&self) -> ProfileCompleteness {
+        let mut score = 0u32;
+
+        // Core identity (40 points)
+        if self.first_name.is_some() {
+            score += 15;
+        }
+        if self.last_name.is_some() {
+            score += 15;
+        }
+        if self.email.is_some() {
+            score += 10;
+        }
+
+        // Current location (30 points)
+        if self.address.is_some() {
+            score += 10;
+        }
+        if self.city.is_some() {
+            score += 10;
+        }
+        if self.state.is_some() && self.zip_code.is_some() {
+            score += 10;
+        }
+
+        // Enhanced matching (30 points)
+        if !self.phone_numbers.is_empty() {
+            score += 10;
+        }
+        if !self.previous_addresses_v2.is_empty() {
+            score += 10;
+        }
+        if self.date_of_birth.is_some() {
+            score += 5;
+        }
+        if !self.aliases.is_empty() {
+            score += 3;
+        }
+        if !self.relatives.is_empty() {
+            score += 2;
+        }
+
+        let tier = Self::score_to_tier(score);
+
+        ProfileCompleteness {
+            score,
+            max_score: 100,
+            percentage: score,
+            tier,
+            message: Self::tier_message(tier),
+        }
+    }
+
+    fn score_to_tier(score: u32) -> CompletenessTier {
+        match score {
+            0..=30 => CompletenessTier::Minimal,
+            31..=60 => CompletenessTier::Basic,
+            61..=85 => CompletenessTier::Good,
+            _ => CompletenessTier::Excellent,
+        }
+    }
+
+    fn tier_message(tier: CompletenessTier) -> String {
+        match tier {
+            CompletenessTier::Minimal => {
+                "Limited removal coverage - consider adding more information".to_string()
+            }
+            CompletenessTier::Basic => {
+                "Basic removal coverage - adding contact info and addresses will improve results"
+                    .to_string()
+            }
+            CompletenessTier::Good => {
+                "Good removal coverage - you've provided solid information for effective removal"
+                    .to_string()
+            }
+            CompletenessTier::Excellent => {
+                "Excellent removal coverage - comprehensive information enables maximum removal effectiveness"
+                    .to_string()
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -271,7 +476,7 @@ mod tests {
         let email = loaded
             .email
             .as_ref()
-            .unwrap()
+            .expect("email should be present")
             .decrypt(&key)
             .expect("decrypt email");
         assert_eq!(email, "test@example.com");
@@ -279,7 +484,7 @@ mod tests {
         let name = loaded
             .full_name
             .as_ref()
-            .unwrap()
+            .expect("full name should be present")
             .decrypt(&key)
             .expect("decrypt name");
         assert_eq!(name, "Alice Smith");
@@ -398,5 +603,170 @@ mod tests {
         profile.touch();
 
         assert!(profile.updated_at > original_time);
+    }
+
+    #[test]
+    fn test_phone_number_serialization() {
+        let key = test_key();
+        let phone = PhoneNumber {
+            number: encrypt_string("555-123-4567", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        };
+
+        let json = serde_json::to_string(&phone).expect("serialize");
+        let deserialized: PhoneNumber = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted = deserialized.number.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted, "555-123-4567");
+        assert_eq!(deserialized.phone_type, PhoneType::Mobile);
+    }
+
+    #[test]
+    fn test_previous_address_serialization() {
+        let key = test_key();
+        let address = PreviousAddress {
+            address_line1: encrypt_string("123 Old St", &key).expect("encrypt"),
+            address_line2: Some(encrypt_string("Apt 4B", &key).expect("encrypt")),
+            city: encrypt_string("Boston", &key).expect("encrypt"),
+            state: encrypt_string("MA", &key).expect("encrypt"),
+            zip_code: encrypt_string("02101", &key).expect("encrypt"),
+            lived_from: Some("2015-01-01".to_string()),
+            lived_to: Some("2020-12-31".to_string()),
+        };
+
+        let json = serde_json::to_string(&address).expect("serialize");
+        let deserialized: PreviousAddress = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted_line1 = deserialized.address_line1.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted_line1, "123 Old St");
+        let decrypted_line2 = deserialized
+            .address_line2
+            .as_ref()
+            .expect("address_line2 should be present")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(decrypted_line2, "Apt 4B");
+        let decrypted_city = deserialized.city.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted_city, "Boston");
+        assert_eq!(deserialized.lived_from, Some("2015-01-01".to_string()));
+        assert_eq!(deserialized.lived_to, Some("2020-12-31".to_string()));
+    }
+
+    #[test]
+    fn test_relative_serialization() {
+        let key = test_key();
+        let relative = Relative {
+            name: encrypt_string("Jane Doe", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        };
+
+        let json = serde_json::to_string(&relative).expect("serialize");
+        let deserialized: Relative = serde_json::from_str(&json).expect("deserialize");
+
+        let decrypted = deserialized.name.decrypt(&key).expect("decrypt");
+        assert_eq!(decrypted, "Jane Doe");
+        assert_eq!(deserialized.relationship, RelationshipType::Spouse);
+    }
+
+    #[tokio::test]
+    async fn test_profile_with_phase2_fields() {
+        let key = test_key();
+        let db = Database::new(":memory:", key.to_vec())
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        let id = ProfileId::generate();
+        let mut profile = UserProfile::new(id.clone());
+
+        // Add Phase 2 fields
+        profile.phone_numbers = vec![PhoneNumber {
+            number: encrypt_string("555-1234", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        }];
+
+        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+
+        profile.relatives = vec![Relative {
+            name: encrypt_string("Jane", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        }];
+
+        // Save and reload
+        profile.save(&db, &key).await.expect("save");
+        let loaded = UserProfile::load(&db, &id, &key).await.expect("load");
+
+        assert_eq!(loaded.phone_numbers.len(), 1);
+        assert_eq!(loaded.aliases.len(), 1);
+        assert_eq!(loaded.relatives.len(), 1);
+    }
+
+    #[test]
+    fn test_completeness_tier_minimal() {
+        let profile = UserProfile::new(ProfileId::generate());
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Minimal);
+        assert_eq!(completeness.score, 0);
+        assert_eq!(completeness.percentage, 0);
+    }
+
+    #[test]
+    fn test_completeness_tier_basic() {
+        let key = test_key();
+        let mut profile = UserProfile::new(ProfileId::generate());
+
+        profile.first_name = Some(encrypt_string("John", &key).expect("encrypt"));
+        profile.last_name = Some(encrypt_string("Doe", &key).expect("encrypt"));
+        profile.email = Some(encrypt_string("john@example.com", &key).expect("encrypt"));
+
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Basic);
+        assert_eq!(completeness.score, 40); // 15+15+10
+    }
+
+    #[test]
+    fn test_completeness_tier_excellent() {
+        let key = test_key();
+        let mut profile = UserProfile::new(ProfileId::generate());
+
+        // Core identity (40 points)
+        profile.first_name = Some(encrypt_string("John", &key).expect("encrypt"));
+        profile.last_name = Some(encrypt_string("Doe", &key).expect("encrypt"));
+        profile.email = Some(encrypt_string("john@example.com", &key).expect("encrypt"));
+
+        // Current location (30 points)
+        profile.address = Some(encrypt_string("123 Main", &key).expect("encrypt"));
+        profile.city = Some(encrypt_string("Chicago", &key).expect("encrypt"));
+        profile.state = Some(encrypt_string("IL", &key).expect("encrypt"));
+        profile.zip_code = Some(encrypt_string("60601", &key).expect("encrypt"));
+
+        // Enhanced matching (30 points)
+        profile.phone_numbers = vec![PhoneNumber {
+            number: encrypt_string("555-1234", &key).expect("encrypt"),
+            phone_type: PhoneType::Mobile,
+        }];
+        profile.previous_addresses_v2 = vec![PreviousAddress {
+            address_line1: encrypt_string("456 Oak", &key).expect("encrypt"),
+            address_line2: None,
+            city: encrypt_string("Seattle", &key).expect("encrypt"),
+            state: encrypt_string("WA", &key).expect("encrypt"),
+            zip_code: encrypt_string("98101", &key).expect("encrypt"),
+            lived_from: Some("2020-01-01".to_string()),
+            lived_to: Some("2022-12-31".to_string()),
+        }];
+        profile.date_of_birth = Some(encrypt_string("1990-01-01", &key).expect("encrypt"));
+        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+        profile.relatives = vec![Relative {
+            name: encrypt_string("Jane", &key).expect("encrypt"),
+            relationship: RelationshipType::Spouse,
+        }];
+
+        let completeness = profile.completeness_score();
+
+        assert_eq!(completeness.tier, CompletenessTier::Excellent);
+        assert_eq!(completeness.score, 100);
+        assert_eq!(completeness.percentage, 100);
     }
 }

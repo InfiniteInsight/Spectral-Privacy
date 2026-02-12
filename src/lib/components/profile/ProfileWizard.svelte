@@ -1,34 +1,82 @@
 <script lang="ts">
 	import { profileStore } from '$lib/stores';
-	import type { ProfileInput } from '$lib/api';
+	import type { ProfileInput, ProfileCompleteness } from '$lib/api/profile';
+	import { getProfileCompleteness } from '$lib/api/profile';
 	import BasicInfoStep from './BasicInfoStep.svelte';
 	import ContactInfoStep from './ContactInfoStep.svelte';
 	import AddressInfoStep from './AddressInfoStep.svelte';
+	import AdditionalInfoStep from './AdditionalInfoStep.svelte';
 	import ReviewStep from './ReviewStep.svelte';
+	import CompletenessIndicator from './shared/CompletenessIndicator.svelte';
 	import { goto } from '$app/navigation';
 
-	// Current step (0-3)
+	// Current step (0-4)
 	let currentStep = $state(0);
 
 	// Form data
 	let formData = $state<Partial<ProfileInput>>({});
 
+	// Completeness
+	let completeness = $state<ProfileCompleteness | null>(null);
+
 	// References to step components for validation
 	let basicInfoRef: BasicInfoStep;
 	let contactInfoRef: ContactInfoStep;
 	let addressInfoRef: AddressInfoStep;
+	let additionalInfoRef: AdditionalInfoStep;
 
 	// Step configuration
 	const steps = [
-		{ title: 'Basic Info', component: BasicInfoStep },
-		{ title: 'Contact Info', component: ContactInfoStep },
-		{ title: 'Address Info', component: AddressInfoStep },
-		{ title: 'Review', component: ReviewStep }
+		{
+			number: 1,
+			title: 'Basic Info',
+			subtitle: 'Name and date of birth',
+			component: BasicInfoStep
+		},
+		{
+			number: 2,
+			title: 'Contact',
+			subtitle: 'Email and phone numbers',
+			component: ContactInfoStep
+		},
+		{
+			number: 3,
+			title: 'Addresses',
+			subtitle: 'Current and previous addresses',
+			component: AddressInfoStep
+		},
+		{
+			number: 4,
+			title: 'Additional Info',
+			subtitle: 'Aliases and relatives',
+			component: AdditionalInfoStep
+		},
+		{
+			number: 5,
+			title: 'Review',
+			subtitle: 'Verify and submit',
+			component: ReviewStep
+		}
 	];
+
+	// Update completeness
+	async function updateCompleteness() {
+		try {
+			completeness = await getProfileCompleteness();
+		} catch (error) {
+			console.error('Failed to get completeness:', error);
+		}
+	}
 
 	// Handle data changes from steps
 	function handleDataChange(data: Partial<ProfileInput>) {
 		formData = { ...formData, ...data };
+	}
+
+	// Handle step update (for Phase 2 steps)
+	function handleStepUpdate(updates: Partial<ProfileInput>) {
+		formData = { ...formData, ...updates };
+		updateCompleteness();
 	}
 
 	// Validate current step
@@ -41,6 +89,9 @@
 		}
 		if (currentStep === 2 && addressInfoRef) {
 			return addressInfoRef.validate();
+		}
+		if (currentStep === 3 && additionalInfoRef) {
+			return additionalInfoRef.validate();
 		}
 		return true; // Review step has no validation
 	}
@@ -99,6 +150,13 @@
 	class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4"
 >
 	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
+		<!-- Completeness Indicator -->
+		{#if completeness}
+			<div class="mb-6">
+				<CompletenessIndicator {completeness} />
+			</div>
+		{/if}
+
 		<!-- Progress Indicator -->
 		<div class="mb-8">
 			<div class="flex justify-between items-center">
@@ -142,16 +200,22 @@
 			{:else if currentStep === 1}
 				<ContactInfoStep
 					bind:this={contactInfoRef}
-					bind:data={formData}
-					onchange={handleDataChange}
+					profile={formData}
+					onUpdate={handleStepUpdate}
 				/>
 			{:else if currentStep === 2}
 				<AddressInfoStep
 					bind:this={addressInfoRef}
-					bind:data={formData}
-					onchange={handleDataChange}
+					profile={formData}
+					onUpdate={handleStepUpdate}
 				/>
 			{:else if currentStep === 3}
+				<AdditionalInfoStep
+					bind:this={additionalInfoRef}
+					profile={formData}
+					onUpdate={handleStepUpdate}
+				/>
+			{:else if currentStep === 4}
 				<ReviewStep data={formData} onEdit={handleEdit} />
 			{/if}
 		</div>
