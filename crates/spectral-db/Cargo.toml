@@ -10,9 +10,11 @@ authors.workspace = true
 
 [dependencies]
 spectral-core = { path = "../spectral-core" }
+spectral-broker = { path = "../spectral-broker" }
 sqlx.workspace = true
 thiserror.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 tracing.workspace = true
 tokio.workspace = true
 chrono.workspace = true

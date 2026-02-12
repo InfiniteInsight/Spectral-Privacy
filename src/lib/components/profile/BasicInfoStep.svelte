@@ -147,8 +147,9 @@
 
 	<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
 		<p class="text-xs text-blue-800">
-			<strong>Privacy Note:</strong> All information is encrypted and stored securely on your device.
-			It is never sent to Spectral's servers.
+			<strong>Privacy Note:</strong> All information is encrypted and stored locally on your device. Spectral
+			has no cloud or servers. Your data will only be transmitted directly to data brokers when you submit
+			removal requests — this is necessary to request your information be removed.
 		</p>
 	</div>
 </div>

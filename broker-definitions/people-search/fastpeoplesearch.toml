@@ -25,3 +25,12 @@ notes = "Simple opt-out form. Usually processes within 24-48 hours. No email ver
 
 [removal.fields]
 listing_url = "{found_listing_url}"
+
+[removal.form_selectors]
+listing_url_input = "#url"
+email_input = "#email"
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+submit_button = "button.submit-btn"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message"

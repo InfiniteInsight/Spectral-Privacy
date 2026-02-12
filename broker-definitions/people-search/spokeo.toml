@@ -26,3 +26,10 @@ notes = "Requires email verification. Link expires after 72 hours. Re-check afte
 [removal.fields]
 listing_url = "{found_listing_url}"
 email = "{user_email}"
+
+[removal.form_selectors]
+listing_url_input = "#url"
+email_input = "#email"
+submit_button = "button[type='submit']"
+captcha_frame = "iframe[title*='recaptcha' i]"
+success_indicator = ".alert-success, .confirmation-message"

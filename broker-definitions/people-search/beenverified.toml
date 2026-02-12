@@ -33,3 +33,12 @@ listing_url = "{found_listing_url}"
 email = "{user_email}"
 first_name = "{first_name}"
 last_name = "{last_name}"
+
+[removal.form_selectors]
+listing_url_input = "#url"
+email_input = "#email"
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+submit_button = "button.submit-btn"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message"

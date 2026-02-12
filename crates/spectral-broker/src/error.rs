@@ -54,6 +54,15 @@ pub enum BrokerError {
     /// Invalid broker ID format
     #[error("invalid broker ID: {0}")]
     InvalidId(#[from] spectral_core::SpectralError),
+
+    /// Removal submission failed
+    #[error("removal failed for broker '{broker_id}': {reason}")]
+    RemovalError {
+        /// Broker ID being removed
+        broker_id: String,
+        /// Reason for removal failure
+        reason: String,
+    },
 }
 
 /// Result type for broker operations.

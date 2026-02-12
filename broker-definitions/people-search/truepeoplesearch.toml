@@ -34,3 +34,12 @@ Thank you.
 """
 response_days = 7
 notes = "Send email with listing URL. Usually responds within 3-5 business days."
+
+[removal.form_selectors]
+listing_url_input = "#url"
+email_input = "#email"
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+submit_button = "button.submit-btn"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message"

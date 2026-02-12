@@ -86,7 +86,9 @@ license-files = [
 # Bans - Crates we don't want to use
 # =============================================================================
 [bans]
-multiple-versions = "warn"
+# Temporarily allow multiple versions due to chromiumoxide v0.7 dependencies
+# TODO: Re-enable "warn" after updating browser automation stack
+multiple-versions = "allow"
 wildcards = "allow"
 highlight = "all"
 
@@ -99,7 +101,9 @@ deny = [
 
   # Weak crypto that should never be used for security
   { crate = "md5", wrappers = [] },
-  { crate = "sha1", wrappers = [] },  # Block direct use of weak SHA-1
+  # sha1 is used by tungstenite for WebSocket handshake (not cryptographic security)
+  # We block direct use but allow it as a transitive dependency
+  { crate = "sha1", wrappers = ["tungstenite"] },
 
   # Unmaintained/problematic crates
   { crate = "openssl", wrappers = [] },  # Prefer rustls
@@ -109,11 +113,14 @@ deny = [
 skip = [
   # Common version conflicts during transitions
   # { crate = "syn", version = "1" },
+  { crate = "winreg" },  # Multiple versions from chromiumoxide v0.7 dependency
 ]
 
 # Tree of dependencies to skip duplicate checking for
 skip-tree = [
-  # Example: { crate = "windows-sys", version = "0.48" },
+  # chromiumoxide v0.7 brings in many duplicate transitive dependencies
+  # This will be resolved when we update to v0.8+ or replace with a different browser automation solution
+  { crate = "chromiumoxide" },
 ]
 
 # =============================================================================
