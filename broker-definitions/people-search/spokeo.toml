@@ -17,6 +17,18 @@ method = "url-template"
 template = "https://www.spokeo.com/{first}-{last}/{state}/{city}"
 requires_fields = ["first_name", "last_name", "state", "city"]
 
+[search.result_selectors]
+results_container = ".search-results"
+result_item = ".result-card"
+listing_url = "a.profile-link"
+name = ".name"
+age = ".age"
+location = ".location"
+relatives = ".relatives .name"
+phones = ".phone-number"
+no_results_indicator = ".no-results-message"
+captcha_required = "iframe[title*='recaptcha' i]"
+
 [removal]
 method = "web-form"
 url = "https://www.spokeo.com/optout"

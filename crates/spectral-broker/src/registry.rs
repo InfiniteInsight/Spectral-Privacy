@@ -271,6 +271,7 @@ mod tests {
             search: SearchMethod::UrlTemplate {
                 template: "https://test.com/{first}-{last}".to_string(),
                 requires_fields: vec![PiiField::FirstName, PiiField::LastName],
+                result_selectors: None,
             },
             removal: RemovalMethod::WebForm {
                 url: "https://test.com/optout".to_string(),

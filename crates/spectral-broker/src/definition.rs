@@ -181,6 +181,9 @@ pub enum SearchMethod {
         template: String,
         /// PII fields required for search
         requires_fields: Vec<PiiField>,
+        /// CSS selectors for parsing search results
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result_selectors: Option<ResultSelectors>,
     },
 
     /// Web form that needs to be filled out
@@ -191,6 +194,9 @@ pub enum SearchMethod {
         fields: HashMap<String, String>,
         /// PII fields required for search
         requires_fields: Vec<PiiField>,
+        /// CSS selectors for parsing search results
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result_selectors: Option<ResultSelectors>,
     },
 
     /// Requires manual search (no automation possible)
@@ -202,18 +208,69 @@ pub enum SearchMethod {
     },
 }
 
+/// Selectors for parsing search result pages
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResultSelectors {
+    /// Container holding all results
+    pub results_container: String,
+    /// Individual result item
+    pub result_item: String,
+    /// Link to full listing
+    pub listing_url: String,
+    /// Name field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Age field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub age: Option<String>,
+    /// Location field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    /// Relatives field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relatives: Option<String>,
+    /// Phone numbers field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phones: Option<String>,
+    /// Email addresses field selector
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emails: Option<String>,
+    /// Indicator that no results were found
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub no_results_indicator: Option<String>,
+    /// CAPTCHA detection
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captcha_required: Option<String>,
+}
+
 impl SearchMethod {
+    /// Get the result selectors for this search method, if available.
+    #[must_use]
+    pub fn result_selectors(&self) -> Option<&ResultSelectors> {
+        match self {
+            Self::UrlTemplate {
+                result_selectors, ..
+            }
+            | Self::WebForm {
+                result_selectors, ..
+            } => result_selectors.as_ref(),
+            Self::Manual { .. } => None,
+        }
+    }
+
     /// Validate the search method configuration.
     fn validate(&self, broker_id: &BrokerId) -> Result<()> {
         match self {
             Self::UrlTemplate {
                 template,
                 requires_fields,
+                ..
             } => Self::validate_url_template(broker_id, template, requires_fields),
             Self::WebForm {
                 url,
                 fields,
                 requires_fields,
+                ..
             } => Self::validate_web_form_search(broker_id, url, fields, requires_fields),
             Self::Manual { url, instructions } => {
                 Self::validate_manual_search(broker_id, url, instructions)
@@ -521,6 +578,7 @@ mod tests {
         let method = SearchMethod::UrlTemplate {
             template: "https://example.com/{first}-{last}".to_string(),
             requires_fields: vec![PiiField::FirstName, PiiField::LastName],
+            result_selectors: None,
         };
         assert!(method.validate(&broker_id).is_ok());
 
@@ -528,6 +586,7 @@ mod tests {
         let method = SearchMethod::UrlTemplate {
             template: String::new(),
             requires_fields: vec![PiiField::FirstName],
+            result_selectors: None,
         };
         assert!(method.validate(&broker_id).is_err());
 
@@ -535,6 +594,7 @@ mod tests {
         let method = SearchMethod::UrlTemplate {
             template: "https://example.com/{first}-{last}".to_string(),
             requires_fields: vec![],
+            result_selectors: None,
         };
         assert!(method.validate(&broker_id).is_err());
     }
@@ -637,6 +697,7 @@ mod tests {
             search: SearchMethod::UrlTemplate {
                 template: "https://test.com/{first}-{last}".to_string(),
                 requires_fields: vec![PiiField::FirstName, PiiField::LastName],
+                result_selectors: None,
             },
             removal: RemovalMethod::WebForm {
                 url: "https://test.com/optout".to_string(),
@@ -663,5 +724,45 @@ mod tests {
         let mut invalid_def = definition;
         invalid_def.broker.name = String::new();
         assert!(invalid_def.validate().is_err());
+    }
+
+    #[test]
+    fn test_search_result_selectors_parsing() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [search.result_selectors]
+            results_container = ".results"
+            result_item = ".result-card"
+            listing_url = "a.profile-link"
+            name = ".name"
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse test broker definition");
+        let selectors = def
+            .search
+            .result_selectors()
+            .expect("should have result selectors");
+        assert_eq!(selectors.results_container, ".results");
+        assert_eq!(selectors.result_item, ".result-card");
     }
 }
