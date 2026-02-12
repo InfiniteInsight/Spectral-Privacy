@@ -10,6 +10,10 @@ authors.workspace = true
 [dependencies]
 # Internal dependencies
 spectral-core = { path = "../spectral-core" }
+spectral-browser = { path = "../spectral-browser" }
+
+# Async
+async-trait = "0.1"
 
 # Error handling
 thiserror = { workspace = true }
@@ -26,3 +30,4 @@ chrono = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.0"
+tokio = { workspace = true }
