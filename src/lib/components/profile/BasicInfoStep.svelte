@@ -148,7 +148,8 @@
 	<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
 		<p class="text-xs text-blue-800">
 			<strong>Privacy Note:</strong> All information is encrypted and stored locally on your device. Spectral
-			is completely offline — no cloud, no servers, no data transmission.
+			has no cloud or servers. Your data will only be transmitted directly to data brokers when you submit
+			removal requests — this is necessary to request your information be removed.
 		</p>
 	</div>
 </div>
