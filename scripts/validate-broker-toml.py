@@ -100,24 +100,35 @@ def _validate_broker_section(broker: dict) -> list[str]:
     return errors
 
 
+def _validate_removal_methods(removal: dict) -> list[str]:
+    """Validate removal method field."""
+    errors = []
+    if "method" not in removal:
+        return errors
+
+    method = removal["method"]
+    methods = [method] if isinstance(method, str) else method if isinstance(method, list) else []
+
+    if not methods:
+        errors.append("removal.method must be a string or array of strings")
+        return errors
+
+    for m in methods:
+        if m not in VALID_REMOVAL_METHODS:
+            errors.append(
+                f"Invalid removal method '{m}'. "
+                f"Must be one of: {', '.join(sorted(VALID_REMOVAL_METHODS))}"
+            )
+
+    return errors
+
+
 def _validate_removal_section(removal: dict) -> list[str]:
     """Validate the removal section fields."""
     errors = []
 
     # Validate method
-    if "method" in removal:
-        method = removal["method"]
-        methods = [method] if isinstance(method, str) else method if isinstance(method, list) else []
-
-        if not methods and "method" in removal:
-            errors.append("removal.method must be a string or array of strings")
-
-        for m in methods:
-            if m not in VALID_REMOVAL_METHODS:
-                errors.append(
-                    f"Invalid removal method '{m}'. "
-                    f"Must be one of: {', '.join(sorted(VALID_REMOVAL_METHODS))}"
-                )
+    errors.extend(_validate_removal_methods(removal))
 
     # Validate URL if present
     if "url" in removal:
