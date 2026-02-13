@@ -2,6 +2,7 @@ use crate::error::Result;
 use crate::filter::BrokerFilter;
 use crate::parser::ListingMatch;
 use crate::url_builder::build_search_url;
+use futures::stream::{FuturesUnordered, StreamExt};
 use spectral_broker::BrokerDefinition;
 use spectral_broker::BrokerRegistry;
 use spectral_browser::BrowserActions;
@@ -66,7 +67,83 @@ impl ScanOrchestrator {
         )
         .await?;
 
-        Ok(job.id)
+        let job_id = job.id.clone();
+
+        // Launch scan execution in background
+        self.execute_scan_job(job_id.clone(), brokers, profile.clone(), *_vault_key)
+            .await;
+
+        Ok(job_id)
+    }
+
+    async fn execute_scan_job(
+        &self,
+        job_id: String,
+        brokers: Vec<BrokerDefinition>,
+        profile: UserProfile,
+        vault_key: [u8; 32],
+    ) {
+        // Clone Arc-wrapped dependencies for background task
+        let orchestrator = Arc::new(self.clone_deps());
+        let job_id_clone = job_id.clone();
+
+        // Spawn background task for scan execution
+        tokio::spawn(async move {
+            let mut futures = FuturesUnordered::new();
+            let mut completed = 0;
+
+            for broker in brokers {
+                // Wait if we've hit the concurrency limit
+                while futures.len() >= orchestrator.max_concurrent_scans {
+                    if let Some(_result) = futures.next().await {
+                        completed += 1;
+                    }
+                }
+
+                // Spawn scan for this broker
+                let orch = orchestrator.clone();
+                let job_id = job_id_clone.clone();
+                let prof = profile.clone();
+                let key = vault_key;
+
+                let future =
+                    async move { orch.scan_single_broker(&job_id, &broker, &prof, &key).await };
+
+                futures.push(Box::pin(future));
+            }
+
+            // Wait for remaining scans to complete
+            while let Some(_result) = futures.next().await {
+                completed += 1;
+            }
+
+            // Mark job as completed
+            let _ = orchestrator
+                .complete_scan_job(&job_id_clone, completed)
+                .await;
+        });
+    }
+
+    fn clone_deps(&self) -> Self {
+        Self {
+            broker_registry: self.broker_registry.clone(),
+            browser_engine: self.browser_engine.clone(),
+            db: self.db.clone(),
+            max_concurrent_scans: self.max_concurrent_scans,
+        }
+    }
+
+    async fn complete_scan_job(&self, job_id: &str, completed_brokers: u32) -> Result<()> {
+        sqlx::query(
+            "UPDATE scan_jobs SET status = 'Completed', completed_at = ?, completed_brokers = ? WHERE id = ?"
+        )
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind(completed_brokers)
+        .bind(job_id)
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -230,5 +307,35 @@ mod tests {
 
         // We expect this to fail in tests (no real browser), but the method should exist
         assert!(result.is_ok() || result.is_err());
+    }
+
+    #[tokio::test]
+    #[ignore = "Requires Chrome browser to be installed"]
+    async fn test_parallel_scan_execution() {
+        let (pool, key) = create_test_pool().await;
+
+        let broker_registry = Arc::new(BrokerRegistry::new());
+        let browser_engine = Arc::new(BrowserEngine::new().await.expect("create browser"));
+
+        let orchestrator = ScanOrchestrator::new(broker_registry, browser_engine, pool.clone(), 5);
+
+        let profile = mock_profile(&key);
+
+        let job_id = orchestrator
+            .start_scan(&profile, BrokerFilter::All, &key)
+            .await
+            .expect("start scan");
+
+        // Give background tasks time to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Verify job exists
+        let job = sqlx::query_as::<_, (String,)>("SELECT id FROM scan_jobs WHERE id = ?")
+            .bind(&job_id)
+            .fetch_one(pool.pool())
+            .await
+            .expect("fetch job");
+
+        assert_eq!(job.0, job_id);
     }
 }
