@@ -16,8 +16,9 @@ impl BrokerFilter {
             BrokerFilter::All => true,
             BrokerFilter::Category(cat) => {
                 // Serialize the category to kebab-case for comparison
+                // This should never fail as BrokerCategory is a simple enum with serde derive
                 let category_str = serde_json::to_string(&broker.broker.category)
-                    .unwrap_or_default()
+                    .expect("BrokerCategory serialization should never fail")
                     .trim_matches('"')
                     .to_string();
                 &category_str == cat
@@ -27,6 +28,16 @@ impl BrokerFilter {
     }
 }
 
+/// Checks if the user profile contains all required fields for a broker.
+///
+/// # Parameters
+/// * `broker` - The broker definition containing search field requirements
+/// * `profile` - The user profile to check for completeness
+/// * `_key` - Encryption key (reserved for future use when validating field decryptability)
+///
+/// # Returns
+/// * `Ok(())` if all required fields are present
+/// * `Err(Vec<PiiField>)` containing the list of missing fields
 pub fn check_profile_completeness(
     broker: &BrokerDefinition,
     profile: &UserProfile,
@@ -158,5 +169,73 @@ mod tests {
         assert_eq!(missing.len(), 2);
         assert!(missing.contains(&PiiField::LastName));
         assert!(missing.contains(&PiiField::State));
+    }
+
+    #[test]
+    fn test_filter_specific_empty() {
+        let broker = mock_broker(BrokerCategory::PeopleSearch, vec![]);
+        let filter = BrokerFilter::Specific(vec![]);
+        assert!(!filter.matches(&broker));
+    }
+
+    #[test]
+    fn test_profile_completeness_all_fields_present() {
+        let broker = mock_broker(
+            BrokerCategory::PeopleSearch,
+            vec![PiiField::FirstName, PiiField::LastName, PiiField::State],
+        );
+
+        let profile_id =
+            ProfileId::new("550e8400-e29b-41d4-a716-446655440000").expect("valid test profile ID");
+        let mut profile = UserProfile::new(profile_id);
+        let key = [0x42; 32];
+
+        profile.first_name = Some(
+            EncryptedField::encrypt(&"John".to_string(), &key)
+                .expect("encryption should succeed in test"),
+        );
+        profile.last_name = Some(
+            EncryptedField::encrypt(&"Doe".to_string(), &key)
+                .expect("encryption should succeed in test"),
+        );
+        profile.state = Some(
+            EncryptedField::encrypt(&"CA".to_string(), &key)
+                .expect("encryption should succeed in test"),
+        );
+
+        let result = check_profile_completeness(&broker, &profile, &key);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_manual_search_method_always_succeeds() {
+        let broker = BrokerDefinition {
+            broker: BrokerMetadata {
+                id: BrokerId::new("test").expect("valid test broker ID"),
+                name: "Test".to_string(),
+                url: "https://example.com".to_string(),
+                domain: "example.com".to_string(),
+                category: BrokerCategory::PeopleSearch,
+                difficulty: RemovalDifficulty::Easy,
+                typical_removal_days: 7,
+                recheck_interval_days: 30,
+                last_verified: NaiveDate::from_ymd_opt(2025, 1, 1).expect("valid test date"),
+            },
+            search: SearchMethod::Manual {
+                url: "https://example.com/search".to_string(),
+                instructions: "Manual search".to_string(),
+            },
+            removal: RemovalMethod::Manual {
+                instructions: "Manual removal".to_string(),
+            },
+        };
+
+        let profile_id =
+            ProfileId::new("550e8400-e29b-41d4-a716-446655440000").expect("valid test profile ID");
+        let profile = UserProfile::new(profile_id);
+        let key = [0x42; 32];
+
+        let result = check_profile_completeness(&broker, &profile, &key);
+        assert!(result.is_ok());
     }
 }
