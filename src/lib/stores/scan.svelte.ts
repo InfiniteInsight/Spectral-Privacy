@@ -69,22 +69,21 @@ function createScanStore() {
 		 * Start a new scan job
 		 *
 		 * @param profileId - The profile ID to scan
-		 * @param brokerFilter - Optional broker filter
-		 * @returns The scan job ID or null on error
+		 * @returns The scan job ID
 		 */
-		async startScan(profileId: string, brokerFilter?: string): Promise<string | null> {
+		async startScan(profileId: string): Promise<string> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				const scanJobStatus = await scanAPI.start(profileId, brokerFilter);
+				const scanJobStatus = await scanAPI.start(profileId);
 				state.currentScanId = scanJobStatus.id;
 				state.scanStatus = scanJobStatus;
 				return scanJobStatus.id;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to start scan';
 				console.error('Start scan error:', err);
-				return null;
+				throw err;
 			} finally {
 				state.loading = false;
 			}
@@ -196,29 +195,22 @@ function createScanStore() {
 		 * Submit removal requests for all confirmed findings
 		 *
 		 * @param scanJobId - The scan job ID
-		 * @returns Array of removal request IDs or empty array on error
+		 * @returns Count of removal requests submitted
 		 */
-		async submitRemovals(scanJobId: string): Promise<string[]> {
+		async submitRemovals(scanJobId: string): Promise<number> {
 			state.loading = true;
 			state.error = null;
 
 			try {
 				const removalIds = await scanAPI.submitRemovals(scanJobId);
-				return removalIds;
+				return removalIds.length;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to submit removals';
 				console.error('Submit removals error:', err);
-				return [];
+				return 0;
 			} finally {
 				state.loading = false;
 			}
-		},
-
-		/**
-		 * Clear any error state
-		 */
-		clearError(): void {
-			state.error = null;
 		},
 
 		/**
