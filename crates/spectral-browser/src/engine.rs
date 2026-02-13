@@ -98,6 +98,21 @@ impl BrowserEngine {
             .expect("current_page should be Some after initialization")
             .clone())
     }
+
+    /// Fetch a page and return its HTML content
+    pub async fn fetch_page_content(&self, url: &str) -> Result<String> {
+        // Navigate to the URL
+        self.navigate(url).await?;
+
+        // Get the page HTML
+        let page = self.get_page().await?;
+        let html = page
+            .content()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        Ok(html)
+    }
 }
 
 #[async_trait::async_trait]

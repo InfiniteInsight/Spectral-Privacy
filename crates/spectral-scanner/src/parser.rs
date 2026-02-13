@@ -1,3 +1,8 @@
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::ref_option)]
+
 use crate::error::{Result, ScanError};
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};

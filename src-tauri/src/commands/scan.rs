@@ -75,16 +75,13 @@ pub async fn start_scan(
 
     // Create a new EncryptedPool with the same pool and key
     // This is safe because both point to the same underlying connection pool
-    use spectral_db::EncryptedPool;
+    use spectral_db::{Database, EncryptedPool};
     let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
-    let db_pool = Arc::new(encrypted_pool);
+    let database = Database::from_encrypted_pool(encrypted_pool);
+    let db = Arc::new(database);
 
-    let orchestrator = ScanOrchestrator::new(
-        broker_registry,
-        browser_engine,
-        db_pool,
-        4, // max concurrent scans
-    );
+    let orchestrator =
+        ScanOrchestrator::new(broker_registry, browser_engine, db).with_max_concurrent_scans(4);
 
     // Start the scan
     let job_id = orchestrator

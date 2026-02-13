@@ -17,6 +17,19 @@ method = "url-template"
 template = "https://www.whitepages.com/name/{first}-{last}/{city}-{state}"
 requires_fields = ["first_name", "last_name", "city", "state"]
 
+[search.result_selectors]
+# Note: These selectors must be verified against actual Whitepages pages
+results_container = ".results-container"
+result_item = ".result"
+listing_url = ".result-link"
+name = ".name"
+age = ".age-range"
+location = ".address"
+relatives = ".associated-people .person"
+phones = ".phone-info .number"
+no_results_indicator = ".no-results-message"
+captcha_required = "iframe[title*='recaptcha']"
+
 [removal]
 method = "web-form"
 url = "https://www.whitepages.com/suppression-requests"

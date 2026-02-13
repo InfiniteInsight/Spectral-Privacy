@@ -17,6 +17,19 @@ method = "url-template"
 template = "https://www.fastpeoplesearch.com/name/{first}-{last}_{state}"
 requires_fields = ["first_name", "last_name", "state"]
 
+[search.result_selectors]
+# Note: These selectors must be verified against actual FastPeopleSearch pages
+results_container = ".people-list"
+result_item = ".card"
+listing_url = "a.detail-link"
+name = ".card-title"
+age = ".age-field"
+location = ".location"
+relatives = ".relatives .name"
+phones = ".phones .number"
+no_results_indicator = ".no-results"
+captcha_required = "#recaptcha"
+
 [removal]
 method = "web-form"
 url = "https://www.fastpeoplesearch.com/removal"

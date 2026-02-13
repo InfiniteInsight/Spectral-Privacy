@@ -17,6 +17,19 @@ method = "url-template"
 template = "https://www.truepeoplesearch.com/results?name={first}%20{last}&citystatezip={city}%2C%20{state}"
 requires_fields = ["first_name", "last_name", "city", "state"]
 
+[search.result_selectors]
+# Note: These selectors must be verified against actual TruePeopleSearch pages
+results_container = "#results"
+result_item = ".result-item"
+listing_url = "a.record-link"
+name = ".name"
+age = ".age"
+location = ".location-data"
+relatives = ".relatives-section .relative"
+phones = ".phone-list .phone"
+no_results_indicator = ".no-matches"
+captcha_required = ".g-recaptcha"
+
 [removal]
 method = "email"
 email = "support@truepeoplesearch.com"

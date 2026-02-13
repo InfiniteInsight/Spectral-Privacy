@@ -1,3 +1,5 @@
+#![allow(clippy::uninlined_format_args)]
+
 use crate::error::{Result, ScanError};
 use spectral_broker::SearchMethod;
 use spectral_core::BrokerId;

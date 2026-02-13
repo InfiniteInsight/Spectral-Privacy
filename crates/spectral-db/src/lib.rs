@@ -34,8 +34,10 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+pub mod broker_scans;
 pub mod connection;
 pub mod error;
+pub mod findings;
 pub mod migrations;
 pub mod removal_attempts;
 /// Scan job management for tracking broker scan operations.
@@ -71,6 +73,18 @@ impl Database {
     pub async fn new(path: impl AsRef<Path>, key: Vec<u8>) -> Result<Self> {
         let pool = EncryptedPool::new(path, key).await?;
         Ok(Self { pool })
+    }
+
+    /// Create a database instance from an existing encrypted pool.
+    ///
+    /// This is useful when you already have an `EncryptedPool` and need to
+    /// wrap it in the higher-level `Database` interface.
+    ///
+    /// # Arguments
+    /// * `pool` - An existing encrypted connection pool
+    #[must_use]
+    pub fn from_encrypted_pool(pool: EncryptedPool) -> Self {
+        Self { pool }
     }
 
     /// Run all pending database migrations.
