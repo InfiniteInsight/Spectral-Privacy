@@ -102,6 +102,15 @@ impl Database {
         self.pool.pool()
     }
 
+    /// Get a reference to the encrypted pool.
+    ///
+    /// This is used by components that need access to the full `EncryptedPool`
+    /// wrapper (e.g., for cloning into Arc for background tasks).
+    #[must_use]
+    pub fn encrypted_pool(&self) -> &EncryptedPool {
+        &self.pool
+    }
+
     /// Verify that the database is accessible with the provided key.
     ///
     /// # Errors

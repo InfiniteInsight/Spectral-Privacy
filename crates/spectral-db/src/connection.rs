@@ -68,6 +68,26 @@ impl EncryptedPool {
         Ok(Self { pool, _key: key })
     }
 
+    /// Create an `EncryptedPool` from an existing pool and key.
+    ///
+    /// This is useful when you need to share the same connection pool
+    /// across multiple components that each need their own `EncryptedPool` reference.
+    ///
+    /// # Arguments
+    /// * `pool` - An existing `Pool<Sqlite>` (pools are Arc-based and can be cloned)
+    /// * `key` - The encryption key (will be zeroized on drop)
+    ///
+    /// # Panics
+    /// Panics if the key is not exactly 32 bytes.
+    #[must_use]
+    pub fn from_pool(pool: Pool<Sqlite>, key: Vec<u8>) -> Self {
+        assert_eq!(key.len(), 32, "Encryption key must be exactly 32 bytes");
+        Self {
+            pool,
+            _key: Zeroizing::new(key),
+        }
+    }
+
     /// Get a reference to the underlying `SQLx` pool.
     ///
     /// This allows consumers to execute queries directly using `SQLx`.
