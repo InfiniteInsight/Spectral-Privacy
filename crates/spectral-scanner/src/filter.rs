@@ -1,3 +1,6 @@
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::match_same_arms)]
+
 use serde::{Deserialize, Serialize};
 use spectral_broker::{BrokerDefinition, SearchMethod};
 use spectral_core::PiiField;

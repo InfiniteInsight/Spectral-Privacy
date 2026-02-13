@@ -75,6 +75,18 @@ impl Database {
         Ok(Self { pool })
     }
 
+    /// Create a database instance from an existing encrypted pool.
+    ///
+    /// This is useful when you already have an `EncryptedPool` and need to
+    /// wrap it in the higher-level `Database` interface.
+    ///
+    /// # Arguments
+    /// * `pool` - An existing encrypted connection pool
+    #[must_use]
+    pub fn from_encrypted_pool(pool: EncryptedPool) -> Self {
+        Self { pool }
+    }
+
     /// Run all pending database migrations.
     ///
     /// This should be called after creating a new database instance to ensure

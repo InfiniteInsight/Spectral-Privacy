@@ -5,11 +5,13 @@
 //! and findings storage.
 
 use crate::error::{Result, ScanError};
+use crate::filter::BrokerFilter;
 use futures::stream::{FuturesUnordered, StreamExt};
 use spectral_broker::{BrokerDefinition, BrokerRegistry};
 use spectral_browser::BrowserEngine;
 use spectral_core::BrokerId;
-use spectral_db::Database;
+use spectral_db::{scan_jobs, Database};
+use spectral_vault::UserProfile;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -66,6 +68,112 @@ impl ScanOrchestrator {
     pub fn with_max_concurrent_scans(mut self, max: usize) -> Self {
         self.max_concurrent_scans = max;
         self
+    }
+
+    /// Start a new scan job with the specified profile and broker filter.
+    ///
+    /// This creates a scan job in the database, launches background execution,
+    /// and returns the job ID immediately for status tracking.
+    ///
+    /// # Arguments
+    /// * `profile` - User profile to search for
+    /// * `broker_filter` - Filter to select which brokers to scan
+    /// * `vault_key` - Encryption key for accessing encrypted profile data
+    ///
+    /// # Returns
+    /// The scan job ID for tracking progress
+    #[allow(clippy::cast_possible_truncation)]
+    pub async fn start_scan(
+        &self,
+        profile: &UserProfile,
+        broker_filter: BrokerFilter,
+        vault_key: &[u8; 32],
+    ) -> Result<String> {
+        // Get list of brokers to scan
+        let brokers: Vec<_> = self
+            .broker_registry
+            .get_all()
+            .into_iter()
+            .filter(|broker| broker_filter.matches(broker))
+            .collect();
+
+        let total_brokers = brokers.len() as u32;
+        let broker_ids: Vec<BrokerId> = brokers.iter().map(|b| b.id().clone()).collect();
+
+        // Create scan job in database
+        let job = scan_jobs::create_scan_job(
+            self.db.pool(),
+            profile.id.as_str().to_string(),
+            total_brokers,
+        )
+        .await?;
+
+        let job_id = job.id.clone();
+        let profile_id = profile.id.as_str().to_string();
+        let vault_key = *vault_key;
+
+        // Clone Arc references for background task
+        let orchestrator_clone = Arc::new(Self {
+            broker_registry: self.broker_registry.clone(),
+            browser_engine: self.browser_engine.clone(),
+            db: self.db.clone(),
+            max_concurrent_scans: self.max_concurrent_scans,
+        });
+
+        // Clone job_id for background task
+        let job_id_for_task = job_id.clone();
+
+        // Launch scan execution in background
+        tokio::spawn(async move {
+            let result = orchestrator_clone
+                .execute_scan_job(job_id_for_task.clone(), broker_ids, profile_id, vault_key)
+                .await;
+
+            match result {
+                Ok(results) => {
+                    let completed = results.len() as u32;
+                    let _ = orchestrator_clone
+                        .complete_scan_job(&job_id_for_task, completed)
+                        .await;
+                }
+                Err(e) => {
+                    tracing::error!("Scan job {} failed: {}", job_id_for_task, e);
+                    let _ = orchestrator_clone
+                        .fail_scan_job(&job_id_for_task, &e.to_string())
+                        .await;
+                }
+            }
+        });
+
+        Ok(job_id)
+    }
+
+    /// Mark a scan job as completed.
+    async fn complete_scan_job(&self, job_id: &str, completed_brokers: u32) -> Result<()> {
+        sqlx::query(
+            "UPDATE scan_jobs SET status = 'Completed', completed_at = ?, completed_brokers = ? WHERE id = ?"
+        )
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind(completed_brokers)
+        .bind(job_id)
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
+    }
+
+    /// Mark a scan job as failed.
+    async fn fail_scan_job(&self, job_id: &str, error_message: &str) -> Result<()> {
+        sqlx::query(
+            "UPDATE scan_jobs SET status = 'Failed', completed_at = ?, error_message = ? WHERE id = ?"
+        )
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind(error_message)
+        .bind(job_id)
+        .execute(self.db.pool())
+        .await?;
+
+        Ok(())
     }
 
     /// Execute a scan job across multiple brokers.

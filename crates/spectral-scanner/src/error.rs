@@ -48,4 +48,31 @@ pub enum ScanError {
     /// No result selectors configured
     #[error("no result selectors configured for broker {0}")]
     NoResultSelectors(BrokerId),
+
+    /// Selectors outdated (site structure changed)
+    #[error("selectors outdated for broker {broker_id}: {reason}")]
+    SelectorsOutdated {
+        /// The broker with outdated selectors
+        broker_id: BrokerId,
+        /// Reason why selectors are considered outdated
+        reason: String,
+    },
+
+    /// Profile data error (encryption/vault issue)
+    #[error("profile data error for broker {broker_id}: {reason}")]
+    ProfileDataError {
+        /// The broker being scanned
+        broker_id: BrokerId,
+        /// Description of the profile data error
+        reason: String,
+    },
+
+    /// Broker site down or unreachable
+    #[error("broker site down: {broker_id}, HTTP {http_status}")]
+    BrokerSiteDown {
+        /// The broker that is down
+        broker_id: BrokerId,
+        /// HTTP status code received
+        http_status: u16,
+    },
 }

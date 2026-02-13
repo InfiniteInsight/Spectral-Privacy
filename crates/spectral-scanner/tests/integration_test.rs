@@ -1,7 +1,7 @@
 use spectral_broker::BrokerRegistry;
 use spectral_browser::BrowserEngine;
 use spectral_core::types::ProfileId;
-use spectral_db::EncryptedPool;
+use spectral_db::Database;
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use spectral_vault::{EncryptedField, UserProfile};
 use std::sync::Arc;
@@ -11,24 +11,18 @@ use std::sync::Arc;
 async fn test_full_scan_flow() {
     // Setup
     let key = [0x42; 32];
-    let db = Arc::new(
-        EncryptedPool::new(":memory:", key.to_vec())
-            .await
-            .expect("create db"),
-    );
-    spectral_db::migrations::run_migrations(db.pool())
+    let db = Database::new(":memory:", key.to_vec())
         .await
-        .expect("run migrations");
+        .expect("create db");
+    db.run_migrations().await.expect("run migrations");
+
+    let db = Arc::new(db);
 
     let broker_registry = Arc::new(BrokerRegistry::new());
     let browser_engine = Arc::new(BrowserEngine::new().await.expect("create browser"));
 
-    let orchestrator = ScanOrchestrator::new(
-        broker_registry,
-        browser_engine,
-        db.clone(),
-        2, // Low concurrency for test
-    );
+    let orchestrator = ScanOrchestrator::new(broker_registry, browser_engine, db.clone())
+        .with_max_concurrent_scans(2);
 
     // Create test profile
     let mut profile = UserProfile::new(ProfileId::generate());

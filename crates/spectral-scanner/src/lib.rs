@@ -40,8 +40,17 @@
 #![allow(clippy::missing_panics_doc)]
 
 pub mod error;
+#[allow(missing_docs)]
+pub mod filter;
 pub mod orchestrator;
+#[allow(missing_docs)]
+pub mod parser;
+#[allow(missing_docs)]
+pub mod url_builder;
 
 // Re-export commonly used types
 pub use error::{Result, ScanError};
+pub use filter::{check_profile_completeness, BrokerFilter};
 pub use orchestrator::{BrokerScanResult, ScanOrchestrator};
+pub use parser::{ExtractedData, ListingMatch, ResultParser};
+pub use url_builder::build_search_url;
