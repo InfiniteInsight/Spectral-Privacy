@@ -31,10 +31,13 @@ spectral-core = { path = "../crates/spectral-core" }
 spectral-vault = { path = "../crates/spectral-vault" }
 spectral-db = { path = "../crates/spectral-db" }
 spectral-broker = { path = "../crates/spectral-broker" }
+spectral-scanner = { path = "../crates/spectral-scanner" }
+spectral-browser = { path = "../crates/spectral-browser" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
 regex.workspace = true
 once_cell.workspace = true
+sqlx.workspace = true
 
 [dev-dependencies]
 uuid.workspace = true

@@ -78,6 +78,8 @@ pub fn run() {
             commands::profile::profile_list,
             commands::profile::get_profile_completeness,
             commands::removal::submit_removal,
+            commands::scan::start_scan,
+            commands::scan::get_scan_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

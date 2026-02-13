@@ -38,6 +38,8 @@ pub mod connection;
 pub mod error;
 pub mod migrations;
 pub mod removal_attempts;
+/// Scan job management for tracking broker scan operations.
+pub mod scan_jobs;
 
 // Re-export commonly used types
 pub use connection::EncryptedPool;
@@ -100,6 +102,15 @@ impl Database {
         self.pool.pool()
     }
 
+    /// Get a reference to the encrypted pool.
+    ///
+    /// This is used by components that need access to the full `EncryptedPool`
+    /// wrapper (e.g., for cloning into Arc for background tasks).
+    #[must_use]
+    pub fn encrypted_pool(&self) -> &EncryptedPool {
+        &self.pool
+    }
+
     /// Verify that the database is accessible with the provided key.
     ///
     /// # Errors
@@ -143,7 +154,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 2);
+        assert_eq!(version_after, 3);
     }
 
     #[tokio::test]
@@ -168,8 +179,11 @@ mod tests {
             vec![
                 "audit_log",
                 "broker_results",
+                "broker_scans",
+                "findings",
                 "profiles",
-                "removal_attempts"
+                "removal_attempts",
+                "scan_jobs"
             ]
         );
 
@@ -194,5 +208,29 @@ mod tests {
             .expect("create database");
 
         db.close().await; // Should not panic
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    async fn create_test_database() -> Result<Database> {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key).await?;
+        db.run_migrations().await?;
+        Ok(db)
+    }
+
+    #[tokio::test]
+    async fn test_scan_jobs_table_exists() {
+        let db = create_test_database().await.expect("create test database");
+
+        // Try to query scan_jobs table
+        let result = sqlx::query("SELECT id FROM scan_jobs LIMIT 1")
+            .fetch_optional(db.pool())
+            .await;
+
+        assert!(result.is_ok());
     }
 }
