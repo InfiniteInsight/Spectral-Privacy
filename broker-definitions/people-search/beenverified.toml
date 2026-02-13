@@ -22,6 +22,19 @@ first_name = "{first}"
 last_name = "{last}"
 state = "{state}"
 
+[search.result_selectors]
+# Note: These selectors must be verified against actual BeenVerified pages
+results_container = ".search-results-container"
+result_item = ".person-result"
+listing_url = "a.view-details"
+name = ".person-name"
+age = ".person-age"
+location = ".person-location"
+relatives = ".relatives-list .relative-name"
+phones = ".phone-numbers .phone"
+no_results_indicator = ".no-results-found"
+captcha_required = "iframe[src*='recaptcha']"
+
 [removal]
 method = "web-form"
 url = "https://www.beenverified.com/app/optout/search"
