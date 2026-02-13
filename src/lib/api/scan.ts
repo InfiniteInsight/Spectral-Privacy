@@ -3,6 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 export interface ScanJobStatus {
 	id: string;
 	status: 'InProgress' | 'Completed' | 'Failed' | 'Cancelled';
+	completed_brokers: number;
+	total_brokers: number;
+	error_message?: string;
 }
 
 export interface Finding {
