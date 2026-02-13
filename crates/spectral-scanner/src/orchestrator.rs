@@ -6,11 +6,12 @@ use spectral_db::EncryptedPool;
 use spectral_vault::UserProfile;
 use std::sync::Arc;
 
+#[allow(dead_code)]
 pub struct ScanOrchestrator {
-    _broker_registry: Arc<BrokerRegistry>,
-    _browser_engine: Arc<BrowserEngine>,
-    _db: Arc<EncryptedPool>,
-    _max_concurrent_scans: usize,
+    broker_registry: Arc<BrokerRegistry>,
+    browser_engine: Arc<BrowserEngine>,
+    db: Arc<EncryptedPool>,
+    max_concurrent_scans: usize,
 }
 
 impl ScanOrchestrator {
@@ -21,10 +22,10 @@ impl ScanOrchestrator {
         max_concurrent_scans: usize,
     ) -> Self {
         Self {
-            _broker_registry: broker_registry,
-            _browser_engine: browser_engine,
-            _db: db,
-            _max_concurrent_scans: max_concurrent_scans,
+            broker_registry,
+            browser_engine,
+            db,
+            max_concurrent_scans,
         }
     }
 
