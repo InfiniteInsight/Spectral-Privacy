@@ -1,97 +1,130 @@
 <script lang="ts">
+	import { scanStore, profileStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
-	import { scanStore } from '$lib/stores';
-	import { profileStore } from '$lib/stores';
+	import { onMount } from 'svelte';
 
-	let isStarting = $state(false);
-	let errorMessage = $state<string | null>(null);
+	let selectedProfileId = $state('');
+	let error = $state('');
+
+	onMount(async () => {
+		// Ensure profiles are loaded
+		if (profileStore.profiles.length === 0) {
+			await profileStore.loadProfiles();
+		}
+
+		// Pre-select first profile
+		if (profileStore.profiles.length > 0) {
+			selectedProfileId = profileStore.profiles[0].id;
+		}
+	});
 
 	async function handleStartScan() {
-		const profile = profileStore.currentProfile;
-		if (!profile) {
-			errorMessage = 'No profile selected. Please create a profile first.';
+		if (!selectedProfileId) {
+			error = 'Please select a profile';
 			return;
 		}
 
-		isStarting = true;
-		errorMessage = null;
+		const scanId = await scanStore.startScan(selectedProfileId);
 
-		try {
-			const scanJobId = await scanStore.startScan(profile.id);
-
-			if (!scanJobId) {
-				errorMessage = scanStore.error || 'Failed to start scan';
-				return;
-			}
-
-			// Redirect to progress page
-			await goto(`/scan/progress/${scanJobId}`);
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Failed to start scan';
-		} finally {
-			isStarting = false;
+		if (scanId) {
+			goto(`/scan/progress/${scanId}`);
+		} else {
+			error = scanStore.error || 'Failed to start scan';
 		}
 	}
+
+	const profiles = $derived(profileStore.profiles);
+	const hasProfiles = $derived(profiles.length > 0);
 </script>
 
-<div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-	<div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-		<h1 class="text-2xl font-bold mb-2">Start Data Broker Scan</h1>
-		<p class="text-gray-600 mb-6">
-			Scan data brokers to find and remove your personal information from the web.
+<div
+	class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4"
+>
+	<div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
+		<h1 class="text-3xl font-bold text-gray-900 mb-2">Scan for Your Data</h1>
+		<p class="text-gray-600 mb-8">
+			Search data brokers to find where your personal information appears online
 		</p>
 
-		{#if profileStore.currentProfile}
-			<div class="mb-6 p-4 bg-blue-50 rounded-md">
-				<p class="text-sm text-gray-700">
-					<span class="font-medium">Profile:</span>
-					{profileStore.currentProfile.first_name}
-					{profileStore.currentProfile.last_name}
+		{#if profileStore.loading}
+			<div class="flex items-center justify-center py-8">
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+			</div>
+		{:else if !hasProfiles}
+			<div class="text-center py-8">
+				<p class="text-gray-600 mb-4">
+					No profile found. Create a profile first to start scanning.
 				</p>
+				<button
+					onclick={() => goto('/profile/setup')}
+					class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+					style="background-color: #0284c7; color: white;"
+				>
+					Create Profile
+				</button>
 			</div>
-		{/if}
-
-		{#if errorMessage}
-			<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-				<p class="text-sm text-red-700">{errorMessage}</p>
-			</div>
-		{/if}
-
-		<button
-			onclick={handleStartScan}
-			disabled={isStarting || !profileStore.currentProfile}
-			class="w-full py-3 rounded-md font-medium transition-colors"
-			style="background-color: {isStarting || !profileStore.currentProfile
-				? '#9ca3af'
-				: '#0284c7'}; color: white;"
-		>
-			{#if isStarting}
-				<span class="flex items-center justify-center gap-2">
-					<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
-							fill="none"
-						></circle>
-						<path
-							class="opacity-75"
-							fill="currentColor"
-							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-						></path>
-					</svg>
-					Starting Scan...
-				</span>
+		{:else}
+			<!-- Profile Selection -->
+			{#if profiles.length > 1}
+				<div class="mb-6">
+					<label for="profile" class="block text-sm font-medium text-gray-700 mb-2">
+						Select Profile
+					</label>
+					<select
+						id="profile"
+						bind:value={selectedProfileId}
+						class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+					>
+						{#each profiles as profile}
+							<option value={profile.id}>{profile.full_name}</option>
+						{/each}
+					</select>
+				</div>
 			{:else}
-				Start Scan
+				<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+					<p class="text-sm text-gray-700">
+						<strong>Profile:</strong>
+						{profiles[0].full_name}
+					</p>
+				</div>
 			{/if}
-		</button>
 
-		<p class="mt-4 text-sm text-gray-500 text-center">
-			This will search all registered data brokers for your information.
-		</p>
+			<!-- Info Box -->
+			<div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+				<h3 class="text-sm font-semibold text-gray-900 mb-2">What happens next:</h3>
+				<ul class="text-sm text-gray-600 space-y-1">
+					<li>• We'll search multiple data broker sites for your information</li>
+					<li>• This typically takes 2-5 minutes</li>
+					<li>• You'll review results before any removal requests are sent</li>
+				</ul>
+			</div>
+
+			<!-- Error Display -->
+			{#if error}
+				<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+					<p class="text-sm text-red-700">{error}</p>
+				</div>
+			{/if}
+
+			<!-- Start Button -->
+			<button
+				onclick={handleStartScan}
+				disabled={scanStore.loading || !selectedProfileId}
+				class="w-full px-6 py-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg"
+				style="background-color: #0284c7; color: white;"
+			>
+				{scanStore.loading ? 'Starting Scan...' : 'Start Scan'}
+			</button>
+
+			<!-- Back to Dashboard -->
+			<div class="mt-4 text-center">
+				<button
+					onclick={() => goto('/')}
+					class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+				>
+					← Back to Dashboard
+				</button>
+			</div>
+		{/if}
 	</div>
 </div>
