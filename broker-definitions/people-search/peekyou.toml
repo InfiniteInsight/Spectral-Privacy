@@ -1,0 +1,52 @@
+# PeekYou - Social Media & People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "peekyou"
+name = "PeekYou"
+url = "https://www.peekyou.com"
+domain = "peekyou.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.peekyou.com/{first}_{last}"
+requires_fields = ["first_name", "last_name"]
+
+[search.result_selectors]
+results_container = "#people_search_results, .results-list"
+result_item = ".result_display, .person-item"
+listing_url = "a.profile_link, a[href^='/']"
+name = ".person_name, h3.name, .display-name"
+age = ".age_display, .age"
+location = ".location_display, .current-location"
+social_profiles = ".social_links a, .social-profiles a"
+websites = ".web_links a, .websites a"
+usernames = ".username, .social-username"
+no_results_indicator = ".no_results, .no-matches"
+captcha_required = "#recaptcha, iframe[src*='recaptcha']"
+
+[removal]
+method = "email"
+email = "support@peekyou.com"
+subject = "Privacy Opt-Out Request"
+body = """Hello,
+
+I am requesting removal of my profile from PeekYou.
+
+Profile URL: {found_listing_url}
+Name: {full_name}
+Email: {user_email}
+
+Please confirm when this has been completed.
+
+Thank you.
+"""
+response_days = 5
+notes = "PeekYou allows email-based opt-out. Send email to support@peekyou.com with subject 'Privacy Opt-Out Request'. Include your profile URL and name. Usually responds within 3-5 business days."
+
+# No form selectors needed for email-based removal

@@ -1,0 +1,50 @@
+# Radaris - Free People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "radaris"
+name = "Radaris"
+url = "https://radaris.com"
+domain = "radaris.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 2
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://radaris.com/p/{first}/{last}/"
+requires_fields = ["first_name", "last_name"]
+
+[search.result_selectors]
+results_container = "#search-results, .results"
+result_item = ".teaser, .search-teaser"
+listing_url = "a.name-link, a[href*='/p/']"
+name = ".fn, .full-name"
+age = ".age"
+location = ".location, .adr"
+relatives = ".relatives .name, .associates .name"
+phones = ".tel, .phone"
+emails = ".email"
+addresses = ".adr, .address"
+no_results_indicator = ".no-results, .not-found"
+captcha_required = "#recaptcha, iframe[src*='recaptcha']"
+
+[removal]
+method = "web-form"
+url = "https://radaris.com/control/privacy"
+confirmation = "automatic"
+notes = "Radaris has a straightforward removal process. Submit the opt-out form with the listing URL. Usually processes within 24-48 hours. No email verification required."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+
+[removal.form_selectors]
+listing_url_input = "#url, input[name='url'], input[placeholder*='URL']"
+email_input = "#email, input[name='email']"
+submit_button = "#btnSubmit, button[type='submit'], .btn-submit"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success, .opt-out-confirmation"
+error_indicator = ".error, .alert-error"

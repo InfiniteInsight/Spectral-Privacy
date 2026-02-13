@@ -1,0 +1,51 @@
+# MyLife - People Search & Reputation Management
+# Last verified: 2026-02-13
+
+[broker]
+id = "mylife"
+name = "MyLife"
+url = "https://www.mylife.com"
+domain = "mylife.com"
+category = "people-search"
+difficulty = "Hard"
+typical_removal_days = 14
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.mylife.com/{first}-{last}/{city}-{state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[search.result_selectors]
+results_container = "#people-search-results, .search-results"
+result_item = ".result, .person-result"
+listing_url = "a.view-profile, .profile-link"
+name = ".person-name, h3.name"
+age = ".age-field, .age"
+location = ".location, .city-state"
+relatives = ".relatives-list .name"
+phones = ".phone-numbers .phone"
+emails = ".email-addresses .email"
+no_results_indicator = ".no-matches, .no-results-found"
+captcha_required = "iframe[title*='recaptcha' i], .g-recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://www.mylife.com/privacy-policy"
+confirmation = "manual"
+notes = "MyLife removal is complex. Requires account creation or emailing privacy@mylife.com with specific information. May require government ID verification. Removal can take 7-14 business days. Known to resist removal requests."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+full_name = "{full_name}"
+
+[removal.form_selectors]
+listing_url_input = "#url, input[name='url']"
+email_input = "#email, input[type='email']"
+name_input = "#fullName, input[name='name']"
+submit_button = "button.submit, input[type='submit']"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message, .confirmation"
+error_indicator = ".error-message, .alert-error"

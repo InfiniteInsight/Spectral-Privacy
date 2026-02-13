@@ -1,0 +1,56 @@
+# Intelius - Background Check & People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "intelius"
+name = "Intelius"
+url = "https://www.intelius.com"
+domain = "intelius.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.intelius.com/people-search/{first}-{last}/{city}-{state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[search.result_selectors]
+results_container = "#results, .search-results"
+result_item = ".result-card, .person-card"
+listing_url = "a.view-full-profile, a.details-link"
+name = ".person-name, h3"
+age = ".age, .person-age"
+location = ".location, .current-address"
+relatives = ".relatives .name, .family-members .name"
+phones = ".phone-list .phone, .contact-info .phone"
+emails = ".email-list .email"
+addresses = ".address-history .address"
+no_results_indicator = ".no-results, .empty-results"
+captcha_required = "iframe[src*='recaptcha'], #recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://www.intelius.com/optout"
+confirmation = "email-verification"
+notes = "Intelius requires email verification. You must access the removal page, find your listing, and submit opt-out request. Check email for verification link. Process takes 3-7 business days. May need to repeat for related sites (PeopleLookup, PublicRecordsNow)."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+phone = "{user_phone}"
+
+[removal.form_selectors]
+listing_url_input = "#profileUrl, input[name='url']"
+email_input = "#email, input[type='email']"
+first_name_input = "#firstName, input[name='firstName']"
+last_name_input = "#lastName, input[name='lastName']"
+phone_input = "#phone, input[name='phone'], input[type='tel']"
+submit_button = "button.submit, input[type='submit'], #submitBtn"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success, .confirmation-message"
+error_indicator = ".error, .alert-danger"

@@ -1,0 +1,53 @@
+# PeopleFinders - People Search & Background Check
+# Last verified: 2026-02-13
+
+[broker]
+id = "peoplefinders"
+name = "PeopleFinders"
+url = "https://www.peoplefinders.com"
+domain = "peoplefinders.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.peoplefinders.com/people/{first}-{last}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = "#search-results, .results-container"
+result_item = ".result-item, .search-result"
+listing_url = "a.view-details, a.result-link"
+name = ".person-name, .result-name, h2.name"
+age = ".age, .person-age"
+location = ".location, .address-city-state"
+relatives = ".relatives .relative-name, .aka .name"
+phones = ".phone, .phone-number"
+emails = ".email"
+no_results_indicator = ".no-results, .zero-results"
+captcha_required = "iframe[src*='recaptcha'], #recaptcha, .g-recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://www.peoplefinders.com/manage"
+confirmation = "email-verification"
+notes = "Requires email verification. Include listing URL and reason code. Check takes 3-5 business days. May need to submit multiple times if multiple listings exist."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+
+[removal.form_selectors]
+listing_url_input = "#profileUrl, input[name='profileUrl'], input[placeholder*='URL' i]"
+email_input = "#email, input[type='email'], input[name='email']"
+first_name_input = "#firstName, input[name='firstName']"
+last_name_input = "#lastName, input[name='lastName']"
+submit_button = "button[type='submit'], input[type='submit'], .submit-button"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success, .confirmation, .alert-success"
+error_indicator = ".error, .alert-danger, .alert-error"
