@@ -23,12 +23,21 @@
 
 	// Auto-navigate when complete
 	$effect(() => {
+		let navigationTimer: ReturnType<typeof setTimeout> | undefined;
+
 		if (scanStore.scanStatus?.status === 'Completed') {
 			// Wait 2 seconds then navigate
-			setTimeout(() => {
+			navigationTimer = setTimeout(() => {
 				goto(`/scan/review/${scanJobId}`);
 			}, 2000);
 		}
+
+		// Cleanup function runs when effect is destroyed
+		return () => {
+			if (navigationTimer !== undefined) {
+				clearTimeout(navigationTimer);
+			}
+		};
 	});
 
 	const status = $derived(scanStore.scanStatus);
@@ -38,7 +47,9 @@
 
 	// Calculate progress percentage
 	const progressPercent = $derived(
-		status ? Math.round((status.completed_brokers / status.total_brokers) * 100) : 0
+		status && status.total_brokers > 0
+			? Math.round((status.completed_brokers / status.total_brokers) * 100)
+			: 0
 	);
 </script>
 
@@ -80,6 +91,13 @@
 							style="width: {progressPercent}%; background-color: #0284c7;"
 						></div>
 					</div>
+				</div>
+			{/if}
+
+			<!-- Store Error Display -->
+			{#if scanStore.error && !isFailed}
+				<div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+					<p class="text-sm text-yellow-700">⚠ {scanStore.error}</p>
 				</div>
 			{/if}
 
