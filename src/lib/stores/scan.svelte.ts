@@ -29,6 +29,7 @@ interface ScanState {
 	loading: boolean;
 	error: string | null;
 	pollingInterval: number | null;
+	isPolling: boolean;
 }
 
 /**
@@ -44,7 +45,8 @@ function createScanStore() {
 		findings: [],
 		loading: false,
 		error: null,
-		pollingInterval: null
+		pollingInterval: null,
+		isPolling: false
 	});
 
 	return {
@@ -69,9 +71,12 @@ function createScanStore() {
 		 * Start a new scan job
 		 *
 		 * @param profileId - The profile ID to scan
-		 * @returns The scan job ID
+		 * @returns The scan job ID or null on error
 		 */
-		async startScan(profileId: string): Promise<string> {
+		async startScan(profileId: string): Promise<string | null> {
+			this.stopPolling();
+			state.findings = [];
+			state.scanStatus = null;
 			state.loading = true;
 			state.error = null;
 
@@ -83,7 +88,7 @@ function createScanStore() {
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to start scan';
 				console.error('Start scan error:', err);
-				throw err;
+				return null;
 			} finally {
 				state.loading = false;
 			}
@@ -95,7 +100,6 @@ function createScanStore() {
 		 * @param scanJobId - The scan job ID to check
 		 */
 		async fetchStatus(scanJobId: string): Promise<void> {
-			state.loading = true;
 			state.error = null;
 
 			try {
@@ -103,9 +107,8 @@ function createScanStore() {
 				state.scanStatus = status;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to fetch scan status';
+				state.scanStatus = null;
 				console.error('Fetch status error:', err);
-			} finally {
-				state.loading = false;
 			}
 		},
 
@@ -125,15 +128,21 @@ function createScanStore() {
 
 			// Start polling
 			state.pollingInterval = window.setInterval(async () => {
-				await this.fetchStatus(scanJobId);
+				if (state.isPolling) return;
+				state.isPolling = true;
+				try {
+					await this.fetchStatus(scanJobId);
 
-				// Auto-stop on terminal status
-				if (
-					state.scanStatus?.status === 'Completed' ||
-					state.scanStatus?.status === 'Failed' ||
-					state.scanStatus?.status === 'Cancelled'
-				) {
-					this.stopPolling();
+					// Auto-stop on terminal status
+					if (
+						state.scanStatus?.status === 'Completed' ||
+						state.scanStatus?.status === 'Failed' ||
+						state.scanStatus?.status === 'Cancelled'
+					) {
+						this.stopPolling();
+					}
+				} finally {
+					state.isPolling = false;
 				}
 			}, intervalMs);
 		},
@@ -181,7 +190,7 @@ function createScanStore() {
 			try {
 				await scanAPI.verify(findingId, isMatch);
 
-				// Optimistic update
+				// Update after success (pessimistic)
 				state.findings = state.findings.map((f) =>
 					f.id === findingId ? { ...f, verification_status: isMatch ? 'Confirmed' : 'Rejected' } : f
 				);
@@ -224,6 +233,7 @@ function createScanStore() {
 			state.findings = [];
 			state.loading = false;
 			state.error = null;
+			state.isPolling = false;
 		}
 	};
 }
