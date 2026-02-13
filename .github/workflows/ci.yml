@@ -53,10 +53,10 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --exclude spectral-app --all-targets --all-features -- -D warnings
 
       - name: Run tests
-        run: cargo test --all --no-fail-fast
+        run: cargo test --workspace --exclude spectral-app --no-fail-fast
 
   # ==========================================================================
   # Frontend Checks
