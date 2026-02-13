@@ -59,11 +59,17 @@
 					✓ Vault Unlocked
 				</div>
 
-				<!-- Coming Soon -->
-				<div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
-					<p class="text-gray-700 text-sm">
-						<strong>Coming Soon:</strong> Data broker scanning and automated removal requests will appear
-						here.
+				<!-- Scan for Data -->
+				<div class="mt-6">
+					<a
+						href="/scan/start"
+						class="block px-6 py-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors text-center"
+						style="background-color: #0284c7; color: white; display: block; text-align: center;"
+					>
+						Scan for Your Data
+					</a>
+					<p class="text-sm text-gray-500 mt-2 text-center">
+						Search data brokers for your information
 					</p>
 				</div>
 			{:else}
