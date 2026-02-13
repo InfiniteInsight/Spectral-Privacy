@@ -7,6 +7,7 @@
 
 	const scanJobId = $derived($page.params.id);
 	let expandedFindings = $state<Set<string>>(new Set());
+	let actionError = $state<string | null>(null);
 
 	onMount(async () => {
 		if (!scanJobId) {
@@ -23,8 +24,10 @@
 		const groups = new Map<string, Finding[]>();
 
 		for (const finding of scanStore.findings) {
-			const existing = groups.get(finding.broker_id) || [];
-			groups.set(finding.broker_id, [...existing, finding]);
+			if (!groups.has(finding.broker_id)) {
+				groups.set(finding.broker_id, []);
+			}
+			groups.get(finding.broker_id)!.push(finding);
 		}
 
 		return groups;
@@ -36,9 +39,11 @@
 	);
 
 	async function handleVerify(findingId: string, isMatch: boolean) {
+		actionError = null;
 		try {
 			await scanStore.verifyFinding(findingId, isMatch);
 		} catch (err) {
+			actionError = 'Failed to update finding. Please try again.';
 			console.error('Verification failed:', err);
 		}
 	}
@@ -48,10 +53,12 @@
 			return;
 		}
 
+		actionError = null;
 		try {
 			const count = await scanStore.submitRemovals(scanJobId);
 			goto(`/removals?count=${count}`);
 		} catch (err) {
+			actionError = 'Failed to submit removals. Please try again.';
 			console.error('Submission failed:', err);
 		}
 	}
@@ -112,6 +119,13 @@
 					</p>
 				</div>
 
+				<!-- Action Error Display -->
+				{#if actionError}
+					<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+						<p class="text-sm text-red-700">{actionError}</p>
+					</div>
+				{/if}
+
 				<!-- Grouped Findings -->
 				<div class="space-y-6 mb-8">
 					{#each [...groupedFindings.entries()] as [brokerId, findings]}
@@ -119,7 +133,7 @@
 							<!-- Broker Header -->
 							<div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
 								<h3 class="text-lg font-semibold text-gray-900">
-									{brokerId}
+									{brokerId || 'Unknown Broker'}
 									<span class="text-sm font-normal text-gray-600 ml-2">
 										({findings.length} result{findings.length !== 1 ? 's' : ''})
 									</span>
