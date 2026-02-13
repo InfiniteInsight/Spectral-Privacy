@@ -10,6 +10,11 @@
 		// Ensure profiles are loaded
 		if (profileStore.profiles.length === 0) {
 			await profileStore.loadProfiles();
+
+			// Handle loading errors
+			if (profileStore.error) {
+				error = profileStore.error;
+			}
 		}
 
 		// Pre-select first profile
@@ -21,6 +26,14 @@
 	async function handleStartScan() {
 		if (!selectedProfileId) {
 			error = 'Please select a profile';
+			return;
+		}
+
+		// Validate profile still exists
+		const profileExists = profiles.some((p) => p.id === selectedProfileId);
+		if (!profileExists) {
+			error = 'Selected profile no longer exists. Please select another profile.';
+			selectedProfileId = profiles.length > 0 ? profiles[0].id : '';
 			return;
 		}
 
