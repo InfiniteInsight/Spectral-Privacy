@@ -34,6 +34,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+pub mod broker_scans;
 pub mod connection;
 pub mod error;
 pub mod migrations;
