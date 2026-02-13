@@ -9,3 +9,4 @@
 export * from './app';
 export { vaultStore } from './vault.svelte';
 export { profileStore } from './profile.svelte';
+export { scanStore } from './scan.svelte';
