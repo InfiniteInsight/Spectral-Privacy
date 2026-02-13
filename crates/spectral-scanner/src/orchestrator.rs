@@ -62,23 +62,19 @@ impl ScanOrchestrator {
 mod tests {
     use super::*;
     use spectral_core::ProfileId;
-    use spectral_db::Database;
     use spectral_vault::{encrypt_string, UserProfile};
 
-    // Helper to create test orchestrator
+    // Helper to create test pool
     // Note: Skips browser creation since Chrome may not be available in test environment
-    async fn create_test_pool_and_db() -> (Arc<EncryptedPool>, Database, [u8; 32]) {
+    async fn create_test_pool() -> (Arc<EncryptedPool>, [u8; 32]) {
         let key = [0x42; 32];
-        let pool = Arc::new(
-            EncryptedPool::new(":memory:", key.to_vec())
-                .await
-                .expect("create pool"),
-        );
-        let db = Database::new(":memory:", key.to_vec())
+        let pool = EncryptedPool::new(":memory:", key.to_vec())
             .await
-            .expect("create db");
-        db.run_migrations().await.expect("run migrations");
-        (pool, db, key)
+            .expect("create pool");
+        spectral_db::migrations::run_migrations(pool.pool())
+            .await
+            .expect("run migrations");
+        (Arc::new(pool), key)
     }
 
     fn mock_profile(key: &[u8; 32]) -> UserProfile {
@@ -93,12 +89,12 @@ mod tests {
     #[tokio::test]
     #[ignore = "Requires Chrome browser to be installed"]
     async fn test_start_scan_creates_job() {
-        let (pool, db, key) = create_test_pool_and_db().await;
+        let (pool, key) = create_test_pool().await;
 
         let broker_registry = Arc::new(BrokerRegistry::new());
         let browser_engine = Arc::new(BrowserEngine::new().await.expect("create browser"));
 
-        let orchestrator = ScanOrchestrator::new(broker_registry, browser_engine, pool, 5);
+        let orchestrator = ScanOrchestrator::new(broker_registry, browser_engine, pool.clone(), 5);
 
         let profile = mock_profile(&key);
 
@@ -107,12 +103,12 @@ mod tests {
             .await
             .expect("start scan");
 
-        // Verify job was created in database
+        // Verify job was created in database - use same pool
         let job = sqlx::query_as::<_, (String, String, i64)>(
             "SELECT id, status, total_brokers FROM scan_jobs WHERE id = ?",
         )
         .bind(&job_id)
-        .fetch_one(db.pool())
+        .fetch_one(pool.pool())
         .await
         .expect("fetch job");
 
