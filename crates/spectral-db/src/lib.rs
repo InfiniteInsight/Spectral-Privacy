@@ -37,6 +37,7 @@
 pub mod broker_scans;
 pub mod connection;
 pub mod error;
+pub mod findings;
 pub mod migrations;
 pub mod removal_attempts;
 /// Scan job management for tracking broker scan operations.
