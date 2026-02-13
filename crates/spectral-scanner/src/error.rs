@@ -1,44 +1,51 @@
+//! Error types for the scanner module.
+
 use spectral_core::BrokerId;
-use std::time::Duration;
 use thiserror::Error;
 
+/// Result type for scanner operations.
+pub type Result<T> = std::result::Result<T, ScanError>;
+
+/// Errors that can occur during scanning operations.
 #[derive(Debug, Error)]
 pub enum ScanError {
-    #[error("CAPTCHA required for broker {broker_id}")]
-    CaptchaRequired { broker_id: BrokerId },
-
-    #[error("Rate limited for broker {broker_id}, retry after {retry_after:?}")]
-    RateLimited {
-        broker_id: BrokerId,
-        retry_after: Duration,
-    },
-
-    #[error("Broker site down: {broker_id}, HTTP {http_status}")]
-    BrokerSiteDown {
-        broker_id: BrokerId,
-        http_status: u16,
-    },
-
-    #[error("Selectors outdated for broker {broker_id}: {reason}")]
-    SelectorsOutdated { broker_id: BrokerId, reason: String },
-
-    #[error("Profile data error for broker {broker_id}: {reason}")]
-    ProfileDataError { broker_id: BrokerId, reason: String },
-
-    #[error("Insufficient profile data for broker {broker_id}, missing: {missing_fields:?}")]
-    InsufficientProfileData {
-        broker_id: BrokerId,
-        missing_fields: Vec<String>,
-    },
-
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-
-    #[error("Browser error: {0}")]
+    /// Browser automation error
+    #[error("browser error: {0}")]
     Browser(#[from] spectral_browser::BrowserError),
 
-    #[error("Broker error: {0}")]
-    Broker(#[from] spectral_broker::BrokerError),
-}
+    /// Database error
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
 
-pub type Result<T> = std::result::Result<T, ScanError>;
+    /// Broker configuration error
+    #[error("broker error: {0}")]
+    Broker(#[from] spectral_broker::BrokerError),
+
+    /// Parsing/scraping error
+    #[error("parse error: {0}")]
+    Parse(String),
+
+    /// CAPTCHA challenge detected
+    #[error("CAPTCHA required for broker {broker_id}")]
+    CaptchaRequired {
+        /// The broker that requires CAPTCHA
+        broker_id: BrokerId,
+    },
+
+    /// Rate limit exceeded
+    #[error("rate limited for broker {broker_id}, retry after {retry_after:?}")]
+    RateLimited {
+        /// The broker that rate limited us
+        broker_id: BrokerId,
+        /// Duration to wait before retrying
+        retry_after: std::time::Duration,
+    },
+
+    /// Profile missing required fields
+    #[error("profile missing required fields: {0:?}")]
+    MissingRequiredFields(Vec<String>),
+
+    /// No result selectors configured
+    #[error("no result selectors configured for broker {0}")]
+    NoResultSelectors(BrokerId),
+}
