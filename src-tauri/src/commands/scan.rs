@@ -151,16 +151,49 @@ pub async fn verify_finding(
     Ok(())
 }
 
-/// Submit removal requests for confirmed findings (stub implementation - Phase 4)
+/// Submit removal requests for confirmed findings
 #[tauri::command]
 pub async fn submit_removals_for_confirmed(
-    _state: State<'_, AppState>,
-    _vault_id: String,
-    _scan_job_id: String,
+    state: State<'_, AppState>,
+    vault_id: String,
+    scan_job_id: String,
 ) -> Result<Vec<String>, String> {
-    // Stub: Return empty array for now
-    // Phase 4 will implement actual removal submission
-    Ok(vec![])
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not found or locked".to_string())?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Query all findings for this scan
+    let findings = spectral_db::findings::get_by_scan_job(db.pool(), &scan_job_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Filter to confirmed findings
+    let confirmed_findings = findings
+        .into_iter()
+        .filter(|f| f.verification_status == spectral_db::findings::VerificationStatus::Confirmed)
+        .collect::<Vec<_>>();
+
+    // Create removal attempt for each confirmed finding
+    let mut removal_ids = Vec::new();
+    for finding in confirmed_findings {
+        let removal_attempt = spectral_db::removal_attempts::create_removal_attempt(
+            db.pool(),
+            finding.id,
+            finding.broker_id,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+        removal_ids.push(removal_attempt.id);
+    }
+
+    Ok(removal_ids)
 }
 
 #[cfg(test)]
