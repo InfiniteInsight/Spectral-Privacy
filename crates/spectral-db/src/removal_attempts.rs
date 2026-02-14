@@ -1,147 +1,135 @@
-//! Removal attempt database operations.
+//! Removal attempts operations for tracking removal request submissions.
+//!
+//! This module provides CRUD operations for the `removal_attempts` table,
+//! which stores removal request submissions for confirmed findings.
 
-use crate::error::{DatabaseError, Result};
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use spectral_broker::removal::RemovalOutcome;
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::{Pool, Sqlite};
+use uuid::Uuid;
 
-/// A removal attempt record.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// A removal attempt represents a removal request submission to a data broker.
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct RemovalAttempt {
-    /// Unique identifier for this removal attempt
+    /// Unique identifier
     pub id: String,
-    /// Reference to the broker result being removed
-    pub broker_result_id: String,
-    /// Identifier of the broker being contacted
+    /// ID of the finding being removed
+    pub finding_id: String,
+    /// ID of the broker
     pub broker_id: String,
-    /// Timestamp when the removal was attempted
-    pub attempted_at: DateTime<Utc>,
-    /// Outcome of the removal attempt
-    pub outcome: RemovalOutcome,
-    /// Email address used for verification (if applicable)
-    pub verification_email: Option<String>,
-    /// Optional notes about this attempt
-    pub notes: Option<String>,
+    /// Status of the removal attempt
+    pub status: String,
+    /// When the attempt was created (ISO 8601 timestamp)
+    pub created_at: String,
+    /// When the request was submitted (if submitted)
+    pub submitted_at: Option<String>,
+    /// When the removal was completed (if completed)
+    pub completed_at: Option<String>,
+    /// Error message if failed
+    pub error_message: Option<String>,
 }
 
-impl RemovalAttempt {
-    /// Create a new removal attempt.
-    #[must_use]
-    pub fn new(broker_result_id: String, broker_id: String, outcome: RemovalOutcome) -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            broker_result_id,
-            broker_id,
-            attempted_at: Utc::now(),
-            outcome,
-            verification_email: None,
-            notes: None,
-        }
-    }
+/// Create a new removal attempt.
+///
+/// Creates a removal attempt with status "Pending" and links it to the finding.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database insert fails.
+pub async fn create_removal_attempt(
+    pool: &Pool<Sqlite>,
+    finding_id: String,
+    broker_id: String,
+) -> Result<RemovalAttempt, sqlx::Error> {
+    let id = Uuid::new_v4().to_string();
+    let created_at = chrono::Utc::now().to_rfc3339();
 
-    /// Save the removal attempt to the database.
-    pub async fn save(&self, pool: &Pool<Sqlite>) -> Result<()> {
-        let outcome_json = serde_json::to_string(&self.outcome)
-            .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
+    sqlx::query(
+        "INSERT INTO removal_attempts (id, finding_id, broker_id, status, created_at)
+         VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(&finding_id)
+    .bind(&broker_id)
+    .bind("Pending")
+    .bind(&created_at)
+    .execute(pool)
+    .await?;
 
-        let outcome_type = match &self.outcome {
-            RemovalOutcome::Submitted => "Submitted",
-            RemovalOutcome::RequiresEmailVerification { .. } => "RequiresEmailVerification",
-            RemovalOutcome::RequiresCaptcha { .. } => "RequiresCaptcha",
-            RemovalOutcome::RequiresAccountCreation => "RequiresAccountCreation",
-            RemovalOutcome::Failed { .. } => "Failed",
-        };
+    Ok(RemovalAttempt {
+        id,
+        finding_id,
+        broker_id,
+        status: "Pending".to_string(),
+        created_at,
+        submitted_at: None,
+        completed_at: None,
+        error_message: None,
+    })
+}
 
-        sqlx::query(
-            "INSERT INTO removal_attempts (
-                id, broker_result_id, broker_id, attempted_at,
-                outcome_type, outcome_data, verification_email, notes
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        )
-        .bind(&self.id)
-        .bind(&self.broker_result_id)
-        .bind(&self.broker_id)
-        .bind(self.attempted_at.to_rfc3339())
-        .bind(outcome_type)
-        .bind(outcome_json)
-        .bind(&self.verification_email)
-        .bind(&self.notes)
-        .execute(pool)
-        .await?;
+/// Get all removal attempts for a specific finding.
+///
+/// Returns removal attempts ordered by newest first.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_by_finding_id(
+    pool: &Pool<Sqlite>,
+    finding_id: &str,
+) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    let attempts = sqlx::query_as::<_, RemovalAttempt>(
+        "SELECT * FROM removal_attempts WHERE finding_id = ? ORDER BY created_at DESC",
+    )
+    .bind(finding_id)
+    .fetch_all(pool)
+    .await?;
 
-        Ok(())
-    }
+    Ok(attempts)
+}
 
-    /// Load a removal attempt by ID.
-    pub async fn load(pool: &Pool<Sqlite>, id: &str) -> Result<Self> {
-        let row = sqlx::query(
-            "SELECT id, broker_result_id, broker_id, attempted_at,
-             outcome_data, verification_email, notes
-             FROM removal_attempts WHERE id = ?1",
-        )
-        .bind(id)
-        .fetch_optional(pool)
-        .await?
-        .ok_or(DatabaseError::NotFound)?;
+/// Update the status of a removal attempt.
+///
+/// Updates the status field and optionally updates timestamp fields.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database update fails.
+pub async fn update_status(
+    pool: &Pool<Sqlite>,
+    id: &str,
+    new_status: &str,
+    submitted_at: Option<String>,
+    completed_at: Option<String>,
+    error_message: Option<String>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE removal_attempts
+         SET status = ?, submitted_at = ?, completed_at = ?, error_message = ?
+         WHERE id = ?",
+    )
+    .bind(new_status)
+    .bind(submitted_at)
+    .bind(completed_at)
+    .bind(error_message)
+    .bind(id)
+    .execute(pool)
+    .await?;
 
-        let outcome_data: String = row.try_get("outcome_data")?;
-        let outcome: RemovalOutcome = serde_json::from_str(&outcome_data)
-            .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
+    Ok(())
+}
 
-        let attempted_at_str: String = row.try_get("attempted_at")?;
-        let attempted_at = DateTime::parse_from_rfc3339(&attempted_at_str)
-            .map_err(|e| DatabaseError::SerializationError(e.to_string()))?
-            .with_timezone(&Utc);
+/// Get a removal attempt by its ID.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_by_id(
+    pool: &Pool<Sqlite>,
+    id: &str,
+) -> Result<Option<RemovalAttempt>, sqlx::Error> {
+    let attempt =
+        sqlx::query_as::<_, RemovalAttempt>("SELECT * FROM removal_attempts WHERE id = ?")
+            .bind(id)
+            .fetch_optional(pool)
+            .await?;
 
-        Ok(Self {
-            id: row.try_get("id")?,
-            broker_result_id: row.try_get("broker_result_id")?,
-            broker_id: row.try_get("broker_id")?,
-            attempted_at,
-            outcome,
-            verification_email: row.try_get("verification_email")?,
-            notes: row.try_get("notes")?,
-        })
-    }
-
-    /// Load all removal attempts for a broker result.
-    pub async fn load_for_result(pool: &Pool<Sqlite>, broker_result_id: &str) -> Result<Vec<Self>> {
-        let rows = sqlx::query(
-            "SELECT id, broker_result_id, broker_id, attempted_at,
-             outcome_data, verification_email, notes
-             FROM removal_attempts
-             WHERE broker_result_id = ?1
-             ORDER BY attempted_at DESC",
-        )
-        .bind(broker_result_id)
-        .fetch_all(pool)
-        .await?;
-
-        let mut attempts = Vec::new();
-        for row in rows {
-            let outcome_data: String = row.try_get("outcome_data")?;
-            let outcome: RemovalOutcome = serde_json::from_str(&outcome_data)
-                .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
-
-            let attempted_at_str: String = row.try_get("attempted_at")?;
-            let attempted_at = DateTime::parse_from_rfc3339(&attempted_at_str)
-                .map_err(|e| DatabaseError::SerializationError(e.to_string()))?
-                .with_timezone(&Utc);
-
-            attempts.push(Self {
-                id: row.try_get("id")?,
-                broker_result_id: row.try_get("broker_result_id")?,
-                broker_id: row.try_get("broker_id")?,
-                attempted_at,
-                outcome,
-                verification_email: row.try_get("verification_email")?,
-                notes: row.try_get("notes")?,
-            });
-        }
-
-        Ok(attempts)
-    }
+    Ok(attempt)
 }
 
 #[cfg(test)]
@@ -152,90 +140,247 @@ mod tests {
 
     async fn setup_test_db() -> Database {
         let key = vec![0u8; 32];
+        // nosemgrep: no-unwrap-in-production
         let db = Database::new(":memory:", key).await.unwrap();
+        // nosemgrep: no-unwrap-in-production
         db.run_migrations().await.unwrap();
+
+        // Create test profile (required by foreign key)
+        let dummy_data = [0u8; 32];
+        let dummy_nonce = [0u8; 12];
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO profiles (id, data, nonce, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind("profile-123")
+        .bind(&dummy_data[..])
+        .bind(&dummy_nonce[..])
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .execute(db.pool())
+        .await
+        .expect("update status");
+
+        // Create test scan job
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO scan_jobs (id, profile_id, started_at, status, total_brokers, completed_brokers) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind("job-456")
+        .bind("profile-123")
+        .bind(Utc::now().to_rfc3339())
+        .bind("InProgress")
+        .bind(5)
+        .bind(0)
+        .execute(db.pool())
+        .await
+        .expect("update status");
+
+        // Create test broker scan
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO broker_scans (id, scan_job_id, broker_id, status, started_at) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind("scan-789")
+        .bind("job-456")
+        .bind("spokeo")
+        .bind("Success")
+        .bind(Utc::now().to_rfc3339())
+        .execute(db.pool())
+        .await
+        .expect("update status");
+
+        // Create test finding
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO findings (id, broker_scan_id, broker_id, profile_id, listing_url, verification_status, extracted_data, discovered_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind("finding-123")
+        .bind("scan-789")
+        .bind("spokeo")
+        .bind("profile-123")
+        .bind("https://example.com/123")
+        .bind("Confirmed")
+        .bind("{}")
+        .bind(Utc::now().to_rfc3339())
+        .execute(db.pool())
+        .await
+        .expect("update status");
+
         db
     }
 
-    async fn create_test_broker_result(pool: &Pool<Sqlite>, id: &str) {
-        // Create a profile first (required by foreign key)
-        let dummy_data = [0u8; 32];
-        let dummy_nonce = [0u8; 12];
+    #[tokio::test]
+    async fn test_create_removal_attempt() {
+        let db = setup_test_db().await;
 
-        sqlx::query(
-            "INSERT INTO profiles (id, data, nonce, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-        )
-        .bind("profile123")
-        .bind(&dummy_data[..]) // dummy encrypted data
-        .bind(&dummy_nonce[..]) // dummy nonce
-        .bind(Utc::now().to_rfc3339())
-        .bind(Utc::now().to_rfc3339())
-        .execute(pool)
-        .await
-        .unwrap();
+        let result =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await;
 
-        // Create broker_result (referenced by removal_attempts)
-        sqlx::query(
-            "INSERT INTO broker_results (
-                id, profile_id, broker_id, status,
-                first_seen, last_checked
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        )
-        .bind(id)
-        .bind("profile123")
-        .bind("spokeo")
-        .bind("found")
-        .bind(Utc::now().to_rfc3339())
-        .bind(Utc::now().to_rfc3339())
-        .execute(pool)
-        .await
-        .unwrap();
+        assert!(result.is_ok());
+        let attempt = result.expect("create attempt");
+        assert_eq!(attempt.finding_id, "finding-123");
+        assert_eq!(attempt.broker_id, "broker-1");
+        assert_eq!(attempt.status, "Pending");
+        assert!(!attempt.created_at.is_empty());
+        assert!(attempt.submitted_at.is_none());
+        assert!(attempt.completed_at.is_none());
+        assert!(attempt.error_message.is_none());
     }
 
     #[tokio::test]
-    async fn test_save_and_load_removal_attempt() {
+    async fn test_get_by_finding_id() {
         let db = setup_test_db().await;
-        create_test_broker_result(db.pool(), "result123").await;
 
-        let attempt = RemovalAttempt::new(
-            "result123".to_string(),
-            "spokeo".to_string(),
-            RemovalOutcome::Submitted,
-        );
-
-        attempt.save(db.pool()).await.unwrap();
-
-        let loaded = RemovalAttempt::load(db.pool(), &attempt.id).await.unwrap();
-        assert_eq!(loaded.id, attempt.id);
-        assert_eq!(loaded.broker_id, "spokeo");
-    }
-
-    #[tokio::test]
-    async fn test_load_for_result() {
-        let db = setup_test_db().await;
-        create_test_broker_result(db.pool(), "result123").await;
-
-        let first_attempt = RemovalAttempt::new(
-            "result123".to_string(),
-            "spokeo".to_string(),
-            RemovalOutcome::Submitted,
-        );
-        let second_attempt = RemovalAttempt::new(
-            "result123".to_string(),
-            "spokeo".to_string(),
-            RemovalOutcome::Failed {
-                reason: "Timeout".to_string(),
-                error_details: None,
-            },
-        );
-
-        first_attempt.save(db.pool()).await.unwrap();
-        second_attempt.save(db.pool()).await.unwrap();
-
-        let all_attempts = RemovalAttempt::load_for_result(db.pool(), "result123")
+        // Create 2 removal attempts for same finding
+        // nosemgrep: no-unwrap-in-production
+        create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
             .await
-            .unwrap();
-        assert_eq!(all_attempts.len(), 2);
+            .expect("update status");
+
+        // Small delay to ensure different timestamps
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        // nosemgrep: no-unwrap-in-production
+        create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+            .await
+            .expect("update status");
+
+        let attempts = get_by_finding_id(db.pool(), "finding-123")
+            .await
+            .expect("get by finding id");
+
+        assert_eq!(attempts.len(), 2);
+        // Verify ordered by created_at DESC (newest first)
+        assert!(attempts[0].created_at >= attempts[1].created_at);
+    }
+
+    #[tokio::test]
+    async fn test_get_by_finding_id_returns_empty() {
+        let db = setup_test_db().await;
+
+        // nosemgrep: no-unwrap-in-production
+        let attempts = get_by_finding_id(db.pool(), "non-existent-finding")
+            .await
+            .expect("update status");
+
+        assert_eq!(attempts.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_update_status_to_submitted() {
+        let db = setup_test_db().await;
+
+        let attempt =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt");
+
+        let submitted_timestamp = chrono::Utc::now().to_rfc3339();
+        update_status(
+            db.pool(),
+            &attempt.id,
+            "Submitted",
+            Some(submitted_timestamp.clone()),
+            None,
+            None,
+        )
+        .await
+        .expect("update status");
+
+        // Verify update
+        let updated = get_by_id(db.pool(), &attempt.id)
+            .await
+            .expect("get by id")
+            .expect("found attempt");
+        assert_eq!(updated.status, "Submitted");
+        assert_eq!(updated.submitted_at, Some(submitted_timestamp));
+        assert!(updated.completed_at.is_none());
+        assert!(updated.error_message.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_update_status_to_completed() {
+        let db = setup_test_db().await;
+
+        let attempt =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt");
+
+        let completed_timestamp = chrono::Utc::now().to_rfc3339();
+        update_status(
+            db.pool(),
+            &attempt.id,
+            "Completed",
+            None,
+            Some(completed_timestamp.clone()),
+            None,
+        )
+        .await
+        .expect("update status");
+
+        // Verify update
+        let updated = get_by_id(db.pool(), &attempt.id)
+            .await
+            .expect("get by id")
+            .expect("found attempt");
+        assert_eq!(updated.status, "Completed");
+        assert_eq!(updated.completed_at, Some(completed_timestamp));
+    }
+
+    #[tokio::test]
+    async fn test_update_status_to_failed_with_error() {
+        let db = setup_test_db().await;
+
+        let attempt =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt");
+
+        update_status(
+            db.pool(),
+            &attempt.id,
+            "Failed",
+            None,
+            None,
+            Some("Network timeout".to_string()),
+        )
+        .await
+        .expect("update status");
+
+        // Verify update
+        let updated = get_by_id(db.pool(), &attempt.id)
+            .await
+            .expect("get by id")
+            .expect("found attempt");
+        assert_eq!(updated.status, "Failed");
+        assert_eq!(updated.error_message, Some("Network timeout".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id() {
+        let db = setup_test_db().await;
+
+        // Create removal attempt
+        let attempt =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt");
+
+        // Get by ID - should find it
+        let found = get_by_id(db.pool(), &attempt.id).await.expect("get by id");
+        assert!(found.is_some());
+        let found_attempt = found.expect("found attempt");
+        assert_eq!(found_attempt.id, attempt.id);
+        assert_eq!(found_attempt.finding_id, "finding-123");
+
+        // Get by non-existent ID - should return None
+        let not_found = get_by_id(db.pool(), "non-existent-id")
+            .await
+            .expect("get by id");
+        assert!(not_found.is_none());
     }
 }
