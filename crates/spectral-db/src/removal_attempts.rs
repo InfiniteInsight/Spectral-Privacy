@@ -3,11 +3,39 @@
 //! This module provides CRUD operations for the `removal_attempts` table,
 //! which stores removal request submissions for confirmed findings.
 
-use sqlx::{Pool, Sqlite};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{Pool, Row, Sqlite};
+use std::fmt;
 use uuid::Uuid;
 
+/// Status of a removal attempt.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "TEXT")]
+pub enum RemovalStatus {
+    /// Request is pending submission
+    Pending,
+    /// Request has been submitted to the broker
+    Submitted,
+    /// Removal has been completed
+    Completed,
+    /// Removal request failed
+    Failed,
+}
+
+impl fmt::Display for RemovalStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Pending => write!(f, "Pending"),
+            Self::Submitted => write!(f, "Submitted"),
+            Self::Completed => write!(f, "Completed"),
+            Self::Failed => write!(f, "Failed"),
+        }
+    }
+}
+
 /// A removal attempt represents a removal request submission to a data broker.
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RemovalAttempt {
     /// Unique identifier
     pub id: String,
@@ -16,13 +44,13 @@ pub struct RemovalAttempt {
     /// ID of the broker
     pub broker_id: String,
     /// Status of the removal attempt
-    pub status: String,
-    /// When the attempt was created (ISO 8601 timestamp)
-    pub created_at: String,
+    pub status: RemovalStatus,
+    /// When the attempt was created
+    pub created_at: DateTime<Utc>,
     /// When the request was submitted (if submitted)
-    pub submitted_at: Option<String>,
+    pub submitted_at: Option<DateTime<Utc>>,
     /// When the removal was completed (if completed)
-    pub completed_at: Option<String>,
+    pub completed_at: Option<DateTime<Utc>>,
     /// Error message if failed
     pub error_message: Option<String>,
 }
@@ -39,8 +67,9 @@ pub async fn create_removal_attempt(
     broker_id: String,
 ) -> Result<RemovalAttempt, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
-    let created_at = chrono::Utc::now().to_rfc3339();
+    let created_at = Utc::now();
 
+    // Insert removal attempt
     sqlx::query(
         "INSERT INTO removal_attempts (id, finding_id, broker_id, status, created_at)
          VALUES (?, ?, ?, ?, ?)",
@@ -48,16 +77,23 @@ pub async fn create_removal_attempt(
     .bind(&id)
     .bind(&finding_id)
     .bind(&broker_id)
-    .bind("Pending")
-    .bind(&created_at)
+    .bind(RemovalStatus::Pending.to_string())
+    .bind(created_at.to_rfc3339())
     .execute(pool)
     .await?;
+
+    // Link removal attempt to finding
+    sqlx::query("UPDATE findings SET removal_attempt_id = ? WHERE id = ?")
+        .bind(&id)
+        .bind(&finding_id)
+        .execute(pool)
+        .await?;
 
     Ok(RemovalAttempt {
         id,
         finding_id,
         broker_id,
-        status: "Pending".to_string(),
+        status: RemovalStatus::Pending,
         created_at,
         submitted_at: None,
         completed_at: None,
@@ -75,12 +111,56 @@ pub async fn get_by_finding_id(
     pool: &Pool<Sqlite>,
     finding_id: &str,
 ) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
-    let attempts = sqlx::query_as::<_, RemovalAttempt>(
-        "SELECT * FROM removal_attempts WHERE finding_id = ? ORDER BY created_at DESC",
+    let rows = sqlx::query(
+        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+         FROM removal_attempts WHERE finding_id = ? ORDER BY created_at DESC",
     )
     .bind(finding_id)
     .fetch_all(pool)
     .await?;
+
+    let attempts = rows
+        .into_iter()
+        .map(|row| -> Result<RemovalAttempt, sqlx::Error> {
+            let status_str: String = row.get("status");
+            let status = match status_str.as_str() {
+                "Submitted" => RemovalStatus::Submitted,
+                "Completed" => RemovalStatus::Completed,
+                "Failed" => RemovalStatus::Failed,
+                _ => RemovalStatus::Pending, // Default fallback for "Pending" or unknown
+            };
+
+            let created_at_str: String = row.get("created_at");
+            let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?
+                .with_timezone(&Utc);
+
+            let submitted_at = row
+                .try_get::<Option<String>, _>("submitted_at")
+                .ok()
+                .flatten()
+                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
+                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
+
+            let completed_at = row
+                .try_get::<Option<String>, _>("completed_at")
+                .ok()
+                .flatten()
+                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
+                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
+
+            Ok(RemovalAttempt {
+                id: row.get("id"),
+                finding_id: row.get("finding_id"),
+                broker_id: row.get("broker_id"),
+                status,
+                created_at,
+                submitted_at,
+                completed_at,
+                error_message: row.try_get("error_message").ok().flatten(),
+            })
+        })
+        .collect::<Result<Vec<_>, sqlx::Error>>()?;
 
     Ok(attempts)
 }
@@ -94,9 +174,9 @@ pub async fn get_by_finding_id(
 pub async fn update_status(
     pool: &Pool<Sqlite>,
     id: &str,
-    new_status: &str,
-    submitted_at: Option<String>,
-    completed_at: Option<String>,
+    new_status: RemovalStatus,
+    submitted_at: Option<DateTime<Utc>>,
+    completed_at: Option<DateTime<Utc>>,
     error_message: Option<String>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
@@ -104,9 +184,9 @@ pub async fn update_status(
          SET status = ?, submitted_at = ?, completed_at = ?, error_message = ?
          WHERE id = ?",
     )
-    .bind(new_status)
-    .bind(submitted_at)
-    .bind(completed_at)
+    .bind(new_status.to_string())
+    .bind(submitted_at.map(|dt| dt.to_rfc3339()))
+    .bind(completed_at.map(|dt| dt.to_rfc3339()))
     .bind(error_message)
     .bind(id)
     .execute(pool)
@@ -123,11 +203,55 @@ pub async fn get_by_id(
     pool: &Pool<Sqlite>,
     id: &str,
 ) -> Result<Option<RemovalAttempt>, sqlx::Error> {
-    let attempt =
-        sqlx::query_as::<_, RemovalAttempt>("SELECT * FROM removal_attempts WHERE id = ?")
-            .bind(id)
-            .fetch_optional(pool)
-            .await?;
+    let row = sqlx::query(
+        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+         FROM removal_attempts WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    let attempt = row
+        .map(|row| -> Result<RemovalAttempt, sqlx::Error> {
+            let status_str: String = row.get("status");
+            let status = match status_str.as_str() {
+                "Submitted" => RemovalStatus::Submitted,
+                "Completed" => RemovalStatus::Completed,
+                "Failed" => RemovalStatus::Failed,
+                _ => RemovalStatus::Pending, // Default fallback for "Pending" or unknown
+            };
+
+            let created_at_str: String = row.get("created_at");
+            let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?
+                .with_timezone(&Utc);
+
+            let submitted_at = row
+                .try_get::<Option<String>, _>("submitted_at")
+                .ok()
+                .flatten()
+                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
+                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
+
+            let completed_at = row
+                .try_get::<Option<String>, _>("completed_at")
+                .ok()
+                .flatten()
+                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
+                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
+
+            Ok(RemovalAttempt {
+                id: row.get("id"),
+                finding_id: row.get("finding_id"),
+                broker_id: row.get("broker_id"),
+                status,
+                created_at,
+                submitted_at,
+                completed_at,
+                error_message: row.try_get("error_message").ok().flatten(),
+            })
+        })
+        .transpose()?;
 
     Ok(attempt)
 }
@@ -223,11 +347,19 @@ mod tests {
         let attempt = result.expect("create attempt");
         assert_eq!(attempt.finding_id, "finding-123");
         assert_eq!(attempt.broker_id, "broker-1");
-        assert_eq!(attempt.status, "Pending");
-        assert!(!attempt.created_at.is_empty());
+        assert_eq!(attempt.status, RemovalStatus::Pending);
         assert!(attempt.submitted_at.is_none());
         assert!(attempt.completed_at.is_none());
         assert!(attempt.error_message.is_none());
+
+        // Verify finding is linked to removal attempt
+        let finding: Option<String> =
+            sqlx::query_scalar("SELECT removal_attempt_id FROM findings WHERE id = ?")
+                .bind("finding-123")
+                .fetch_optional(db.pool())
+                .await
+                .expect("fetch finding");
+        assert_eq!(finding, Some(attempt.id.clone()));
     }
 
     #[tokio::test]
@@ -278,12 +410,12 @@ mod tests {
                 .await
                 .expect("create removal attempt");
 
-        let submitted_timestamp = chrono::Utc::now().to_rfc3339();
+        let submitted_timestamp = Utc::now();
         update_status(
             db.pool(),
             &attempt.id,
-            "Submitted",
-            Some(submitted_timestamp.clone()),
+            RemovalStatus::Submitted,
+            Some(submitted_timestamp),
             None,
             None,
         )
@@ -295,8 +427,13 @@ mod tests {
             .await
             .expect("get by id")
             .expect("found attempt");
-        assert_eq!(updated.status, "Submitted");
-        assert_eq!(updated.submitted_at, Some(submitted_timestamp));
+        assert_eq!(updated.status, RemovalStatus::Submitted);
+        assert!(updated.submitted_at.is_some());
+        // Verify timestamps are close (within 1 second)
+        let diff = (updated.submitted_at.expect("submitted_at") - submitted_timestamp)
+            .num_seconds()
+            .abs();
+        assert!(diff < 1);
         assert!(updated.completed_at.is_none());
         assert!(updated.error_message.is_none());
     }
@@ -310,13 +447,13 @@ mod tests {
                 .await
                 .expect("create removal attempt");
 
-        let completed_timestamp = chrono::Utc::now().to_rfc3339();
+        let completed_timestamp = Utc::now();
         update_status(
             db.pool(),
             &attempt.id,
-            "Completed",
+            RemovalStatus::Completed,
             None,
-            Some(completed_timestamp.clone()),
+            Some(completed_timestamp),
             None,
         )
         .await
@@ -327,8 +464,13 @@ mod tests {
             .await
             .expect("get by id")
             .expect("found attempt");
-        assert_eq!(updated.status, "Completed");
-        assert_eq!(updated.completed_at, Some(completed_timestamp));
+        assert_eq!(updated.status, RemovalStatus::Completed);
+        assert!(updated.completed_at.is_some());
+        // Verify timestamps are close (within 1 second)
+        let diff = (updated.completed_at.expect("completed_at") - completed_timestamp)
+            .num_seconds()
+            .abs();
+        assert!(diff < 1);
     }
 
     #[tokio::test]
@@ -343,7 +485,7 @@ mod tests {
         update_status(
             db.pool(),
             &attempt.id,
-            "Failed",
+            RemovalStatus::Failed,
             None,
             None,
             Some("Network timeout".to_string()),
@@ -356,7 +498,7 @@ mod tests {
             .await
             .expect("get by id")
             .expect("found attempt");
-        assert_eq!(updated.status, "Failed");
+        assert_eq!(updated.status, RemovalStatus::Failed);
         assert_eq!(updated.error_message, Some("Network timeout".to_string()));
     }
 
