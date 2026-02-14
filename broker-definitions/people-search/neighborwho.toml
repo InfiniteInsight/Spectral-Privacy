@@ -1,0 +1,50 @@
+# NeighborWho - Address & Neighbor Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "neighborwho"
+name = "NeighborWho"
+url = "https://www.neighborwho.com"
+domain = "neighborwho.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.neighborwho.com/address/{address}/{city}/{state}/{zip}"
+requires_fields = ["address", "city", "state", "zip_code"]
+
+[search.result_selectors]
+results_container = ".property-details, #address-info"
+result_item = ".resident, .occupant"
+listing_url = "link[rel='canonical']"
+name = ".resident-name, .occupant-name"
+age = ".age"
+phone = ".phone"
+neighbors = ".neighbors .neighbor-name"
+property_value = ".property-value"
+owner_name = ".owner-name"
+no_results_indicator = ".no-data, .address-not-found"
+captcha_required = "#recaptcha"
+
+[removal]
+method = "email"
+email = "support@neighborwho.com"
+subject = "Privacy Removal Request"
+body = """Hello,
+
+I am requesting removal of my personal information from NeighborWho.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Name: {full_name}
+Email: {user_email}
+
+Please confirm when this information has been removed.
+
+Thank you.
+"""
+response_days = 3
+notes = "NeighborWho focuses on address-based searches. Email them directly for removal. Include your exact address and name. They typically respond within 2-3 business days. Removal may not prevent address from appearing in public property records."

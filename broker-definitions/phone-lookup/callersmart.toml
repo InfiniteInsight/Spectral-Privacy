@@ -1,0 +1,49 @@
+# CallerSmart - Reverse Phone Lookup
+# Last verified: 2026-02-13
+
+[broker]
+id = "callersmart"
+name = "CallerSmart"
+url = "https://www.callersmart.com"
+domain = "callersmart.com"
+category = "other"
+difficulty = "Easy"
+typical_removal_days = 2
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.callersmart.com/number/{phone}"
+requires_fields = ["phone"]
+
+[search.result_selectors]
+results_container = ".number-details, #phone-info"
+result_item = ".info-section"
+listing_url = "link[rel='canonical']"
+phone = ".phone-number, h1.number"
+owner_name = ".owner-name, .caller-name"
+location = ".location, .area"
+carrier = ".carrier, .service-provider"
+line_type = ".line-type"
+spam_score = ".spam-score, .reputation-score"
+comments = ".comments .comment-text"
+no_results_indicator = ".no-data, .unknown-number"
+captcha_required = "#recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://www.callersmart.com/opt-out"
+confirmation = "automatic"
+notes = "CallerSmart allows quick opt-out via their form. No verification required. Enter your phone number and they will remove it within 24-48 hours. This only removes your number from their database - it won't stop other caller ID services."
+
+[removal.fields]
+phone_number = "{user_phone}"
+email = "{user_email}"
+
+[removal.form_selectors]
+phone_input = "#phone, input[name='phone'], input[type='tel']"
+email_input = "#email, input[type='email']"
+submit_button = "button.submit-optout, #submitRemoval"
+success_indicator = ".success-message, .optout-confirmed"
+error_indicator = ".error-message"

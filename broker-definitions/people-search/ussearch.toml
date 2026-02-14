@@ -1,0 +1,54 @@
+# USSearch - Public Records Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "ussearch"
+name = "USSearch"
+url = "https://www.ussearch.com"
+domain = "ussearch.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.ussearch.com/people/{first}-{last}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".search-results, #people-results"
+result_item = ".person-item, .result"
+listing_url = "a.profile-link, .view-details"
+name = ".person-name, h3"
+age = ".age, .age-display"
+location = ".location, .address"
+relatives = ".relatives .name"
+phones = ".phones .phone"
+emails = ".emails .email"
+addresses = ".past-addresses .address"
+no_results_indicator = ".no-results, .empty-results"
+captcha_required = "iframe[src*='recaptcha'], .recaptcha-container"
+
+[removal]
+method = "web-form"
+url = "https://www.ussearch.com/opt-out/submit"
+confirmation = "automatic"
+notes = "USSearch has a straightforward removal process. Submit the opt-out form with your profile URL and email. No verification required. Process typically completes in 3-5 business days. Part of PeopleLookup network - may need separate opt-out for related sites."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+
+[removal.form_selectors]
+listing_url_input = "#profileUrl, input[name='url']"
+email_input = "#email, input[type='email']"
+first_name_input = "#first, input[name='firstName']"
+last_name_input = "#last, input[name='lastName']"
+submit_button = "button.submit, #submitOptOut"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-message, .opt-out-success"
+error_indicator = ".error-message, .opt-out-error"

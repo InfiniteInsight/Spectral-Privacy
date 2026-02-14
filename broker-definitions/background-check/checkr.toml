@@ -1,0 +1,39 @@
+# Checkr - Employment Background Checks
+# Last verified: 2026-02-13
+
+[broker]
+id = "checkr"
+name = "Checkr"
+url = "https://checkr.com"
+domain = "checkr.com"
+category = "background-check"
+difficulty = "Easy"
+typical_removal_days = 5
+recheck_interval_days = 60
+last_verified = "2026-02-13"
+
+[search]
+method = "manual"
+url = "https://candidate.checkr.com"
+instructions = "Checkr is primarily used by employers for background checks. You can request a copy of your Checkr report if you've had a background check run. Visit the candidate portal and search by email or confirmation code."
+
+[removal]
+method = "email"
+email = "privacy@checkr.com"
+subject = "Data Subject Access Request - CCPA/GDPR"
+body = """Hello,
+
+I am exercising my rights under CCPA/GDPR to request:
+1. Disclosure of all personal information you have collected about me
+2. Deletion of my personal information from your systems
+
+Name: {full_name}
+Email: {user_email}
+Date of Birth: {date_of_birth}
+
+Please confirm receipt and provide a timeline for completion.
+
+Thank you.
+"""
+response_days = 7
+notes = "Checkr is subject to FCRA regulations. Under CCPA/GDPR, you can request data disclosure and deletion. They must respond within 45 days for CCPA requests. Include your full name, email, and any case/candidate ID if you have one. More cooperative than people search sites."

@@ -1,0 +1,54 @@
+# Addresses.com - Address & People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "addresses"
+name = "Addresses.com"
+url = "https://www.addresses.com"
+domain = "addresses.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.addresses.com/people/{first}-{last}/{city}-{state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[search.result_selectors]
+results_container = ".results, #people-results"
+result_item = ".person, .result-item"
+listing_url = "a.profile-link"
+name = ".person-name, h3"
+age = ".age"
+location = ".current-address, .location"
+relatives = ".relatives .name"
+phones = ".phone-numbers .phone"
+addresses = ".address-history .address"
+no_results_indicator = ".no-results"
+captcha_required = "#recaptcha, iframe[src*='recaptcha']"
+
+[removal]
+method = "web-form"
+url = "https://www.addresses.com/optout.php"
+confirmation = "automatic"
+notes = "Addresses.com has a simple opt-out form. Enter your name and address details. No verification required. Process typically completes within 24-72 hours."
+
+[removal.fields]
+first_name = "{first_name}"
+last_name = "{last_name}"
+city = "{city}"
+state = "{state}"
+address = "{address}"
+
+[removal.form_selectors]
+first_name_input = "#firstName, input[name='first']"
+last_name_input = "#lastName, input[name='last']"
+city_input = "#city, input[name='city']"
+state_select = "#state, select[name='state']"
+address_input = "#address, input[name='address']"
+submit_button = "button.submit, input[type='submit']"
+success_indicator = ".success, .optout-success"
+error_indicator = ".error, .optout-error"

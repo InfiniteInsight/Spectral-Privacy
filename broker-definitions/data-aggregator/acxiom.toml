@@ -1,0 +1,45 @@
+# Acxiom - Marketing Data Aggregator
+# Last verified: 2026-02-13
+
+[broker]
+id = "acxiom"
+name = "Acxiom"
+url = "https://www.acxiom.com"
+domain = "acxiom.com"
+category = "data-aggregator"
+difficulty = "Medium"
+typical_removal_days = 10
+recheck_interval_days = 90
+last_verified = "2026-02-13"
+
+[search]
+method = "manual"
+url = "https://isapps.acxiom.com/optout/optout.aspx"
+instructions = "Acxiom is a B2B data aggregator. Use their AboutTheData portal to view and manage your marketing profile. You cannot directly search - you must create an account to see what data they have on you."
+
+[removal]
+method = "web-form"
+url = "https://isapps.acxiom.com/optout/optout.aspx"
+confirmation = "email-verification"
+notes = "Acxiom is one of the largest data brokers. Their opt-out process requires creating an account on AboutTheData.com to view your profile, then submitting opt-out through their portal. Email verification required. Process takes 7-10 business days. Note: This only opts you out of marketing - they may still maintain data for other purposes."
+
+[removal.fields]
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+address = "{address}"
+city = "{city}"
+state = "{state}"
+zip_code = "{zip_code}"
+
+[removal.form_selectors]
+email_input = "#email, input[type='email']"
+first_name_input = "#firstName, input[name='firstName']"
+last_name_input = "#lastName, input[name='lastName']"
+address_input = "#address, input[name='address']"
+city_input = "#city, input[name='city']"
+state_select = "#state, select[name='state']"
+zip_input = "#zip, input[name='zipCode']"
+submit_button = "button.submit-optout, input[type='submit']"
+success_indicator = ".success-notification, .optout-confirmed"
+error_indicator = ".error-notification, .optout-failed"

@@ -1,0 +1,51 @@
+# ZabaSearch - Free People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "zabasearch"
+name = "ZabaSearch"
+url = "https://www.zabasearch.com"
+domain = "zabasearch.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.zabasearch.com/people/{first}+{last}/{state}/"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".search-results, #results"
+result_item = ".result, .person"
+listing_url = "a.profile, .view-details"
+name = ".name, h3.person-name"
+age = ".age"
+location = ".location, .city-state"
+relatives = ".relatives .name, .aka"
+phones = ".phone"
+addresses = ".address, .past-addresses .addr"
+no_results_indicator = ".no-results, .no-matches"
+captcha_required = "#recaptcha, iframe[src*='recaptcha']"
+
+[removal]
+method = "email"
+email = "info@zabasearch.com"
+subject = "Privacy Removal Request"
+body = """Hello,
+
+I am requesting removal of my personal information from ZabaSearch.
+
+Profile URL: {found_listing_url}
+Name: {full_name}
+Email: {user_email}
+State: {state}
+
+Please confirm removal and provide an estimated timeline.
+
+Thank you.
+"""
+response_days = 3
+notes = "ZabaSearch accepts email removal requests. Send to info@zabasearch.com with your profile URL and details. They typically respond and process within 2-3 business days. Keep the email response as proof of removal request."

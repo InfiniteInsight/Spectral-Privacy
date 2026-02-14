@@ -1,0 +1,60 @@
+# PublicRecordsNow - Public Records Aggregator
+# Last verified: 2026-02-13
+
+[broker]
+id = "publicrecordsnow"
+name = "PublicRecordsNow"
+url = "https://www.publicrecordsnow.com"
+domain = "publicrecordsnow.com"
+category = "background-check"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "web-form"
+url = "https://www.publicrecordsnow.com"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.fields]
+first_name = "{first}"
+last_name = "{last}"
+state = "{state}"
+
+[search.result_selectors]
+results_container = ".results, #search-results"
+result_item = ".person-result, .record-item"
+listing_url = "a.view-record, .details-link"
+name = ".person-name, h3"
+age = ".age"
+location = ".location, .address"
+relatives = ".relatives .name"
+phones = ".phones .number"
+addresses = ".addresses .addr"
+criminal_records = ".criminal-records"
+property_records = ".property-ownership"
+no_results_indicator = ".no-results"
+captcha_required = "iframe[src*='recaptcha']"
+
+[removal]
+method = "web-form"
+url = "https://www.publicrecordsnow.com/static/view/optout/"
+confirmation = "email-verification"
+notes = "PublicRecordsNow is owned by Intelius. Same removal process applies. Email verification required. Note: This is one of several Intelius-owned sites. After removing from PublicRecordsNow, check PeopleLookup, DateCheck, ReunionDatabase, and iSearch."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+
+[removal.form_selectors]
+listing_url_input = "#url, input[name='profileUrl']"
+email_input = "#email, input[type='email']"
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+submit_button = "button.submit, input[type='submit']"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success, .confirmation"
+error_indicator = ".error, .failure"

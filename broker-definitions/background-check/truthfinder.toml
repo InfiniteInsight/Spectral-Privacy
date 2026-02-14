@@ -1,0 +1,64 @@
+# TruthFinder - Background Check Service
+# Last verified: 2026-02-13
+
+[broker]
+id = "truthfinder"
+name = "TruthFinder"
+url = "https://www.truthfinder.com"
+domain = "truthfinder.com"
+category = "background-check"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "web-form"
+url = "https://www.truthfinder.com/search"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.fields]
+first_name = "{first}"
+last_name = "{last}"
+state = "{state}"
+
+[search.result_selectors]
+results_container = "#search-results, .results-list"
+result_item = ".result-card, .person-card"
+listing_url = "a.view-full-report, .view-report"
+name = ".result-name, h3.name"
+age = ".age, .age-field"
+location = ".location, .current-city"
+relatives = ".relatives .name, .associates .name"
+phones = ".phone-list .phone"
+emails = ".email-list .email"
+addresses = ".address-list .address"
+criminal_records = ".criminal-records-indicator"
+bankruptcies = ".bankruptcy-indicator"
+no_results_indicator = ".no-results, .empty-state"
+captcha_required = "iframe[src*='recaptcha'], #recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://www.truthfinder.com/opt-out/submit/"
+confirmation = "email-verification"
+notes = "TruthFinder requires email verification for opt-out. You need the exact report URL. Submit the form and check email for verification link within 24 hours. Removal takes 3-7 business days after verification. May reappear if data is refreshed from public sources."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+full_name = "{full_name}"
+city = "{city}"
+state = "{state}"
+
+[removal.form_selectors]
+listing_url_input = "#url, input[name='profileUrl']"
+email_input = "#email, input[type='email']"
+full_name_input = "#fullName, input[name='name']"
+city_input = "#city, input[name='city']"
+state_select = "#state, select[name='state']"
+terms_checkbox = "#agreeTerms, input[type='checkbox'][name='agree']"
+submit_button = "button.submit-removal, input[type='submit']"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-alert, .confirmation-message"
+error_indicator = ".error-alert, .submission-error"

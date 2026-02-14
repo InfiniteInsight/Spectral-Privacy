@@ -1,0 +1,52 @@
+# Nuwber - Free People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "nuwber"
+name = "Nuwber"
+url = "https://nuwber.com"
+domain = "nuwber.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 2
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://nuwber.com/search?name={first}%20{last}&location={state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".search-results, #results"
+result_item = ".result-card, .person-card"
+listing_url = "a.person-link, .profile-link"
+name = ".person-name, h3.name"
+age = ".age, .age-range"
+location = ".location, .address"
+relatives = ".relatives .name, .family .name"
+phones = ".phones .number"
+emails = ".emails .email"
+addresses = ".addresses .address"
+social_profiles = ".social-links a"
+no_results_indicator = ".no-results, .empty-state"
+captcha_required = "iframe[src*='recaptcha'], #recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://nuwber.com/removal/link"
+confirmation = "manual"
+notes = "Nuwber requires phone verification. Enter your phone number, receive a verification code via SMS, and complete the removal request. Process usually completes within 24 hours after verification. One of the faster removal processes."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+phone_number = "{user_phone}"
+
+[removal.form_selectors]
+listing_url_input = "#profileUrl, input[name='url']"
+phone_input = "#phone, input[type='tel']"
+verification_code_input = "#verificationCode, input[name='code']"
+request_code_button = "button.send-code, #sendCode"
+submit_button = "button.submit-removal, #submitRemoval"
+success_indicator = ".success-message, .removal-confirmed"
+error_indicator = ".error-message, .removal-failed"

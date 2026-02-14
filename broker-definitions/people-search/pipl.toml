@@ -1,0 +1,58 @@
+# Pipl - Deep Web People Search
+# Last verified: 2026-02-13
+
+[broker]
+id = "pipl"
+name = "Pipl"
+url = "https://pipl.com"
+domain = "pipl.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 45
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://pipl.com/search/?q={first}+{last}&l={city}%2C+{state}&sloc={state}"
+requires_fields = ["first_name", "last_name", "city", "state"]
+
+[search.result_selectors]
+results_container = ".results-container, #search-results"
+result_item = ".person-result, .result-item"
+listing_url = "a.person-link, .profile-url"
+name = ".name, h3.person-name"
+age = ".age-range, .age"
+location = ".location, .current-location"
+social_profiles = ".social-links a, .profiles a"
+usernames = ".username, .handle"
+emails = ".email-list .email"
+phones = ".phone-list .phone"
+jobs = ".employment .job-title"
+education = ".education .school"
+images = ".profile-images img"
+no_results_indicator = ".no-results, .zero-results"
+captcha_required = "iframe[src*='recaptcha'], .g-recaptcha"
+
+[removal]
+method = "web-form"
+url = "https://pipl.com/personal-information-removal-request"
+confirmation = "email-verification"
+notes = "Pipl aggregates from multiple sources including social media and deep web. Removal requires verification. Submit form with specific profile URL. Email verification required. Process takes 5-7 business days. Note: Pipl primarily serves B2B customers, so consumer removals may take longer."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+email = "{user_email}"
+full_name = "{full_name}"
+reason = "Privacy request under applicable data protection laws"
+
+[removal.form_selectors]
+listing_url_input = "#profileUrl, input[name='url']"
+email_input = "#email, input[type='email']"
+full_name_input = "#fullName, input[name='name']"
+reason_textarea = "#reason, textarea[name='reason']"
+terms_checkbox = "#agree, input[name='agreeToTerms']"
+submit_button = "button.submit-request, input[type='submit']"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success-notice, .request-submitted"
+error_indicator = ".error-notice, .submission-failed"

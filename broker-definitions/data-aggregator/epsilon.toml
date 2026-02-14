@@ -1,0 +1,48 @@
+# Epsilon - Marketing & Data Services
+# Last verified: 2026-02-13
+
+[broker]
+id = "epsilon"
+name = "Epsilon"
+url = "https://www.epsilon.com"
+domain = "epsilon.com"
+category = "data-aggregator"
+difficulty = "Medium"
+typical_removal_days = 14
+recheck_interval_days = 90
+last_verified = "2026-02-13"
+
+[search]
+method = "manual"
+url = "https://www.epsilon.com/us/privacy-policy"
+instructions = "Epsilon is a major marketing data provider. They don't offer public search - you must submit a data subject access request to see what information they have. Use their privacy request form."
+
+[removal]
+method = "web-form"
+url = "https://www.epsilon.com/us/privacy-request"
+confirmation = "email-verification"
+notes = "Epsilon handles data for major retailers and brands. Submit a CCPA/GDPR data deletion request through their privacy portal. Requires verification via email. They have 45 days to respond under CCPA. Include detailed information to help them locate your records. As a B2B service, they may require additional verification."
+
+[removal.fields]
+email = "{user_email}"
+first_name = "{first_name}"
+last_name = "{last_name}"
+address = "{address}"
+city = "{city}"
+state = "{state}"
+zip_code = "{zip_code}"
+request_type = "deletion"
+
+[removal.form_selectors]
+first_name_input = "#firstName, input[name='first']"
+last_name_input = "#lastName, input[name='last']"
+email_input = "#email, input[type='email']"
+address_input = "#address, input[name='streetAddress']"
+city_input = "#city, input[name='city']"
+state_select = "#state, select[name='state']"
+zip_input = "#zipCode, input[name='zip']"
+request_type_select = "#requestType, select[name='type']"
+description_textarea = "#description, textarea[name='description']"
+submit_button = "button.submit-request, input[type='submit']"
+success_indicator = ".confirmation-message, .request-submitted"
+error_indicator = ".error-message, .request-failed"

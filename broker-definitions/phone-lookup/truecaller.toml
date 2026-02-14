@@ -1,0 +1,50 @@
+# Truecaller - Caller ID & Spam Blocking
+# Last verified: 2026-02-13
+
+[broker]
+id = "truecaller"
+name = "Truecaller"
+url = "https://www.truecaller.com"
+domain = "truecaller.com"
+category = "other"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-13"
+
+[search]
+method = "url-template"
+template = "https://www.truecaller.com/search/{country}/{phone}"
+requires_fields = ["phone"]
+
+[search.result_selectors]
+results_container = ".contact-details, #phone-profile"
+result_item = ".profile-section"
+listing_url = "link[rel='canonical']"
+phone = ".phone-number, h1"
+name = ".contact-name, .profile-name"
+location = ".location, .address"
+carrier = ".carrier-info"
+spam_rating = ".spam-score, .trust-rating"
+tags = ".tags .tag"
+comments = ".user-comments .comment"
+no_results_indicator = ".no-profile, .number-not-found"
+
+[removal]
+method = "web-form"
+url = "https://www.truecaller.com/unlisting"
+confirmation = "manual"
+notes = "Truecaller requires phone verification via SMS or call. Enter your phone number, receive a verification code, and confirm. Removal takes 24-48 hours after verification. Note: If you use the Truecaller app, you must delete your account separately from the app settings."
+
+[removal.fields]
+phone_number = "{user_phone}"
+country_code = "+1"
+
+[removal.form_selectors]
+country_select = "#country, select[name='countryCode']"
+phone_input = "#phone, input[name='phoneNumber']"
+verification_code_input = "#code, input[name='verificationCode']"
+submit_button = "button.unlist, #submitUnlist"
+verify_button = "button.verify-code, #verifyCode"
+success_indicator = ".success-message, .unlist-confirmed"
+error_indicator = ".error-message, .unlist-failed"
