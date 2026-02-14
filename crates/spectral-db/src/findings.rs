@@ -211,6 +211,33 @@ pub async fn verify_finding(
     update_verification_status(pool, finding_id, status, verified_by_user).await
 }
 
+/// Check if a finding already exists by listing URL within a scan job.
+///
+/// This is used for deduplication to prevent creating duplicate findings
+/// when the same listing URL appears multiple times in scan results.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn finding_exists_by_url(
+    pool: &Pool<Sqlite>,
+    scan_job_id: &str,
+    listing_url: &str,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM findings f
+            JOIN broker_scans bs ON f.broker_scan_id = bs.id
+            WHERE bs.scan_job_id = ? AND f.listing_url = ?
+        )",
+    )
+    .bind(scan_job_id)
+    .bind(listing_url)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(result)
+}
+
 /// Helper function to parse findings from database rows.
 fn parse_findings_from_rows(
     rows: Vec<sqlx::sqlite::SqliteRow>,
@@ -516,5 +543,95 @@ mod tests {
             VerificationStatus::parse("unknown"),
             VerificationStatus::PendingVerification
         );
+    }
+
+    #[tokio::test]
+    async fn test_finding_exists_by_url_returns_false_when_not_found() {
+        let db = setup_test_db().await;
+
+        let result =
+            finding_exists_by_url(db.pool(), "job-456", "https://example.com/listing-1").await;
+
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_finding_exists_by_url_returns_true_when_found_in_same_scan() {
+        let db = setup_test_db().await;
+
+        // Create a finding
+        let extracted = serde_json::json!({"name": "Test"});
+        create_finding(
+            db.pool(),
+            "scan-789".to_string(),
+            "spokeo".to_string(),
+            "profile-123".to_string(),
+            "https://example.com/listing-1".to_string(),
+            extracted,
+        )
+        .await
+        .expect("create finding");
+
+        // Check if finding exists
+        let result =
+            finding_exists_by_url(db.pool(), "job-456", "https://example.com/listing-1").await;
+
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_finding_exists_by_url_returns_false_for_different_scan() {
+        let db = setup_test_db().await;
+
+        // Create another scan job
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO scan_jobs (id, profile_id, started_at, status, total_brokers, completed_brokers) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind("job-999")
+        .bind("profile-123")
+        .bind(Utc::now().to_rfc3339())
+        .bind("InProgress")
+        .bind(5)
+        .bind(0)
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        // Create another broker scan for the different job
+        // nosemgrep: no-unwrap-in-production
+        sqlx::query(
+            "INSERT INTO broker_scans (id, scan_job_id, broker_id, status, started_at) VALUES (?, ?, ?, ?, ?)"
+        )
+        .bind("scan-999")
+        .bind("job-999")
+        .bind("spokeo")
+        .bind("Success")
+        .bind(Utc::now().to_rfc3339())
+        .execute(db.pool())
+        .await
+        .unwrap();
+
+        // Create a finding for the different scan
+        let extracted = serde_json::json!({"name": "Test"});
+        create_finding(
+            db.pool(),
+            "scan-999".to_string(),
+            "spokeo".to_string(),
+            "profile-123".to_string(),
+            "https://example.com/listing-1".to_string(),
+            extracted,
+        )
+        .await
+        .expect("create finding");
+
+        // Check if finding exists in the original scan job (should be false)
+        let result =
+            finding_exists_by_url(db.pool(), "job-456", "https://example.com/listing-1").await;
+
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
     }
 }
