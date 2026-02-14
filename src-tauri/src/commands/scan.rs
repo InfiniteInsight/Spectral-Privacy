@@ -125,6 +125,44 @@ pub async fn get_scan_status(
     })
 }
 
+/// Get findings for a scan job (stub implementation - Phase 4)
+#[tauri::command]
+pub async fn get_findings(
+    _state: State<'_, AppState>,
+    _vault_id: String,
+    _scan_job_id: String,
+    _filter: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    // Stub: Return empty array for now
+    // Phase 4 will implement actual findings retrieval
+    Ok(vec![])
+}
+
+/// Verify a finding (stub implementation - Phase 4)
+#[tauri::command]
+pub async fn verify_finding(
+    _state: State<'_, AppState>,
+    _vault_id: String,
+    _finding_id: String,
+    _is_match: bool,
+) -> Result<(), String> {
+    // Stub: No-op for now
+    // Phase 4 will implement actual verification
+    Ok(())
+}
+
+/// Submit removal requests for confirmed findings (stub implementation - Phase 4)
+#[tauri::command]
+pub async fn submit_removals_for_confirmed(
+    _state: State<'_, AppState>,
+    _vault_id: String,
+    _scan_job_id: String,
+) -> Result<Vec<String>, String> {
+    // Stub: Return empty array for now
+    // Phase 4 will implement actual removal submission
+    Ok(vec![])
+}
+
 #[cfg(test)]
 mod tests {
     // Tests will be added when we implement the actual logic

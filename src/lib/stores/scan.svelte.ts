@@ -163,12 +163,12 @@ function createScanStore() {
 		 * @param scanJobId - The scan job ID
 		 * @param filter - Optional filter by verification status
 		 */
-		async loadFindings(scanJobId: string, filter?: FindingFilter): Promise<void> {
+		async loadFindings(vaultId: string, scanJobId: string, filter?: FindingFilter): Promise<void> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				const findings = await scanAPI.getFindings(scanJobId, filter);
+				const findings = await scanAPI.getFindings(vaultId, scanJobId, filter);
 				state.findings = findings;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to load findings';
@@ -184,11 +184,11 @@ function createScanStore() {
 		 * @param findingId - The finding ID to verify
 		 * @param isMatch - True to confirm, false to reject
 		 */
-		async verifyFinding(findingId: string, isMatch: boolean): Promise<void> {
+		async verifyFinding(vaultId: string, findingId: string, isMatch: boolean): Promise<void> {
 			state.error = null;
 
 			try {
-				await scanAPI.verify(findingId, isMatch);
+				await scanAPI.verify(vaultId, findingId, isMatch);
 
 				// Update after success (pessimistic)
 				state.findings = state.findings.map((f) =>
@@ -206,12 +206,12 @@ function createScanStore() {
 		 * @param scanJobId - The scan job ID
 		 * @returns Count of removal requests submitted
 		 */
-		async submitRemovals(scanJobId: string): Promise<number> {
+		async submitRemovals(vaultId: string, scanJobId: string): Promise<number> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				const removalIds = await scanAPI.submitRemovals(scanJobId);
+				const removalIds = await scanAPI.submitRemovals(vaultId, scanJobId);
 				return removalIds.length;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to submit removals';

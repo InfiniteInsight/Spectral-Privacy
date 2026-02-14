@@ -80,6 +80,9 @@ pub fn run() {
             commands::removal::submit_removal,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
+            commands::scan::get_findings,
+            commands::scan::verify_finding,
+            commands::scan::submit_removals_for_confirmed,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -52,10 +52,12 @@ export const scanAPI = {
 	 * Get findings for a scan job
 	 */
 	async getFindings(
+		vaultId: string,
 		scanJobId: string,
 		filter?: 'PendingVerification' | 'Confirmed' | 'Rejected'
 	): Promise<Finding[]> {
 		return await invoke<Finding[]>('get_findings', {
+			vaultId,
 			scanJobId,
 			filter
 		});
@@ -64,8 +66,9 @@ export const scanAPI = {
 	/**
 	 * Verify a finding
 	 */
-	async verify(findingId: string, isMatch: boolean): Promise<void> {
+	async verify(vaultId: string, findingId: string, isMatch: boolean): Promise<void> {
 		return await invoke('verify_finding', {
+			vaultId,
 			findingId,
 			isMatch
 		});
@@ -74,8 +77,9 @@ export const scanAPI = {
 	/**
 	 * Submit removal requests for all confirmed findings
 	 */
-	async submitRemovals(scanJobId: string): Promise<string[]> {
+	async submitRemovals(vaultId: string, scanJobId: string): Promise<string[]> {
 		return await invoke<string[]>('submit_removals_for_confirmed', {
+			vaultId,
 			scanJobId
 		});
 	}

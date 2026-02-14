@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scanStore } from '$lib/stores';
+	import { scanStore, vaultStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
@@ -15,8 +15,13 @@
 			return;
 		}
 
+		if (!vaultStore.currentVaultId) {
+			goto('/');
+			return;
+		}
+
 		// Load pending findings
-		await scanStore.loadFindings(scanJobId, 'PendingVerification');
+		await scanStore.loadFindings(vaultStore.currentVaultId, scanJobId, 'PendingVerification');
 	});
 
 	// Group findings by broker
@@ -39,9 +44,11 @@
 	);
 
 	async function handleVerify(findingId: string, isMatch: boolean) {
+		if (!vaultStore.currentVaultId) return;
+
 		actionError = null;
 		try {
-			await scanStore.verifyFinding(findingId, isMatch);
+			await scanStore.verifyFinding(vaultStore.currentVaultId, findingId, isMatch);
 		} catch (err) {
 			actionError = 'Failed to update finding. Please try again.';
 			console.error('Verification failed:', err);
@@ -49,13 +56,13 @@
 	}
 
 	async function handleSubmit() {
-		if (confirmedCount === 0 || !scanJobId) {
+		if (confirmedCount === 0 || !scanJobId || !vaultStore.currentVaultId) {
 			return;
 		}
 
 		actionError = null;
 		try {
-			const count = await scanStore.submitRemovals(scanJobId);
+			const count = await scanStore.submitRemovals(vaultStore.currentVaultId, scanJobId);
 			goto(`/removals?count=${count}`);
 		} catch (err) {
 			actionError = 'Failed to submit removals. Please try again.';
