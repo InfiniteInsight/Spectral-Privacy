@@ -19,6 +19,102 @@ pub struct ScanJobResponse {
     pub status: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct FindingResponse {
+    pub id: String,
+    pub broker_id: String,
+    pub listing_url: String,
+    pub verification_status: String,
+    pub extracted_data: ExtractedDataResponse,
+    pub discovered_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExtractedDataResponse {
+    pub name: Option<String>,
+    pub age: Option<u32>,
+    pub addresses: Vec<String>,
+    pub phone_numbers: Vec<String>,
+    pub relatives: Vec<String>,
+    pub emails: Vec<String>,
+}
+
+/// Convert database Finding to API response.
+fn finding_to_response(finding: spectral_db::findings::Finding) -> FindingResponse {
+    // Extract fields from JSON extracted_data
+    let name = finding
+        .extracted_data
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let age = finding
+        .extracted_data
+        .get("age")
+        .and_then(|v| v.as_u64())
+        .map(|a| a as u32);
+
+    let addresses = finding
+        .extracted_data
+        .get("addresses")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let phone_numbers = finding
+        .extracted_data
+        .get("phone_numbers")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let relatives = finding
+        .extracted_data
+        .get("relatives")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let emails = finding
+        .extracted_data
+        .get("emails")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    FindingResponse {
+        id: finding.id,
+        broker_id: finding.broker_id,
+        listing_url: finding.listing_url,
+        verification_status: finding.verification_status.to_string(),
+        extracted_data: ExtractedDataResponse {
+            name,
+            age,
+            addresses,
+            phone_numbers,
+            relatives,
+            emails,
+        },
+        discovered_at: finding.discovered_at.to_rfc3339(),
+    }
+}
+
 #[tauri::command]
 pub async fn start_scan(
     state: State<'_, AppState>,
@@ -125,29 +221,68 @@ pub async fn get_scan_status(
     })
 }
 
-/// Get findings for a scan job (stub implementation - Phase 4)
+/// Get findings for a scan job with optional verification status filter.
 #[tauri::command]
 pub async fn get_findings(
-    _state: State<'_, AppState>,
-    _vault_id: String,
-    _scan_job_id: String,
-    _filter: Option<String>,
-) -> Result<Vec<serde_json::Value>, String> {
-    // Stub: Return empty array for now
-    // Phase 4 will implement actual findings retrieval
-    Ok(vec![])
+    state: State<'_, AppState>,
+    vault_id: String,
+    scan_job_id: String,
+    filter: Option<String>,
+) -> Result<Vec<FindingResponse>, String> {
+    // Get the unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get the vault's database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get all findings for this scan job
+    let mut findings = spectral_db::findings::get_by_scan_job(db.pool(), &scan_job_id)
+        .await
+        .map_err(|e| format!("Failed to get findings: {}", e))?;
+
+    // Filter by verification status if requested
+    if let Some(filter_status) = filter {
+        findings.retain(|f| f.verification_status.to_string() == filter_status);
+    }
+
+    // Convert to response format
+    let responses: Vec<FindingResponse> = findings.into_iter().map(finding_to_response).collect();
+
+    Ok(responses)
 }
 
-/// Verify a finding (stub implementation - Phase 4)
+/// Update the verification status of a finding.
 #[tauri::command]
 pub async fn verify_finding(
-    _state: State<'_, AppState>,
-    _vault_id: String,
-    _finding_id: String,
-    _is_match: bool,
+    state: State<'_, AppState>,
+    vault_id: String,
+    finding_id: String,
+    is_match: bool,
 ) -> Result<(), String> {
-    // Stub: No-op for now
-    // Phase 4 will implement actual verification
+    // Get the unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get the vault's database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Update verification status
+    spectral_db::findings::verify_finding(
+        db.pool(),
+        &finding_id,
+        is_match,
+        true, // verified_by_user = true
+    )
+    .await
+    .map_err(|e| format!("Failed to verify finding: {}", e))?;
+
     Ok(())
 }
 
