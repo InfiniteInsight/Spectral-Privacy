@@ -59,9 +59,22 @@ impl BrowserEngine {
             .build()
             .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
 
-        let (browser, mut handler) = Browser::launch(config)
-            .await
-            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+        let (browser, mut handler) = Browser::launch(config).await.map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Could not auto detect") || msg.contains("chrome executable") {
+                BrowserError::ChromiumError(format!(
+                    "Chrome/Chromium not found. Please install:\n\
+                        Ubuntu/Debian: sudo apt-get install chromium-browser\n\
+                        Fedora: sudo dnf install chromium\n\
+                        Arch: sudo pacman -S chromium\n\
+                        Or set CHROME_PATH environment variable to your Chrome installation.\n\
+                        Original error: {}",
+                    msg
+                ))
+            } else {
+                BrowserError::ChromiumError(msg)
+            }
+        })?;
 
         // Spawn browser handler
         tokio::spawn(async move {
