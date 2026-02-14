@@ -9,6 +9,16 @@
 	import ReviewStep from './ReviewStep.svelte';
 	import CompletenessIndicator from './shared/CompletenessIndicator.svelte';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	// Check if profile already exists on mount
+	onMount(async () => {
+		await profileStore.loadProfiles();
+		if (profileStore.profiles.length > 0) {
+			// Profile already exists, redirect to dashboard
+			goto('/');
+		}
+	});
 
 	// Current step (0-4)
 	let currentStep = $state(0);

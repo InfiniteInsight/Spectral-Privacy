@@ -1,18 +1,13 @@
 <script lang="ts">
 	import { UnlockScreen } from '$lib/components';
 	import { vaultStore, profileStore } from '$lib/stores';
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	onMount(async () => {
-		// Load profiles when vault is unlocked
+	// Reactive effect: Load profiles when vault is unlocked
+	$effect(() => {
 		if (vaultStore.isCurrentVaultUnlocked) {
-			await profileStore.loadProfiles();
-
-			// If no profile exists, redirect to setup
-			if (profileStore.profiles.length === 0) {
-				goto('/profile/setup');
-			}
+			// Load profiles whenever vault unlock state changes to true
+			profileStore.loadProfiles();
 		}
 	});
 
