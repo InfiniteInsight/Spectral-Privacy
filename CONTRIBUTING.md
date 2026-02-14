@@ -22,6 +22,22 @@ This document describes the development patterns, tooling, and workflows for con
    cargo install cargo-deny cargo-cyclonedx cargo-tarpaulin
    ```
 
+4. **Install Chromium (required for scanning):**
+   ```bash
+   # Ubuntu/Debian/WSL
+   sudo apt-get install -y chromium-browser
+
+   # Fedora
+   sudo dnf install chromium
+
+   # Arch
+   sudo pacman -S chromium
+   ```
+
+   The scan orchestrator uses headless Chromium for browser automation. Without it, scans will fail with a "chrome executable not found" error.
+
+   > **Note:** Automatic Chromium bundling/download is planned for future releases. See `docs/issues/chromium-dependency-management.md` for details.
+
 ## Git Hooks
 
 Pre-commit hooks run automatically before each commit. They enforce:

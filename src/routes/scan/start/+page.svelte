@@ -42,12 +42,19 @@
 			return;
 		}
 
+		error = ''; // Clear previous errors
 		const scanId = await scanStore.startScan(vaultStore.currentVaultId, selectedProfileId);
 
 		if (scanId) {
 			goto(`/scan/progress/${scanId}`);
 		} else {
-			error = scanStore.error || 'Failed to start scan';
+			// Format browser-specific errors with helpful instructions
+			const scanError = scanStore.error || 'Failed to start scan';
+			if (scanError.includes('Chrome') || scanError.includes('chrome executable')) {
+				error = scanError; // Already formatted with install instructions
+			} else {
+				error = scanError;
+			}
 		}
 	}
 
@@ -120,7 +127,7 @@
 			<!-- Error Display -->
 			{#if error}
 				<div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-					<p class="text-sm text-red-700">{error}</p>
+					<pre class="text-sm text-red-700 whitespace-pre-wrap font-sans">{error}</pre>
 				</div>
 			{/if}
 
