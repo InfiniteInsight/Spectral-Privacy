@@ -188,6 +188,10 @@ impl Vault {
         // Open database
         let db = Database::new(db_path, key.to_vec()).await?;
 
+        // Run migrations to ensure schema is up to date
+        // This is critical for existing vaults that were created before new migrations were added
+        db.run_migrations().await?;
+
         // Verify password is correct by decrypting verification token
         Self::verify_password(&db, &key).await.map_err(|_| {
             tracing::warn!("Failed to verify vault key - incorrect password");
