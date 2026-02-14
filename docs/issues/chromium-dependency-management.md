@@ -167,23 +167,34 @@ Regardless of solution, we need:
 
 ## Recommended Implementation Plan
 
+**Target Audience:** Everyone (mainstream users + privacy-conscious users)
+**Strategy:** Detect existing browser → Use it → Fall back to bundled/download
+
 ### Phase 1: Immediate (Next PR)
 - [ ] Add browser availability check before scan starts
 - [ ] Show error in UI (not just console) with install instructions
 - [ ] Add "Test Browser" button to settings/dashboard
 - [ ] Document Chromium requirement in README
 
-### Phase 2: Short-term (Next Release)
-- [ ] Implement auto-download of Chromium
+### Phase 2: Smart Detection (Next Release) - **PRIORITY**
+- [ ] Implement tiered browser detection:
+  - [ ] Check for Google Chrome (most common)
+  - [ ] Check for Microsoft Edge (Chromium-based, Windows default)
+  - [ ] Check for Chromium (Linux users)
+  - [ ] Check CHROME_PATH environment variable
+- [ ] Use detected browser if found (65%+ of users = zero download)
+- [ ] Fall back to auto-download minimal Chromium if nothing found
 - [ ] Show progress dialog during download
-- [ ] Cache in app data directory
+- [ ] Cache downloaded browser in app data directory
 - [ ] Add setup wizard for first-time users
 
-### Phase 3: Long-term (Future Release)
-- [ ] Bundle Chromium as Tauri sidecar
-- [ ] Make browser path configurable
-- [ ] Support multiple browser engines (Chromium, Firefox)
-- [ ] Add browser update mechanism
+### Phase 3: Optional Bundling (Future Release)
+- [ ] Optionally bundle Chromium as Tauri sidecar for offline installers
+- [ ] Make browser path manually configurable in settings
+- [ ] Add browser version compatibility checks
+- [ ] Add browser update mechanism for cached downloads
+
+**Key Insight:** Most users already have Chrome installed. Don't force them to download another 100MB browser. Only download when actually needed.
 
 ## Related Tools/Crates
 
