@@ -41,8 +41,9 @@ export const scanAPI = {
 	/**
 	 * Get scan job status
 	 */
-	async getStatus(scanJobId: string): Promise<ScanJobStatus> {
+	async getStatus(vaultId: string, scanJobId: string): Promise<ScanJobStatus> {
 		return await invoke<ScanJobStatus>('get_scan_status', {
+			vaultId,
 			scanJobId
 		});
 	},

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scanStore } from '$lib/stores';
+	import { scanStore, vaultStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
@@ -12,8 +12,13 @@
 			return;
 		}
 
+		if (!vaultStore.currentVaultId) {
+			goto('/');
+			return;
+		}
+
 		// Start polling
-		scanStore.startPolling(scanJobId);
+		scanStore.startPolling(vaultStore.currentVaultId, scanJobId);
 	});
 
 	onDestroy(() => {

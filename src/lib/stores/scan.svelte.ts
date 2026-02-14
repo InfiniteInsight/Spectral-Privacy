@@ -99,11 +99,11 @@ function createScanStore() {
 		 *
 		 * @param scanJobId - The scan job ID to check
 		 */
-		async fetchStatus(scanJobId: string): Promise<void> {
+		async fetchStatus(vaultId: string, scanJobId: string): Promise<void> {
 			state.error = null;
 
 			try {
-				const status = await scanAPI.getStatus(scanJobId);
+				const status = await scanAPI.getStatus(vaultId, scanJobId);
 				state.scanStatus = status;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to fetch scan status';
@@ -119,19 +119,19 @@ function createScanStore() {
 		 * @param scanJobId - The scan job ID to poll
 		 * @param intervalMs - Polling interval in milliseconds (default: 2000)
 		 */
-		startPolling(scanJobId: string, intervalMs: number = 2000): void {
+		startPolling(vaultId: string, scanJobId: string, intervalMs: number = 2000): void {
 			// Clear any existing interval
 			this.stopPolling();
 
 			// Immediate fetch
-			this.fetchStatus(scanJobId);
+			this.fetchStatus(vaultId, scanJobId);
 
 			// Start polling
 			state.pollingInterval = window.setInterval(async () => {
 				if (state.isPolling) return;
 				state.isPolling = true;
 				try {
-					await this.fetchStatus(scanJobId);
+					await this.fetchStatus(vaultId, scanJobId);
 
 					// Auto-stop on terminal status
 					if (
