@@ -7,8 +7,36 @@ The scan orchestrator requires Chrome/Chromium for browser automation, but curre
 - ❌ No detection or helpful UI when it's missing
 - ❌ Not bundled with the application
 - ❌ Error shows in console, not in UI
+- ❌ Snap-packaged Chromium has flag compatibility issues
 
 This creates a poor first-run experience.
+
+## Known Issues
+
+### Ubuntu 24.04 Snap Chromium Incompatibility
+
+**Problem:** Ubuntu's default `chromium-browser` package is a snap that runs in a confined environment. It doesn't support all Chrome flags used by chromiumoxide, specifically:
+- `--disable-background-networking`
+- Other Chromium automation flags
+
+**Error:** `Browser process exited with status ExitStatus(unix_wait_status(16384)) before websocket URL could be resolved, stderr: BrowserStderr("error: unknown flag 'disable-background-networking'")`
+
+**Solution:** Install non-snap Chromium from PPA:
+```bash
+# Remove snap Chromium
+sudo snap remove chromium
+sudo apt-get remove -y chromium-browser
+
+# Install from Savoury1 PPA (provides native .deb)
+sudo add-apt-repository -y ppa:savoury1/chromium
+sudo apt-get update
+sudo apt-get install -y chromium-browser chromium-chromedriver
+
+# Verify
+chromium-browser --version
+```
+
+**Code Fix:** Added `disable_default_args()` to browser config to use minimal flag set compatible with snap Chromium. However, PPA version is still recommended for best compatibility.
 
 ## Current State
 

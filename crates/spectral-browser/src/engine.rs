@@ -54,8 +54,17 @@ impl BrowserEngine {
 
     /// Create a new browser engine with specific fingerprint
     pub async fn with_fingerprint(fingerprint: FingerprintConfig) -> Result<Self> {
-        let config = BrowserConfig::builder()
-            .no_sandbox()
+        // Build minimal browser config to avoid snap Chromium incompatibilities
+        let mut config = BrowserConfig::builder().no_sandbox().disable_default_args(); // Disable chromiumoxide's default args
+
+        // Add only essential args that work with snap Chromium
+        config = config
+            .arg("--headless")
+            .arg("--disable-gpu")
+            .arg("--no-first-run")
+            .arg("--disable-dev-shm-usage");
+
+        let config = config
             .build()
             .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
 
