@@ -73,7 +73,7 @@ function createScanStore() {
 		 * @param profileId - The profile ID to scan
 		 * @returns The scan job ID or null on error
 		 */
-		async startScan(profileId: string): Promise<string | null> {
+		async startScan(vaultId: string, profileId: string): Promise<string | null> {
 			this.stopPolling();
 			state.findings = [];
 			state.scanStatus = null;
@@ -81,7 +81,7 @@ function createScanStore() {
 			state.error = null;
 
 			try {
-				const scanJobStatus = await scanAPI.start(profileId);
+				const scanJobStatus = await scanAPI.start(vaultId, profileId);
 				state.currentScanId = scanJobStatus.id;
 				state.scanStatus = scanJobStatus;
 				return scanJobStatus.id;

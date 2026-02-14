@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { scanStore, profileStore } from '$lib/stores';
+	import { scanStore, profileStore, vaultStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -29,6 +29,11 @@
 			return;
 		}
 
+		if (!vaultStore.currentVaultId) {
+			error = 'No vault is unlocked';
+			return;
+		}
+
 		// Validate profile still exists
 		const profileExists = profiles.some((p) => p.id === selectedProfileId);
 		if (!profileExists) {
@@ -37,7 +42,7 @@
 			return;
 		}
 
-		const scanId = await scanStore.startScan(selectedProfileId);
+		const scanId = await scanStore.startScan(vaultStore.currentVaultId, selectedProfileId);
 
 		if (scanId) {
 			goto(`/scan/progress/${scanId}`);

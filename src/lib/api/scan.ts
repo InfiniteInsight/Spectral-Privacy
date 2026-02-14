@@ -30,8 +30,9 @@ export const scanAPI = {
 	/**
 	 * Start a new scan job
 	 */
-	async start(profileId: string, brokerFilter?: string): Promise<ScanJobStatus> {
+	async start(vaultId: string, profileId: string, brokerFilter?: string): Promise<ScanJobStatus> {
 		return await invoke<ScanJobStatus>('start_scan', {
+			vaultId,
 			profileId,
 			brokerFilter
 		});

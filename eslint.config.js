@@ -10,6 +10,7 @@ export default [
 	{
 		ignores: [
 			'.svelte-kit/**',
+			'.worktrees/**',
 			'build/**',
 			'node_modules/**',
 			'src-tauri/**',
