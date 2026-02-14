@@ -211,6 +211,33 @@ pub async fn verify_finding(
     update_verification_status(pool, finding_id, status, verified_by_user).await
 }
 
+/// Check if a finding already exists for the given scan job and listing URL.
+///
+/// This is used for deduplication to prevent creating duplicate findings
+/// when the same listing appears multiple times in scan results.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn finding_exists_by_url(
+    pool: &Pool<Sqlite>,
+    scan_job_id: &str,
+    listing_url: &str,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(
+            SELECT 1 FROM findings f
+            JOIN broker_scans bs ON f.broker_scan_id = bs.id
+            WHERE bs.scan_job_id = ? AND f.listing_url = ?
+        )",
+    )
+    .bind(scan_job_id)
+    .bind(listing_url)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(result)
+}
+
 /// Helper function to parse findings from database rows.
 fn parse_findings_from_rows(
     rows: Vec<sqlx::sqlite::SqliteRow>,

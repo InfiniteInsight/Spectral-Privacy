@@ -419,36 +419,108 @@ impl ScanOrchestrator {
 
     /// Parse HTML and store findings in database.
     ///
-    /// This is a simplified implementation. In production, this would use
-    /// `ResultParser` with configured selectors to extract structured data.
-    async fn parse_and_store_findings(
+    /// Uses `ResultParser` with configured selectors to extract structured data
+    /// from broker HTML. Performs deduplication to prevent duplicate findings.
+    ///
+    /// # Note
+    /// This method is public for testing purposes.
+    pub async fn parse_and_store_findings(
         &self,
-        _html: &str,
+        html: &str,
         broker_scan_id: &str,
         broker_id: &BrokerId,
         profile_id: &str,
     ) -> Result<usize> {
-        // Simplified: In real implementation, would parse HTML with selectors
-        // and create findings for each match found
+        // Get broker definition to access selectors
+        let broker_def = self.broker_registry.get(broker_id)?;
 
-        // For now, just create a dummy finding to demonstrate the flow
-        let extracted_data = serde_json::json!({
-            "name": "Example Name",
-            "location": "Example City, ST"
-        });
+        // Get result selectors from broker definition
+        let Some(result_selectors) = broker_def.search.result_selectors() else {
+            tracing::warn!(
+                "Broker {} has no result selectors, skipping parsing",
+                broker_id
+            );
+            return Ok(0);
+        };
 
-        spectral_db::findings::create_finding(
-            self.db.pool(),
-            broker_scan_id.to_string(),
-            broker_id.to_string(),
-            profile_id.to_string(),
-            format!("https://example.com/profile/{}", uuid::Uuid::new_v4()),
-            extracted_data,
-        )
-        .await?;
+        // Create ResultParser with selectors and broker base URL
+        let parser =
+            crate::parser::ResultParser::new(result_selectors, broker_def.broker.url.clone());
 
-        Ok(1) // Return count of findings
+        // Parse HTML to get listing matches
+        let matches = match parser.parse(html) {
+            Ok(matches) => matches,
+            Err(e) => {
+                tracing::warn!("Failed to parse results for {}: {}", broker_id, e);
+                return Ok(0); // Don't fail entire scan on parse error
+            }
+        };
+
+        // Get scan_job_id from broker_scan record
+        let scan_job_id =
+            sqlx::query_scalar::<_, String>("SELECT scan_job_id FROM broker_scans WHERE id = ?")
+                .bind(broker_scan_id)
+                .fetch_one(self.db.pool())
+                .await?;
+
+        let mut created_count = 0;
+        let mut skipped_count = 0;
+
+        // Process each match
+        for listing_match in matches {
+            // Check deduplication
+            let exists = spectral_db::findings::finding_exists_by_url(
+                self.db.pool(),
+                &scan_job_id,
+                &listing_match.listing_url,
+            )
+            .await?;
+
+            if exists {
+                // Skip duplicate
+                skipped_count += 1;
+                continue;
+            }
+
+            // Convert ExtractedData to JSON
+            let extracted_json = extracted_data_to_json(&listing_match.extracted_data);
+
+            // Create finding record with PendingVerification status
+            spectral_db::findings::create_finding(
+                self.db.pool(),
+                broker_scan_id.to_string(),
+                broker_id.to_string(),
+                profile_id.to_string(),
+                listing_match.listing_url,
+                extracted_json,
+            )
+            .await?;
+
+            created_count += 1;
+        }
+
+        if skipped_count > 0 {
+            tracing::debug!(
+                "Skipped {} duplicate findings for broker {}",
+                skipped_count,
+                broker_id
+            );
+        }
+
+        Ok(created_count)
     }
+}
+
+/// Convert `ExtractedData` to JSON for database storage.
+fn extracted_data_to_json(data: &crate::parser::ExtractedData) -> serde_json::Value {
+    serde_json::json!({
+        "name": data.name,
+        "age": data.age,
+        "addresses": data.addresses,
+        "phone_numbers": data.phone_numbers,
+        "relatives": data.relatives,
+        "emails": data.emails
+    })
 }
 
 #[cfg(test)]
@@ -494,5 +566,27 @@ mod tests {
         let rate_limit_backoff = RETRY_DELAY_MS * RATE_LIMIT_BACKOFF_MULTIPLIER;
         assert!(rate_limit_backoff > normal_backoff);
         assert!(rate_limit_backoff >= 3 * normal_backoff);
+    }
+
+    #[test]
+    fn test_extracted_data_to_json() {
+        use crate::parser;
+
+        let data = parser::ExtractedData {
+            name: Some("John Doe".to_string()),
+            age: Some(30),
+            addresses: vec!["123 Main St".to_string()],
+            phone_numbers: vec!["555-1234".to_string()],
+            relatives: vec!["Jane Doe".to_string()],
+            emails: vec!["john@example.com".to_string()],
+        };
+
+        let json = extracted_data_to_json(&data);
+        assert_eq!(json["name"], "John Doe");
+        assert_eq!(json["age"], 30);
+        assert_eq!(json["addresses"], serde_json::json!(["123 Main St"]));
+        assert_eq!(json["phone_numbers"], serde_json::json!(["555-1234"]));
+        assert_eq!(json["relatives"], serde_json::json!(["Jane Doe"]));
+        assert_eq!(json["emails"], serde_json::json!(["john@example.com"]));
     }
 }
