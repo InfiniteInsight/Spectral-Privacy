@@ -267,6 +267,28 @@ pub async fn get_failed_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>
     parse_removal_attempts_from_rows(rows)
 }
 
+/// Get all removal attempts for a scan job (via findings table).
+pub async fn get_by_scan_job_id(
+    pool: &Pool<Sqlite>,
+    scan_job_id: &str,
+) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT ra.id, ra.finding_id, ra.broker_id, ra.status, ra.created_at,
+                ra.submitted_at, ra.completed_at, ra.error_message
+         FROM removal_attempts ra
+         INNER JOIN findings f ON ra.finding_id = f.id
+         WHERE f.broker_scan_id IN (
+           SELECT id FROM broker_scans WHERE scan_job_id = ?
+         )
+         ORDER BY ra.created_at ASC",
+    )
+    .bind(scan_job_id)
+    .fetch_all(pool)
+    .await?;
+
+    parse_removal_attempts_from_rows(rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
