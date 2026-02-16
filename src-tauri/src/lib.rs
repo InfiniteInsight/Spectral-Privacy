@@ -6,6 +6,7 @@
 pub mod commands;
 mod error;
 mod metadata;
+pub mod removal_worker;
 pub mod state;
 pub mod types;
 
