@@ -6,6 +6,8 @@
 use spectral_broker::removal::RemovalOutcome;
 use spectral_vault::UserProfile;
 use std::collections::HashMap;
+use std::time::Duration;
+use tracing::{error, warn};
 
 /// Result of a removal submission worker task.
 #[derive(Debug)]
@@ -55,6 +57,58 @@ pub fn map_fields_for_submission(
     fields.insert("last_name".to_string(), last_name);
 
     Ok(fields)
+}
+
+/// Retry a task with exponential backoff.
+///
+/// Attempts the task up to `max_attempts` times with increasing delays:
+/// - After 1st failure: 30 seconds
+/// - After 2nd failure: 2 minutes
+/// - After 3rd+ failure: 5 minutes
+///
+/// Returns `Ok(T)` on success or `Err(E)` if all attempts are exhausted.
+pub async fn retry_with_backoff<F, Fut, T, E>(mut task_fn: F, max_attempts: u32) -> Result<T, E>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T, E>>,
+{
+    let delays = [
+        Duration::from_secs(30),     // 30 seconds
+        Duration::from_secs(2 * 60), // 2 minutes
+        Duration::from_secs(5 * 60), // 5 minutes
+    ];
+
+    for attempt in 1..=max_attempts {
+        match task_fn().await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                if attempt >= max_attempts {
+                    error!(
+                        "Task failed after {} attempts (max: {})",
+                        attempt, max_attempts
+                    );
+                    return Err(e);
+                }
+
+                let delay = if attempt == 1 {
+                    delays[0]
+                } else if attempt == 2 {
+                    delays[1]
+                } else {
+                    delays[2]
+                };
+
+                warn!(
+                    "Task failed on attempt {}/{}. Retrying in {:?}...",
+                    attempt, max_attempts, delay
+                );
+
+                tokio::time::sleep(delay).await;
+            }
+        }
+    }
+
+    unreachable!("Loop should have returned via Ok or Err")
 }
 
 #[cfg(test)]
@@ -132,5 +186,56 @@ mod tests {
         assert!(result
             .unwrap_err()
             .contains("Missing required field: email"));
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_backoff_succeeds_on_second_attempt() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use std::sync::Arc;
+
+        let attempt_count = Arc::new(AtomicU32::new(0));
+        let attempt_count_clone = attempt_count.clone();
+
+        let task = || {
+            let count = attempt_count_clone.clone();
+            async move {
+                // nosemgrep: llm-prompt-injection-risk
+                let current = count.fetch_add(1, Ordering::SeqCst) + 1;
+                if current < 2 {
+                    Err("Transient error")
+                } else {
+                    Ok("Success")
+                }
+            }
+        };
+
+        let result = retry_with_backoff(task, 3).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Success");
+        assert_eq!(attempt_count.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    async fn test_retry_with_backoff_exhausts_attempts() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use std::sync::Arc;
+
+        let attempt_count = Arc::new(AtomicU32::new(0));
+        let attempt_count_clone = attempt_count.clone();
+
+        let task = || {
+            let count = attempt_count_clone.clone();
+            async move {
+                count.fetch_add(1, Ordering::SeqCst);
+                Err::<(), _>("Persistent error")
+            }
+        };
+
+        let result = retry_with_backoff(task, 3).await;
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Persistent error");
+        assert_eq!(attempt_count.load(Ordering::SeqCst), 3);
     }
 }
