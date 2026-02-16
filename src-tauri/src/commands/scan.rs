@@ -482,6 +482,54 @@ pub async fn process_removal_batch(
     })
 }
 
+/// Get all removal attempts in the CAPTCHA queue.
+///
+/// Returns removal attempts that require CAPTCHA resolution, ordered oldest first.
+#[tauri::command]
+pub async fn get_captcha_queue(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<spectral_db::removal_attempts::RemovalAttempt>, String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get CAPTCHA queue
+    spectral_db::removal_attempts::get_captcha_queue(db.pool())
+        .await
+        .map_err(|e| format!("Failed to get CAPTCHA queue: {}", e))
+}
+
+/// Get all removal attempts in the failed queue.
+///
+/// Returns removal attempts that have failed, ordered newest first.
+#[tauri::command]
+pub async fn get_failed_queue(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<spectral_db::removal_attempts::RemovalAttempt>, String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get failed queue
+    spectral_db::removal_attempts::get_failed_queue(db.pool())
+        .await
+        .map_err(|e| format!("Failed to get failed queue: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     // Tests will be added when we implement the actual logic
