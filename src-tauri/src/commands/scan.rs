@@ -352,9 +352,9 @@ pub async fn submit_removals_for_confirmed(
 /// - `removal:captcha`: When CAPTCHA is required
 /// - `removal:failed`: When removal fails
 #[tauri::command]
-pub async fn process_removal_batch(
+pub async fn process_removal_batch<R: tauri::Runtime>(
     state: State<'_, AppState>,
-    app: tauri::AppHandle,
+    app: tauri::AppHandle<R>,
     vault_id: String,
     removal_attempt_ids: Vec<String>,
 ) -> Result<BatchSubmissionResult, String> {
@@ -541,9 +541,9 @@ pub async fn get_failed_queue(
 /// - `removal:captcha`: When CAPTCHA is required
 /// - `removal:failed`: When removal fails
 #[tauri::command]
-pub async fn retry_removal(
+pub async fn retry_removal<R: tauri::Runtime>(
     state: State<'_, AppState>,
-    app: tauri::AppHandle,
+    app: tauri::AppHandle<R>,
     vault_id: String,
     removal_attempt_id: String,
 ) -> Result<(), String> {
