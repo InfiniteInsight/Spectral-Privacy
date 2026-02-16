@@ -204,19 +204,19 @@ function createScanStore() {
 		 * Submit removal requests for all confirmed findings
 		 *
 		 * @param scanJobId - The scan job ID
-		 * @returns Count of removal requests submitted
+		 * @returns Array of removal attempt IDs
 		 */
-		async submitRemovals(vaultId: string, scanJobId: string): Promise<number> {
+		async submitRemovals(vaultId: string, scanJobId: string): Promise<string[]> {
 			state.loading = true;
 			state.error = null;
 
 			try {
 				const removalIds = await scanAPI.submitRemovals(vaultId, scanJobId);
-				return removalIds.length;
+				return removalIds;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to submit removals';
 				console.error('Submit removals error:', err);
-				return 0;
+				throw err;
 			} finally {
 				state.loading = false;
 			}

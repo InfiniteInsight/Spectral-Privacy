@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import type { Finding } from '$lib/api/scan';
+	import { removalAPI } from '$lib/api/removal';
 
 	const scanJobId = $derived($page.params.id);
 	let expandedFindings = $state<Set<string>>(new Set());
@@ -62,8 +63,24 @@
 
 		actionError = null;
 		try {
-			const count = await scanStore.submitRemovals(vaultStore.currentVaultId, scanJobId);
-			goto(`/removals?count=${count}`);
+			// Step 1: Create removal attempts (existing command)
+			const removalAttemptIds = await scanStore.submitRemovals(
+				vaultStore.currentVaultId,
+				scanJobId
+			);
+
+			// Step 2: Start batch processing
+			const result = await removalAPI.processBatch(vaultStore.currentVaultId, removalAttemptIds);
+
+			// Validate that items were actually queued
+			if (result.queued_count === 0) {
+				actionError = 'No items were queued for processing. Please try again.';
+				console.error('Batch processing failed - nothing queued:', result);
+				return;
+			}
+
+			// Step 3: Navigate to progress page
+			goto(`/removals/progress/${scanJobId}`);
 		} catch (err) {
 			actionError = 'Failed to submit removals. Please try again.';
 			console.error('Submission failed:', err);
