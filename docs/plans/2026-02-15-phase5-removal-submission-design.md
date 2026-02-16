@@ -442,12 +442,15 @@ Real-time UI updates via Tauri events:
 2. ✅ Multiple forms submit concurrently (3 at a time)
 3. ✅ CAPTCHAs don't block entire batch - queue for later
 4. ✅ Failed submissions retry automatically (3x with backoff)
-5. ✅ Real-time progress updates visible in UI
-6. ✅ Email verification can be automated (opt-in)
+5. ⏳ Real-time progress updates visible in UI (backend complete, UI pending)
+6. ⏳ Email verification can be automated (opt-in) - (Phase 6)
 7. ✅ User can retry failed submissions manually
 8. ✅ All state persists in database (survives app restart)
 9. ✅ Comprehensive error messages for failures
 10. ✅ Integration tests cover concurrent task processing
+
+**Phase 5 Backend: Complete** ✅
+**Phase 5 Frontend: Pending** (UI components for progress dashboard, queue screens)
 
 ## Dependencies
 
