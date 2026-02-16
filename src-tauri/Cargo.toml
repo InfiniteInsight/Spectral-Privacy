@@ -38,6 +38,7 @@ directories.workspace = true
 regex.workspace = true
 once_cell.workspace = true
 sqlx.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 uuid.workspace = true

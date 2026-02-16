@@ -1,3 +1,4 @@
+use crate::removal_worker::submit_removal_task;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_broker::BrokerRegistry;
@@ -5,7 +6,9 @@ use spectral_browser::BrowserEngine;
 use spectral_core::types::ProfileId;
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Emitter, State};
+use tokio::sync::Semaphore;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StartScanRequest {
@@ -17,6 +20,13 @@ pub struct StartScanRequest {
 pub struct ScanJobResponse {
     pub id: String,
     pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BatchSubmissionResult {
+    pub job_id: String,
+    pub total_count: usize,
+    pub queued_count: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -329,6 +339,147 @@ pub async fn submit_removals_for_confirmed(
     }
 
     Ok(removal_ids)
+}
+
+/// Process a batch of removal attempts with parallel workers.
+///
+/// Spawns async worker tasks for each removal_attempt_id (max 3 concurrent).
+/// Returns immediately with a job_id. Real-time events are emitted as tasks complete.
+///
+/// # Events
+/// - `removal:started`: When task begins processing
+/// - `removal:success`: When removal is submitted successfully
+/// - `removal:captcha`: When CAPTCHA is required
+/// - `removal:failed`: When removal fails
+#[tauri::command]
+pub async fn process_removal_batch(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+    vault_id: String,
+    removal_attempt_ids: Vec<String>,
+) -> Result<BatchSubmissionResult, String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not found or locked".to_string())?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get the underlying Pool<Sqlite> which can be cloned
+    let pool = db.pool().clone();
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key_vec = vault_key.to_vec();
+
+    // Create a new EncryptedPool with the same pool and key
+    use spectral_db::{Database, EncryptedPool};
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
+    let database = Database::from_encrypted_pool(encrypted_pool);
+    let db = Arc::new(database);
+
+    // Create shared resources
+    let broker_registry = Arc::new(BrokerRegistry::new());
+    let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
+
+    // Generate job_id
+    let job_id = Uuid::new_v4().to_string();
+
+    // Count of removal attempts
+    let total_count = removal_attempt_ids.len();
+    let queued_count = total_count; // All are queued for processing
+
+    // Spawn worker tasks for each removal attempt
+    for attempt_id in removal_attempt_ids {
+        let db_clone = db.clone();
+        let vault_clone = Arc::clone(&vault);
+        let broker_registry_clone = broker_registry.clone();
+        let semaphore_clone = semaphore.clone();
+        let job_id_clone = job_id.clone();
+        let app_handle = app.clone();
+        let attempt_id_clone = attempt_id.clone();
+
+        tokio::spawn(async move {
+            // Emit started event
+            let _ = app_handle.emit(
+                "removal:started",
+                serde_json::json!({
+                    "job_id": job_id_clone,
+                    "attempt_id": attempt_id_clone
+                }),
+            );
+
+            // Execute worker task
+            let result = submit_removal_task(
+                db_clone,
+                vault_clone,
+                attempt_id_clone.clone(),
+                broker_registry_clone,
+                semaphore_clone,
+            )
+            .await;
+
+            // Emit result event based on outcome
+            match result {
+                Ok(worker_result) => match worker_result.outcome {
+                    spectral_broker::removal::RemovalOutcome::Submitted
+                    | spectral_broker::removal::RemovalOutcome::RequiresEmailVerification {
+                        ..
+                    } => {
+                        let _ = app_handle.emit(
+                            "removal:success",
+                            serde_json::json!({
+                                "job_id": job_id_clone,
+                                "attempt_id": attempt_id_clone,
+                                "outcome": format!("{:?}", worker_result.outcome)
+                            }),
+                        );
+                    }
+                    spectral_broker::removal::RemovalOutcome::RequiresCaptcha { .. } => {
+                        let _ = app_handle.emit(
+                            "removal:captcha",
+                            serde_json::json!({
+                                "job_id": job_id_clone,
+                                "attempt_id": attempt_id_clone,
+                                "outcome": format!("{:?}", worker_result.outcome)
+                            }),
+                        );
+                    }
+                    spectral_broker::removal::RemovalOutcome::Failed { .. }
+                    | spectral_broker::removal::RemovalOutcome::RequiresAccountCreation => {
+                        let _ = app_handle.emit(
+                            "removal:failed",
+                            serde_json::json!({
+                                "job_id": job_id_clone,
+                                "attempt_id": attempt_id_clone,
+                                "error": format!("{:?}", worker_result.outcome)
+                            }),
+                        );
+                    }
+                },
+                Err(error) => {
+                    let _ = app_handle.emit(
+                        "removal:failed",
+                        serde_json::json!({
+                            "job_id": job_id_clone,
+                            "attempt_id": attempt_id_clone,
+                            "error": error
+                        }),
+                    );
+                }
+            }
+        });
+    }
+
+    // Return immediately with job info
+    Ok(BatchSubmissionResult {
+        job_id,
+        total_count,
+        queued_count,
+    })
 }
 
 #[cfg(test)]

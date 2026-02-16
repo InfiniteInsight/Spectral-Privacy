@@ -84,6 +84,7 @@ pub fn run() {
             commands::scan::get_findings,
             commands::scan::verify_finding,
             commands::scan::submit_removals_for_confirmed,
+            commands::scan::process_removal_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
