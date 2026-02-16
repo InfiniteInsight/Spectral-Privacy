@@ -530,6 +530,133 @@ pub async fn get_failed_queue(
         .map_err(|e| format!("Failed to get failed queue: {}", e))
 }
 
+/// Retry a failed removal attempt.
+///
+/// Resets the removal attempt to Pending status and spawns a new worker task
+/// to reprocess the submission. Returns immediately while the retry runs in background.
+///
+/// # Events
+/// - `removal:retry`: When retry begins
+/// - `removal:success`: When removal is submitted successfully
+/// - `removal:captcha`: When CAPTCHA is required
+/// - `removal:failed`: When removal fails
+#[tauri::command]
+pub async fn retry_removal(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+    vault_id: String,
+    removal_attempt_id: String,
+) -> Result<(), String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Reset status to Pending, clear timestamps and error
+    spectral_db::removal_attempts::update_status(
+        db.pool(),
+        &removal_attempt_id,
+        spectral_db::removal_attempts::RemovalStatus::Pending,
+        None, // Clear submitted_at
+        None, // Clear completed_at
+        None, // Clear error_message
+    )
+    .await
+    .map_err(|e| format!("Failed to reset removal attempt: {}", e))?;
+
+    // Get the underlying Pool<Sqlite> which can be cloned
+    let pool = db.pool().clone();
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key_vec = vault_key.to_vec();
+
+    // Create a new EncryptedPool with the same pool and key
+    use spectral_db::{Database, EncryptedPool};
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
+    let database = Database::from_encrypted_pool(encrypted_pool);
+    let db = Arc::new(database);
+
+    // Create shared resources
+    let broker_registry = Arc::new(BrokerRegistry::new());
+    let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
+    let vault_clone = Arc::clone(&vault);
+
+    // Spawn background worker task
+    let attempt_id_clone = removal_attempt_id.clone();
+    tokio::spawn(async move {
+        // Emit retry event
+        let _ = app.emit(
+            "removal:retry",
+            serde_json::json!({
+                "attempt_id": attempt_id_clone
+            }),
+        );
+
+        // Execute worker task
+        let result = submit_removal_task(
+            db,
+            vault_clone,
+            attempt_id_clone.clone(),
+            broker_registry,
+            semaphore,
+        )
+        .await;
+
+        // Emit result event based on outcome
+        match result {
+            Ok(worker_result) => match worker_result.outcome {
+                spectral_broker::removal::RemovalOutcome::Submitted
+                | spectral_broker::removal::RemovalOutcome::RequiresEmailVerification { .. } => {
+                    let _ = app.emit(
+                        "removal:success",
+                        serde_json::json!({
+                            "attempt_id": attempt_id_clone,
+                            "outcome": format!("{:?}", worker_result.outcome)
+                        }),
+                    );
+                }
+                spectral_broker::removal::RemovalOutcome::RequiresCaptcha { .. } => {
+                    let _ = app.emit(
+                        "removal:captcha",
+                        serde_json::json!({
+                            "attempt_id": attempt_id_clone,
+                            "outcome": format!("{:?}", worker_result.outcome)
+                        }),
+                    );
+                }
+                spectral_broker::removal::RemovalOutcome::Failed { .. }
+                | spectral_broker::removal::RemovalOutcome::RequiresAccountCreation => {
+                    let _ = app.emit(
+                        "removal:failed",
+                        serde_json::json!({
+                            "attempt_id": attempt_id_clone,
+                            "error": format!("{:?}", worker_result.outcome)
+                        }),
+                    );
+                }
+            },
+            Err(error) => {
+                let _ = app.emit(
+                    "removal:failed",
+                    serde_json::json!({
+                        "attempt_id": attempt_id_clone,
+                        "error": error
+                    }),
+                );
+            }
+        }
+    });
+
+    // Return immediately
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     // Tests will be added when we implement the actual logic
