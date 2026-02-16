@@ -1,54 +1,36 @@
 <script lang="ts">
 	import type { RemovalAttempt } from '$lib/api/removal';
-	import { removalStore } from '$lib/stores/removal.svelte';
-	import { vaultStore } from '$lib/stores/vault.svelte';
 
 	interface Props {
 		failedQueue: RemovalAttempt[];
+		// eslint-disable-next-line no-unused-vars
+		onRetry: (attemptId: string) => void;
+		onRetryAll: () => void;
 	}
 
-	let { failedQueue }: Props = $props();
+	let { failedQueue, onRetry, onRetryAll }: Props = $props();
 
-	let retryingIds = $state<Set<string>>(new Set());
+	let expandedErrors = $state<Set<string>>(new Set());
+	let retrying = $state<Set<string>>(new Set());
+
+	function toggleError(attemptId: string) {
+		const newSet = new Set(expandedErrors);
+		if (newSet.has(attemptId)) {
+			newSet.delete(attemptId);
+		} else {
+			newSet.add(attemptId);
+		}
+		expandedErrors = newSet;
+	}
 
 	async function handleRetry(attemptId: string) {
-		const vaultId = vaultStore.currentVaultId;
-		if (!vaultId) {
-			console.error('No vault selected');
-			return;
-		}
-
-		retryingIds.add(attemptId);
-
+		retrying.add(attemptId);
 		try {
-			await removalStore.retryRemoval(vaultId, attemptId);
-		} catch (err) {
-			console.error('Retry failed:', err);
-			alert('Failed to retry removal');
+			await onRetry(attemptId);
 		} finally {
-			retryingIds.delete(attemptId);
-		}
-	}
-
-	async function handleRetryAll() {
-		const vaultId = vaultStore.currentVaultId;
-		if (!vaultId) {
-			console.error('No vault selected');
-			return;
-		}
-
-		for (const attempt of failedQueue) {
-			retryingIds.add(attempt.id);
-		}
-
-		try {
-			const promises = failedQueue.map((attempt) => removalStore.retryRemoval(vaultId, attempt.id));
-			await Promise.all(promises);
-		} catch (err) {
-			console.error('Batch retry failed:', err);
-			alert('Some retries failed');
-		} finally {
-			retryingIds.clear();
+			const newSet = new Set(retrying);
+			newSet.delete(attemptId);
+			retrying = newSet;
 		}
 	}
 
@@ -75,33 +57,30 @@
 				<span class="text-3xl text-green-600">✓</span>
 			</div>
 			<h3 class="text-lg font-semibold text-gray-900 mb-2">No failed attempts</h3>
-			<p class="text-sm text-gray-600">All removals succeeded or need manual attention</p>
+			<p class="text-sm text-gray-600">All removals succeeded or need manual attention (CAPTCHA)</p>
 		</div>
 	{:else}
 		<!-- Failed Queue List -->
 		<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-			<div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-				<div class="flex items-center justify-between">
-					<div>
-						<h2 class="text-lg font-semibold text-gray-900">
-							Failed Queue ({failedQueue.length})
-						</h2>
-						<p class="text-sm text-gray-600 mt-1">These removals failed and can be retried</p>
-					</div>
-
+			<div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+				<div>
+					<h2 class="text-lg font-semibold text-gray-900">Failed Queue ({failedQueue.length})</h2>
+					<p class="text-sm text-gray-600 mt-1">These removals failed after all retry attempts</p>
+				</div>
+				{#if failedQueue.length > 1}
 					<button
-						onclick={handleRetryAll}
-						disabled={retryingIds.size > 0}
-						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+						onclick={onRetryAll}
+						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
 					>
 						Retry All
 					</button>
-				</div>
+				{/if}
 			</div>
 
 			<div class="divide-y divide-gray-200">
 				{#each failedQueue as attempt}
-					{@const isRetrying = retryingIds.has(attempt.id)}
+					{@const isExpanded = expandedErrors.has(attempt.id)}
+					{@const isRetrying = retrying.has(attempt.id)}
 					<div class="p-6 hover:bg-gray-50">
 						<div class="flex items-start justify-between">
 							<div class="flex-1">
@@ -113,11 +92,23 @@
 								</div>
 
 								<div class="text-sm text-gray-600 mb-2">
-									<span class="font-medium">Error:</span>
-									<span class="ml-2">{attempt.error_message || 'Unknown error'}</span>
+									<button
+										onclick={() => toggleError(attempt.id)}
+										class="text-blue-600 hover:text-blue-800 font-medium"
+									>
+										{isExpanded ? 'Hide' : 'Show'} Error Details
+									</button>
 								</div>
 
-								<div class="text-xs text-gray-500">
+								{#if isExpanded && attempt.error_message}
+									<div class="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+										<p class="text-sm text-red-900 font-mono break-all">
+											{attempt.error_message}
+										</p>
+									</div>
+								{/if}
+
+								<div class="text-xs text-gray-500 mt-2">
 									Failed {formatTime(attempt.created_at)}
 								</div>
 							</div>
@@ -125,9 +116,16 @@
 							<button
 								onclick={() => handleRetry(attempt.id)}
 								disabled={isRetrying}
-								class="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+								class="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
 							>
-								{isRetrying ? 'Retrying...' : 'Retry'}
+								{#if isRetrying}
+									<span
+										class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+									></span>
+									Retrying...
+								{:else}
+									Retry
+								{/if}
 							</button>
 						</div>
 					</div>
