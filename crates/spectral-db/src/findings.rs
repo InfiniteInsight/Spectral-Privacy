@@ -192,6 +192,35 @@ pub async fn get_by_broker_scan(
     parse_findings_from_rows(rows)
 }
 
+/// Get a finding by its ID.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_by_id(
+    pool: &Pool<Sqlite>,
+    finding_id: &str,
+) -> Result<Option<Finding>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, broker_scan_id, broker_id, profile_id, listing_url,
+                verification_status, extracted_data, discovered_at,
+                verified_at, verified_by_user, removal_attempt_id
+         FROM findings
+         WHERE id = ?",
+    )
+    .bind(finding_id)
+    .fetch_optional(pool)
+    .await?;
+
+    match row {
+        Some(row) => {
+            let rows = vec![row];
+            let mut findings = parse_findings_from_rows(rows)?;
+            Ok(findings.pop())
+        }
+        None => Ok(None),
+    }
+}
+
 /// Verify a finding (shorthand for updating status to Confirmed).
 ///
 /// # Errors

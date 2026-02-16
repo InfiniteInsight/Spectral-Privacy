@@ -3,11 +3,17 @@
 //! Handles async removal submission with retry logic, CAPTCHA detection,
 //! and database state management.
 
-use spectral_broker::removal::RemovalOutcome;
+use spectral_broker::removal::{RemovalOutcome, WebFormSubmitter};
+use spectral_broker::BrokerRegistry;
+use spectral_core::BrokerId;
+use spectral_db::removal_attempts::{self, RemovalStatus};
+use spectral_db::Database;
 use spectral_vault::UserProfile;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
-use tracing::{error, warn};
+use tokio::sync::Semaphore;
+use tracing::{error, info, warn};
 
 /// Result of a removal submission worker task.
 #[derive(Debug)]
@@ -109,6 +115,167 @@ where
     }
 
     unreachable!("Loop should have returned via Ok or Err")
+}
+
+/// Submit a removal request for a single attempt.
+///
+/// Worker task that:
+/// 1. Loads removal attempt, finding, and profile data
+/// 2. Maps fields for form submission
+/// 3. Calls WebFormSubmitter with retry logic
+/// 4. Updates database based on outcome
+/// 5. Returns result for event emission
+///
+/// # Arguments
+/// * `db` - Database connection
+/// * `vault` - Unlocked vault for profile access
+/// * `removal_attempt_id` - ID of removal attempt to process
+/// * `broker_registry` - Registry for broker definitions
+/// * `semaphore` - Concurrency limiter (max 3 concurrent)
+pub async fn submit_removal_task(
+    db: Arc<Database>,
+    vault: Arc<spectral_vault::Vault>,
+    removal_attempt_id: String,
+    broker_registry: Arc<BrokerRegistry>,
+    semaphore: Arc<Semaphore>,
+) -> Result<WorkerResult, String> {
+    // Acquire semaphore permit (wait if 3 tasks active)
+    let _permit = semaphore
+        .acquire()
+        .await
+        .map_err(|e| format!("Failed to acquire semaphore: {}", e))?;
+
+    info!(
+        "Worker acquired permit for removal attempt: {}",
+        removal_attempt_id
+    );
+
+    // Load removal attempt from database
+    let removal_attempt = removal_attempts::get_by_id(db.pool(), &removal_attempt_id)
+        .await
+        .map_err(|e| format!("Failed to load removal attempt: {}", e))?
+        .ok_or_else(|| format!("Removal attempt not found: {}", removal_attempt_id))?;
+
+    // Load associated finding
+    let finding = spectral_db::findings::get_by_id(db.pool(), &removal_attempt.finding_id)
+        .await
+        .map_err(|e| format!("Failed to load finding: {}", e))?
+        .ok_or_else(|| format!("Finding not found: {}", removal_attempt.finding_id))?;
+
+    // Load profile
+    let profile_id = spectral_core::types::ProfileId::new(&finding.profile_id)
+        .map_err(|e| format!("Invalid profile ID: {}", e))?;
+
+    let profile = vault
+        .load_profile(&profile_id)
+        .await
+        .map_err(|e| format!("Failed to load profile: {}", e))?;
+
+    // Get encryption key from vault
+    let key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get encryption key: {}", e))?;
+
+    // Map fields for submission
+    let field_values = map_fields_for_submission(&profile, &finding.listing_url, key)?;
+
+    // Load broker definition
+    let broker_id = BrokerId::new(&removal_attempt.broker_id)
+        .map_err(|e| format!("Invalid broker ID: {}", e))?;
+
+    let broker_def = broker_registry
+        .get(&broker_id)
+        .map_err(|e| format!("Failed to get broker definition: {}", e))?;
+
+    // Create WebFormSubmitter (creates its own browser engine)
+    let submitter = WebFormSubmitter::new()
+        .await
+        .map_err(|e| format!("Failed to create submitter: {}", e))?;
+
+    // Submit with retry logic
+    let outcome = retry_with_backoff(
+        || async {
+            submitter
+                .submit(&broker_def, field_values.clone())
+                .await
+                .map_err(|e| format!("Submission failed: {}", e))
+        },
+        3, // 3 attempts
+    )
+    .await?;
+
+    // Update database based on outcome
+    match &outcome {
+        RemovalOutcome::Submitted | RemovalOutcome::RequiresEmailVerification { .. } => {
+            let now = chrono::Utc::now();
+            removal_attempts::update_status(
+                db.pool(),
+                &removal_attempt_id,
+                RemovalStatus::Submitted,
+                Some(now),
+                None,
+                None,
+            )
+            .await
+            .map_err(|e| format!("Failed to update status to Submitted: {}", e))?;
+
+            info!("Removal submitted successfully: {}", removal_attempt_id);
+        }
+        RemovalOutcome::RequiresCaptcha { captcha_url } => {
+            // Keep status as Pending but set error message for CAPTCHA queue
+            removal_attempts::update_status(
+                db.pool(),
+                &removal_attempt_id,
+                RemovalStatus::Pending,
+                None,
+                None,
+                Some(format!("CAPTCHA_REQUIRED:{}", captcha_url)),
+            )
+            .await
+            .map_err(|e| format!("Failed to update for CAPTCHA: {}", e))?;
+
+            warn!("CAPTCHA required for removal: {}", removal_attempt_id);
+        }
+        RemovalOutcome::Failed { reason, .. } => {
+            // Mark as failed with error message
+            removal_attempts::update_status(
+                db.pool(),
+                &removal_attempt_id,
+                RemovalStatus::Failed,
+                None,
+                None,
+                Some(reason.clone()),
+            )
+            .await
+            .map_err(|e| format!("Failed to update status to Failed: {}", e))?;
+
+            error!("Removal failed: {} - {}", removal_attempt_id, reason);
+        }
+        RemovalOutcome::RequiresAccountCreation => {
+            // Treat as failed - account creation not supported
+            removal_attempts::update_status(
+                db.pool(),
+                &removal_attempt_id,
+                RemovalStatus::Failed,
+                None,
+                None,
+                Some("Account creation required (not supported)".to_string()),
+            )
+            .await
+            .map_err(|e| format!("Failed to update for account creation: {}", e))?;
+
+            warn!(
+                "Account creation required (unsupported): {}",
+                removal_attempt_id
+            );
+        }
+    }
+
+    // Return result (permit is dropped here, releasing semaphore)
+    Ok(WorkerResult {
+        removal_attempt_id,
+        outcome,
+    })
 }
 
 #[cfg(test)]
@@ -217,7 +384,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_retry_with_backoff_exhausts_attempts() {
+    async fn test_retry_with_backoff_fails_after_max_attempts() {
         use std::sync::atomic::{AtomicU32, Ordering};
         use std::sync::Arc;
 
