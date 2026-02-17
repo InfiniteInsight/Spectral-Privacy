@@ -385,6 +385,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
     // Create shared resources
     let broker_registry = Arc::new(BrokerRegistry::new());
     let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
+    let browser_engine = state.browser_engine.clone();
 
     // Generate job_id
     let job_id = Uuid::new_v4().to_string();
@@ -399,6 +400,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
         let vault_clone = Arc::clone(&vault);
         let broker_registry_clone = broker_registry.clone();
         let semaphore_clone = semaphore.clone();
+        let browser_engine_clone = browser_engine.clone();
         let job_id_clone = job_id.clone();
         let app_handle = app.clone();
         let attempt_id_clone = attempt_id.clone();
@@ -420,6 +422,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
                 attempt_id_clone.clone(),
                 broker_registry_clone,
                 semaphore_clone,
+                browser_engine_clone,
             )
             .await;
 
@@ -633,6 +636,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
     let broker_registry = Arc::new(BrokerRegistry::new());
     let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
     let vault_clone = Arc::clone(&vault);
+    let browser_engine = state.browser_engine.clone();
 
     // Spawn background worker task
     let attempt_id_clone = removal_attempt_id.clone();
@@ -652,6 +656,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
             attempt_id_clone.clone(),
             broker_registry,
             semaphore,
+            browser_engine,
         )
         .await;
 
@@ -970,6 +975,49 @@ pub async fn get_privacy_score(
         confirmed_count: confirmed,
         failed_count: failed,
     })
+}
+
+/// Evidence record captured during browser-form removal submissions.
+#[derive(Debug, serde::Serialize)]
+pub struct RemovalEvidence {
+    pub id: String,
+    pub attempt_id: String,
+    pub screenshot_bytes: Vec<u8>,
+    pub captured_at: String,
+}
+
+/// Get screenshot evidence for a removal attempt.
+///
+/// Returns the evidence row associated with the given removal attempt ID,
+/// or `None` if no evidence has been captured yet (e.g. HTTP-form removals).
+#[tauri::command]
+pub async fn get_removal_evidence(
+    state: State<'_, AppState>,
+    vault_id: String,
+    attempt_id: String,
+) -> Result<Option<RemovalEvidence>, String> {
+    info!(
+        "get_removal_evidence: vault_id={}, attempt_id={}",
+        vault_id, attempt_id
+    );
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    use sqlx::Row;
+    let row = sqlx::query(
+        "SELECT id, attempt_id, screenshot_bytes, captured_at FROM removal_evidence WHERE attempt_id = ?"
+    )
+    .bind(&attempt_id)
+    .fetch_optional(db.pool())
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(row.map(|r| RemovalEvidence {
+        id: r.get("id"),
+        attempt_id: r.get("attempt_id"),
+        screenshot_bytes: r.get("screenshot_bytes"),
+        captured_at: r.get("captured_at"),
+    }))
 }
 
 #[cfg(test)]

@@ -14,6 +14,13 @@ pub struct AppState {
     /// Currently unlocked vaults: vault_id -> Vault
     /// RwLock allows concurrent reads (status checks)
     pub unlocked_vaults: RwLock<HashMap<String, Arc<Vault>>>,
+
+    /// Shared browser engine for browser-form removal submissions.
+    ///
+    /// Lazily initialized on first use. Wrapped in `Option` so it can be
+    /// initialized after construction without requiring Chromium at startup.
+    /// Wrapped in `Arc` so it can be cloned into background worker tasks.
+    pub browser_engine: Arc<tokio::sync::Mutex<Option<spectral_browser::BrowserEngine>>>,
 }
 
 #[allow(dead_code)] // Used by vault commands in later tasks
@@ -35,6 +42,7 @@ impl AppState {
         Self {
             vaults_dir,
             unlocked_vaults: RwLock::new(HashMap::new()),
+            browser_engine: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 

@@ -168,7 +168,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 5);
+        assert_eq!(version_after, 6);
     }
 
     #[tokio::test]
@@ -197,6 +197,7 @@ mod tests {
                 "findings",
                 "profiles",
                 "removal_attempts",
+                "removal_evidence",
                 "scan_jobs"
             ]
         );
@@ -241,6 +242,25 @@ mod migration_tests {
             .execute(pool)
             .await
             .expect("audit_log table should exist after migration 005");
+    }
+
+    #[tokio::test]
+    async fn test_006_removal_evidence_migration() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+        // Acquire a single connection to ensure PRAGMA and INSERT run on the same connection
+        let mut conn = db.pool().acquire().await.expect("acquire connection");
+        sqlx::query("PRAGMA foreign_keys = OFF")
+            .execute(conn.as_mut())
+            .await
+            .expect("disable foreign keys");
+        sqlx::query("INSERT INTO removal_evidence (id, attempt_id, screenshot_bytes, captured_at) VALUES ('ev-1', 'att-1', X'00', '2026-01-01T00:00:00Z')")
+            .execute(conn.as_mut())
+            .await
+            .expect("removal_evidence table must exist");
     }
 }
 
