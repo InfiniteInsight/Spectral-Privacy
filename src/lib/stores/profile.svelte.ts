@@ -184,6 +184,13 @@ function createProfileStore() {
 		 */
 		clearCurrentProfile(): void {
 			state.currentProfile = null;
+		},
+
+		reset(): void {
+			state.profiles = [];
+			state.currentProfile = null;
+			state.loading = false;
+			state.error = null;
 		}
 	};
 }
