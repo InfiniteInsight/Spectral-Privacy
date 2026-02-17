@@ -13,7 +13,6 @@
  */
 
 import { profileAPI, type ProfileInput, type ProfileOutput, type ProfileSummary } from '$lib/api';
-import { vaultStore } from './vault.svelte';
 
 /**
  * Profile state interface
@@ -39,9 +38,6 @@ function createProfileStore() {
 		error: null
 	});
 
-	// Computed property for current vault ID
-	const currentVaultId = $derived(vaultStore.currentVaultId);
-
 	return {
 		// Getters for reactive access
 		get profiles() {
@@ -56,25 +52,19 @@ function createProfileStore() {
 		get error() {
 			return state.error;
 		},
-		get currentVaultId() {
-			return currentVaultId;
-		},
 
 		/**
 		 * Load all profiles from the current vault
 		 * Requires a vault to be selected and unlocked
+		 *
+		 * @param vaultId - The vault ID to load profiles from
 		 */
-		async loadProfiles(): Promise<void> {
-			if (!currentVaultId) {
-				state.error = 'No vault selected';
-				return;
-			}
-
+		async loadProfiles(vaultId: string): Promise<void> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				state.profiles = await profileAPI.list(currentVaultId);
+				state.profiles = await profileAPI.list(vaultId);
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to load profiles';
 				console.error('Load profiles error:', err);
@@ -86,19 +76,15 @@ function createProfileStore() {
 		/**
 		 * Load a specific profile by ID
 		 *
+		 * @param vaultId - The vault ID
 		 * @param profileId - The profile ID to load
 		 */
-		async loadProfile(profileId: string): Promise<void> {
-			if (!currentVaultId) {
-				state.error = 'No vault selected';
-				return;
-			}
-
+		async loadProfile(vaultId: string, profileId: string): Promise<void> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				state.currentProfile = await profileAPI.get(currentVaultId, profileId);
+				state.currentProfile = await profileAPI.get(vaultId, profileId);
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to load profile';
 				console.error('Load profile error:', err);
@@ -110,24 +96,20 @@ function createProfileStore() {
 		/**
 		 * Create a new profile in the current vault
 		 *
+		 * @param vaultId - The vault ID to create the profile in
 		 * @param input - Profile data to create
 		 * @returns {ProfileOutput | null} The created profile or null on error
 		 */
-		async createProfile(input: ProfileInput): Promise<ProfileOutput | null> {
-			if (!currentVaultId) {
-				state.error = 'No vault selected';
-				return null;
-			}
-
+		async createProfile(vaultId: string, input: ProfileInput): Promise<ProfileOutput | null> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				const profile = await profileAPI.create(currentVaultId, input);
+				const profile = await profileAPI.create(vaultId, input);
 				state.currentProfile = profile;
 
 				// Reload profiles list to include the new profile
-				await this.loadProfiles();
+				await this.loadProfiles(vaultId);
 
 				return profile;
 			} catch (err) {
@@ -142,25 +124,25 @@ function createProfileStore() {
 		/**
 		 * Update an existing profile
 		 *
+		 * @param vaultId - The vault ID
 		 * @param profileId - The profile ID to update
 		 * @param input - Updated profile data
 		 * @returns {ProfileOutput | null} The updated profile or null on error
 		 */
-		async updateProfile(profileId: string, input: ProfileInput): Promise<ProfileOutput | null> {
-			if (!currentVaultId) {
-				state.error = 'No vault selected';
-				return null;
-			}
-
+		async updateProfile(
+			vaultId: string,
+			profileId: string,
+			input: ProfileInput
+		): Promise<ProfileOutput | null> {
 			state.loading = true;
 			state.error = null;
 
 			try {
-				const profile = await profileAPI.update(currentVaultId, profileId, input);
+				const profile = await profileAPI.update(vaultId, profileId, input);
 				state.currentProfile = profile;
 
 				// Reload profiles list to reflect the update
-				await this.loadProfiles();
+				await this.loadProfiles(vaultId);
 
 				return profile;
 			} catch (err) {
@@ -186,6 +168,10 @@ function createProfileStore() {
 			state.currentProfile = null;
 		},
 
+		/**
+		 * Reset store state — call when switching vaults
+		 * to prevent stale data from previous vault accumulating
+		 */
 		reset(): void {
 			state.profiles = [];
 			state.currentProfile = null;

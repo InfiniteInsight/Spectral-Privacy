@@ -9,7 +9,7 @@
 	onMount(async () => {
 		// Ensure profiles are loaded
 		if (profileStore.profiles.length === 0) {
-			await profileStore.loadProfiles();
+			await profileStore.loadProfiles(vaultStore.currentVaultId!);
 
 			// Handle loading errors
 			if (profileStore.error) {

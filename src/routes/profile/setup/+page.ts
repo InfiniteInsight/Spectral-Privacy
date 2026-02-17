@@ -11,7 +11,7 @@ export const load: PageLoad = async () => {
 
 	// Load profiles to check if one exists
 	const { profileStore } = await import('$lib/stores');
-	await profileStore.loadProfiles();
+	await profileStore.loadProfiles(vaultStore.currentVaultId!);
 
 	// If profile exists, redirect to dashboard
 	if (profileStore.profiles.length > 0) {

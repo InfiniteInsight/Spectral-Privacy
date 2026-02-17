@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { profileStore } from '$lib/stores';
+	import { profileStore, vaultStore } from '$lib/stores';
 	import type { ProfileInput, ProfileCompleteness } from '$lib/api/profile';
 	import { getProfileCompleteness } from '$lib/api/profile';
 	import BasicInfoStep from './BasicInfoStep.svelte';
@@ -13,10 +13,12 @@
 
 	// Check if profile already exists on mount
 	onMount(async () => {
-		await profileStore.loadProfiles();
-		if (profileStore.profiles.length > 0) {
-			// Profile already exists, redirect to dashboard
-			goto('/');
+		if (vaultStore.currentVaultId) {
+			await profileStore.loadProfiles(vaultStore.currentVaultId);
+			if (profileStore.profiles.length > 0) {
+				// Profile already exists, redirect to dashboard
+				goto('/');
+			}
 		}
 	});
 
@@ -144,7 +146,10 @@
 			return;
 		}
 
-		const profile = await profileStore.createProfile(formData as ProfileInput);
+		const profile = await profileStore.createProfile(
+			vaultStore.currentVaultId!,
+			formData as ProfileInput
+		);
 
 		if (profile) {
 			// Success - redirect to dashboard

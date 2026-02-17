@@ -14,6 +14,7 @@
 
 import { listVaults, unlockVault, lockVault, createVault } from '$lib/api/vault';
 import type { VaultInfo } from '$lib/api/vault';
+import { profileStore } from '$lib/stores/profile.svelte';
 import { scanStore } from '$lib/stores/scan.svelte';
 import { removalStore } from '$lib/stores/removal.svelte';
 
@@ -160,9 +161,7 @@ function createVaultStore() {
 		 */
 		setCurrentVault(vaultId: string | null): void {
 			if (vaultId !== state.currentVaultId) {
-				import('$lib/stores/profile.svelte').then(({ profileStore }) => {
-					profileStore.reset();
-				});
+				profileStore.reset();
 				scanStore.reset();
 				removalStore.reset();
 			}

@@ -5,9 +5,9 @@
 
 	// Reactive effect: Load profiles when vault is unlocked
 	$effect(() => {
-		if (vaultStore.isCurrentVaultUnlocked) {
+		if (vaultStore.isCurrentVaultUnlocked && vaultStore.currentVaultId) {
 			// Load profiles whenever vault unlock state changes to true
-			profileStore.loadProfiles();
+			profileStore.loadProfiles(vaultStore.currentVaultId);
 		}
 	});
 
