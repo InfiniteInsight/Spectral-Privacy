@@ -728,7 +728,7 @@ pub(crate) fn calculate_privacy_score(
 }
 
 /// Map a privacy score to a human-readable descriptor.
-pub fn score_descriptor(score: u8) -> &'static str {
+pub(crate) fn score_descriptor(score: u8) -> &'static str {
     match score {
         0..=39 => "At Risk",
         40..=69 => "Improving",
@@ -738,7 +738,7 @@ pub fn score_descriptor(score: u8) -> &'static str {
 }
 
 /// Result returned by `get_privacy_score`.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct PrivacyScoreResult {
     pub score: u8,
     pub descriptor: String,
@@ -771,9 +771,9 @@ pub async fn get_privacy_score(
         .map_err(|e| format!("Failed to get vault database: {}", e))?;
     let pool = db.pool();
 
-    // Count unresolved findings: confirmed match, removal not yet submitted.
-    // verification_status = 'Confirmed' means the user has verified this is them
-    // and the listing has not yet been removed.
+    // Count all confirmed findings. The penalty applies to all Confirmed findings
+    // until the listing is verified removed (a future feature).
+    // verification_status = 'Confirmed' means the user has verified this is them.
     let unresolved: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
             .fetch_one(pool)
