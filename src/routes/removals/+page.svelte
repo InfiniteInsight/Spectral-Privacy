@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { vaultStore } from '$lib/stores/vault.svelte';
-	import { getJobHistory, type RemovalJobSummary } from '$lib/api/removal';
+	import { removalAPI, type RemovalJobSummary } from '$lib/api/removal';
 
 	let jobs = $state<RemovalJobSummary[]>([]);
 	let loading = $state(true);
@@ -12,7 +12,8 @@
 		if (!vid) return;
 		loading = true;
 		error = null;
-		getJobHistory(vid)
+		removalAPI
+			.getJobHistory(vid)
 			.then((data) => {
 				jobs = data;
 			})
@@ -57,6 +58,8 @@
 				<div class="rounded-lg border border-gray-200 bg-white shadow-sm">
 					<button
 						onclick={() => (expandedJob = expandedJob === job.scan_job_id ? null : job.scan_job_id)}
+						aria-expanded={expandedJob === job.scan_job_id}
+						aria-controls="job-detail-{job.scan_job_id}"
 						class="flex w-full items-center justify-between p-4 text-left hover:bg-gray-50"
 					>
 						<div>
@@ -85,6 +88,7 @@
 								>
 							{/if}
 							<svg
+								aria-hidden="true"
 								class="h-4 w-4 text-gray-400 transition-transform {expandedJob === job.scan_job_id
 									? 'rotate-180'
 									: ''}"
@@ -103,7 +107,7 @@
 						</div>
 					</button>
 					{#if expandedJob === job.scan_job_id}
-						<div class="border-t border-gray-100 px-4 pb-4 pt-2">
+						<div id="job-detail-{job.scan_job_id}" class="border-t border-gray-100 px-4 pb-4 pt-2">
 							<a
 								href="/removals/progress/{job.scan_job_id}"
 								class="inline-block rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
