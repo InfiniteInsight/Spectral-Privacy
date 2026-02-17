@@ -361,6 +361,10 @@ pub struct FormSelectors {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_name_input: Option<String>,
 
+    /// Selector for full name input (single field combining first and last name)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full_name_input: Option<String>,
+
     /// Selector for submit button
     #[serde(default)]
     pub submit_button: String,
@@ -372,6 +376,10 @@ pub struct FormSelectors {
     /// Selector for success confirmation message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub success_indicator: Option<String>,
+
+    /// Selector for error message indicator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_indicator: Option<String>,
 }
 
 /// Methods for removal/opt-out from a broker.
@@ -428,6 +436,9 @@ pub enum RemovalMethod {
         /// CSS selectors for form elements
         #[serde(default)]
         form_selectors: FormSelectors,
+        /// Confirmation method
+        #[serde(default)]
+        confirmation: ConfirmationType,
         /// Additional notes or instructions
         #[serde(default)]
         notes: String,
@@ -568,7 +579,7 @@ impl RemovalMethod {
 }
 
 /// How removal confirmation is handled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum ConfirmationType {
     /// Requires email verification via link
@@ -576,6 +587,7 @@ pub enum ConfirmationType {
     /// Automatic confirmation (no follow-up needed)
     Automatic,
     /// Manual verification required (check back later)
+    #[default]
     Manual,
 }
 
@@ -688,9 +700,11 @@ success_indicator = ".success"
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
         let method = RemovalMethod::WebForm {
             url: "https://example.com/optout".to_string(),
@@ -709,9 +723,11 @@ success_indicator = ".success"
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
         let method = RemovalMethod::WebForm {
             url: String::new(),
@@ -754,9 +770,11 @@ success_indicator = ".success"
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
 
         let definition = BrokerDefinition {
