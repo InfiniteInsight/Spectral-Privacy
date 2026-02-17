@@ -8,6 +8,7 @@ use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::Semaphore;
+use tracing::info;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -703,7 +704,132 @@ pub async fn retry_removal<R: tauri::Runtime>(
     Ok(())
 }
 
+/// Calculate a privacy score from 0–100 based on finding and removal counts.
+///
+/// Penalties:
+/// - Each unresolved people-search finding: -8 points
+/// - Each failed removal attempt: -3 points
+/// - Each reappeared listing: -5 points
+///
+/// Bonuses:
+/// - Each confirmed submitted removal: +2 points
+///
+/// The result is clamped to [0, 100].
+pub(crate) fn calculate_privacy_score(
+    unresolved_people_search: u32,
+    confirmed_removals: u32,
+    failed_removals: u32,
+    reappeared: u32,
+) -> u8 {
+    let penalty = (unresolved_people_search * 8) + (failed_removals * 3) + (reappeared * 5); // nosemgrep: llm-prompt-injection-risk
+    let bonus = confirmed_removals * 2;
+    let raw = 100i32 - penalty as i32 + bonus as i32; // nosemgrep: llm-prompt-injection-risk
+    raw.clamp(0, 100) as u8
+}
+
+/// Map a privacy score to a human-readable descriptor.
+pub fn score_descriptor(score: u8) -> &'static str {
+    match score {
+        0..=39 => "At Risk",
+        40..=69 => "Improving",
+        70..=89 => "Good",
+        _ => "Well Protected",
+    }
+}
+
+/// Result returned by `get_privacy_score`.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct PrivacyScoreResult {
+    pub score: u8,
+    pub descriptor: String,
+    pub unresolved_count: i64,
+    pub confirmed_count: i64,
+    pub failed_count: i64,
+}
+
+/// Return the current privacy score for the given vault.
+///
+/// The score is derived from:
+/// - Unresolved findings (verification_status = 'Confirmed' but not yet removed)
+/// - Submitted removal attempts (status = 'Submitted')
+/// - Failed removal attempts (status = 'Failed')
+///
+/// Note: `removal_attempts` has no `vault_id` column.  The vault's pool is
+/// already vault-scoped, so all queries run against that vault's database
+/// without an extra WHERE clause on vault identity.
+#[tauri::command]
+pub async fn get_privacy_score(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<PrivacyScoreResult, String> {
+    info!("get_privacy_score: vault_id={}", vault_id);
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let pool = db.pool();
+
+    // Count unresolved findings: confirmed match, removal not yet submitted.
+    // verification_status = 'Confirmed' means the user has verified this is them
+    // and the listing has not yet been removed.
+    let unresolved: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count unresolved findings: {}", e))?;
+
+    // Count submitted removal attempts via JOIN (removal_attempts has no vault_id).
+    let confirmed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+
+    // Count failed removal attempts.
+    let failed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+
+    let score = calculate_privacy_score(
+        unresolved as u32,
+        confirmed as u32,
+        failed as u32,
+        0, // reappeared — tracked in Phase 6 Task 19
+    );
+
+    Ok(PrivacyScoreResult {
+        score,
+        descriptor: score_descriptor(score).to_string(),
+        unresolved_count: unresolved,
+        confirmed_count: confirmed,
+        failed_count: failed,
+    })
+}
+
 #[cfg(test)]
-mod tests {
-    // Tests will be added when we implement the actual logic
+mod score_tests {
+    use super::calculate_privacy_score;
+
+    #[test]
+    fn test_score_starts_at_100() {
+        let score = calculate_privacy_score(0, 0, 0, 0);
+        assert_eq!(score, 100);
+    }
+
+    #[test]
+    fn test_score_penalises_people_search_findings() {
+        // 1 unresolved people-search finding = -8 points
+        let score = calculate_privacy_score(1, 0, 0, 0);
+        assert_eq!(score, 92);
+    }
+
+    #[test]
+    fn test_score_clamped_to_zero() {
+        let score = calculate_privacy_score(20, 0, 0, 0);
+        assert_eq!(score, 0);
+    }
 }
