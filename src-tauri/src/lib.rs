@@ -50,6 +50,7 @@ pub fn run() {
     let app_state = state::AppState::new();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .manage(app_state)
         .setup(|app| {
             #[cfg(debug_assertions)]

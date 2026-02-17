@@ -125,10 +125,16 @@ function createRemovalStore() {
 			return inProgress;
 		},
 		get allComplete() {
+			// True when all terminal states reached: nothing in progress,
+			// nothing in CAPTCHA queue, and nothing pending without CAPTCHA
+			const pendingWithoutCaptcha = state.removalAttempts.filter(
+				(r) => r.status === 'Pending' && !r.error_message?.startsWith('CAPTCHA_REQUIRED')
+			);
 			return (
 				state.removalAttempts.length > 0 &&
 				this.inProgress.length === 0 &&
-				this.captchaQueue.length === 0
+				this.captchaQueue.length === 0 &&
+				pendingWithoutCaptcha.length === 0
 			);
 		},
 
@@ -139,6 +145,9 @@ function createRemovalStore() {
 		 * @param scanJobId - The scan job ID
 		 */
 		async loadRemovalAttempts(vaultId: string, scanJobId: string): Promise<void> {
+			// Reset clears stale data from any previous job loaded in this session
+			state.removalAttempts = [];
+			state.scanJobId = null;
 			state.loading = true;
 			state.error = null;
 
@@ -238,6 +247,18 @@ function createRemovalStore() {
 				});
 			});
 			unlisteners.push(unlistenRetry);
+		},
+
+		/**
+		 * Reset store state — call at start of each new job load
+		 * to prevent stale data from previous jobs accumulating
+		 */
+		reset(): void {
+			this.cleanupEventListeners();
+			state.removalAttempts = [];
+			state.scanJobId = null;
+			state.loading = false;
+			state.error = null;
 		},
 
 		/**

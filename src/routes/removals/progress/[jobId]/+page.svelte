@@ -31,9 +31,8 @@
 		await removalStore.setupEventListeners();
 	});
 
-	onDestroy(async () => {
-		// Clean up event listeners
-		await removalStore.cleanupEventListeners();
+	onDestroy(() => {
+		removalStore.cleanupEventListeners();
 	});
 
 	async function handleRetry(attemptId: string) {
@@ -122,7 +121,7 @@
 				{#if removalStore.loading}
 					<div class="text-center py-12">
 						<div
-							class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"
+							class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"
 						></div>
 						<p class="text-gray-600 mt-4">Loading removal attempts...</p>
 					</div>

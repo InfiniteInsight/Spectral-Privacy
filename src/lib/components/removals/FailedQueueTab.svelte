@@ -12,6 +12,7 @@
 
 	let expandedErrors = $state<Set<string>>(new Set());
 	let retrying = $state<Set<string>>(new Set());
+	let retryingAll = $state(false);
 
 	function toggleError(attemptId: string) {
 		const newSet = new Set(expandedErrors);
@@ -24,13 +25,22 @@
 	}
 
 	async function handleRetry(attemptId: string) {
-		retrying.add(attemptId);
+		retrying = new Set([...retrying, attemptId]);
 		try {
 			await onRetry(attemptId);
 		} finally {
 			const newSet = new Set(retrying);
 			newSet.delete(attemptId);
 			retrying = newSet;
+		}
+	}
+
+	async function handleRetryAll() {
+		retryingAll = true;
+		try {
+			await onRetryAll();
+		} finally {
+			retryingAll = false;
 		}
 	}
 
@@ -69,10 +79,18 @@
 				</div>
 				{#if failedQueue.length > 1}
 					<button
-						onclick={onRetryAll}
-						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+						onclick={handleRetryAll}
+						disabled={retryingAll}
+						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
 					>
-						Retry All
+						{#if retryingAll}
+							<span
+								class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+							></span>
+							Retrying All...
+						{:else}
+							Retry All
+						{/if}
 					</button>
 				{/if}
 			</div>
