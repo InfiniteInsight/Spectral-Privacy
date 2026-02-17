@@ -267,6 +267,66 @@ pub async fn get_failed_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>
     parse_removal_attempts_from_rows(rows)
 }
 
+/// Summary of removal attempts grouped by scan job.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemovalJobSummary {
+    /// ID of the scan job these removal attempts belong to
+    pub scan_job_id: String,
+    /// When the earliest removal attempt was created (RFC3339)
+    pub submitted_at: String,
+    /// Total number of removal attempts for this scan job
+    pub total: i64,
+    /// Number of attempts with status "Submitted"
+    pub submitted_count: i64,
+    /// Number of attempts with status "Completed"
+    pub completed_count: i64,
+    /// Number of attempts with status "Failed"
+    pub failed_count: i64,
+    /// Number of attempts with status "Pending"
+    pub pending_count: i64,
+}
+
+/// Get job history: removal attempts grouped by scan job, newest first.
+///
+/// Returns one summary row per scan job that has at least one removal attempt.
+/// Joins through `findings` → `broker_scans` to resolve the `scan_job_id`.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_job_history(pool: &Pool<Sqlite>) -> Result<Vec<RemovalJobSummary>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT
+            bs.scan_job_id AS scan_job_id,
+            MIN(ra.created_at) AS submitted_at,
+            COUNT(*) AS total,
+            SUM(CASE WHEN ra.status = 'Submitted' THEN 1 ELSE 0 END) AS submitted_count,
+            SUM(CASE WHEN ra.status = 'Completed' THEN 1 ELSE 0 END) AS completed_count,
+            SUM(CASE WHEN ra.status = 'Failed' THEN 1 ELSE 0 END) AS failed_count,
+            SUM(CASE WHEN ra.status = 'Pending' THEN 1 ELSE 0 END) AS pending_count
+        FROM removal_attempts ra
+        JOIN findings f ON ra.finding_id = f.id
+        JOIN broker_scans bs ON f.broker_scan_id = bs.id
+        GROUP BY bs.scan_job_id
+        ORDER BY MIN(ra.created_at) DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    rows.into_iter()
+        .map(|row| -> Result<RemovalJobSummary, sqlx::Error> {
+            Ok(RemovalJobSummary {
+                scan_job_id: row.get("scan_job_id"),
+                submitted_at: row.get("submitted_at"),
+                total: row.get("total"),
+                submitted_count: row.get("submitted_count"),
+                completed_count: row.get("completed_count"),
+                failed_count: row.get("failed_count"),
+                pending_count: row.get("pending_count"),
+            })
+        })
+        .collect()
+}
+
 /// Get all removal attempts for a scan job (via findings table).
 pub async fn get_by_scan_job_id(
     pool: &Pool<Sqlite>,
@@ -294,6 +354,87 @@ mod tests {
     use super::*;
     use crate::Database;
     use chrono::Utc;
+
+    #[tokio::test]
+    async fn test_get_job_history() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+        let pool = db.pool();
+
+        // Insert profile (required by foreign key)
+        let dummy_data = [0u8; 32];
+        let dummy_nonce = [0u8; 12];
+        sqlx::query(
+            "INSERT INTO profiles (id, data, nonce, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind("prof-1")
+        .bind(&dummy_data[..])
+        .bind(&dummy_nonce[..])
+        .bind("2026-01-01T00:00:00Z")
+        .bind("2026-01-01T00:00:00Z")
+        .execute(pool)
+        .await
+        .expect("insert profile");
+
+        // Insert scan jobs
+        sqlx::query(
+            "INSERT INTO scan_jobs (id, profile_id, started_at, status, total_brokers, completed_brokers) VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)",
+        )
+        .bind("job-a").bind("prof-1").bind("2026-01-01T00:00:00Z").bind("Completed").bind(2).bind(2)
+        .bind("job-b").bind("prof-1").bind("2026-01-02T00:00:00Z").bind("Completed").bind(1).bind(1)
+        .execute(pool)
+        .await
+        .expect("insert scan jobs");
+
+        // Insert broker scans (findings link to these, not directly to scan_jobs)
+        sqlx::query(
+            "INSERT INTO broker_scans (id, scan_job_id, broker_id, status, started_at) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)",
+        )
+        .bind("bscan-1").bind("job-a").bind("spokeo").bind("Success").bind("2026-01-01T00:00:00Z")
+        .bind("bscan-2").bind("job-a").bind("whitepages").bind("Success").bind("2026-01-01T00:00:00Z")
+        .bind("bscan-3").bind("job-b").bind("radaris").bind("Success").bind("2026-01-02T00:00:00Z")
+        .execute(pool)
+        .await
+        .expect("insert broker scans");
+
+        // Insert findings linked to broker scans
+        sqlx::query(
+            "INSERT INTO findings (id, broker_scan_id, broker_id, profile_id, listing_url, verification_status, extracted_data, discovered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind("find-1").bind("bscan-1").bind("spokeo").bind("prof-1").bind("https://spokeo.com/1").bind("Confirmed").bind("{}").bind("2026-01-01T01:00:00Z")
+        .bind("find-2").bind("bscan-2").bind("whitepages").bind("prof-1").bind("https://whitepages.com/2").bind("Confirmed").bind("{}").bind("2026-01-01T01:00:00Z")
+        .bind("find-3").bind("bscan-3").bind("radaris").bind("prof-1").bind("https://radaris.com/3").bind("Confirmed").bind("{}").bind("2026-01-02T01:00:00Z")
+        .execute(pool)
+        .await
+        .expect("insert findings");
+
+        // Insert removal attempts linked to findings
+        sqlx::query(
+            "INSERT INTO removal_attempts (id, finding_id, broker_id, status, created_at) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)",
+        )
+        .bind("att-1").bind("find-1").bind("spokeo").bind("Submitted").bind("2026-01-01T02:00:00Z")
+        .bind("att-2").bind("find-2").bind("whitepages").bind("Failed").bind("2026-01-01T02:00:00Z")
+        .bind("att-3").bind("find-3").bind("radaris").bind("Completed").bind("2026-01-02T02:00:00Z")
+        .execute(pool)
+        .await
+        .expect("insert removal attempts");
+
+        // nosemgrep: no-unwrap-in-production
+        let history = get_job_history(pool).await.expect("get job history");
+        assert_eq!(history.len(), 2);
+        let job_a = history
+            .iter()
+            .find(|h| h.scan_job_id == "job-a")
+            .expect("job-a not found");
+        assert_eq!(job_a.total, 2);
+        assert_eq!(job_a.submitted_count, 1);
+        assert_eq!(job_a.failed_count, 1);
+        // Newest first
+        assert_eq!(history[0].scan_job_id, "job-b");
+    }
 
     async fn setup_test_db() -> Database {
         let key = vec![0u8; 32];

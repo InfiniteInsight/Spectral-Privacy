@@ -93,6 +93,7 @@ pub fn run() {
             commands::scan::get_failed_queue,
             commands::scan::retry_removal,
             commands::scan::get_removal_attempts_by_scan_job,
+            commands::scan::get_removal_job_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

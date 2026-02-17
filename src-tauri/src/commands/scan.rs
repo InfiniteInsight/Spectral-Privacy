@@ -552,6 +552,30 @@ pub async fn get_removal_attempts_by_scan_job(
         .map_err(|e| format!("Failed to query removal attempts: {}", e))
 }
 
+/// Get job history: removal attempts grouped by scan job, newest first.
+///
+/// Returns one summary per scan job that has at least one removal attempt.
+#[tauri::command]
+pub async fn get_removal_job_history(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<spectral_db::removal_attempts::RemovalJobSummary>, String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get job history
+    spectral_db::removal_attempts::get_job_history(db.pool())
+        .await
+        .map_err(|e| format!("Failed to get job history: {}", e))
+}
+
 /// Retry a failed removal attempt.
 ///
 /// Resets the removal attempt to Pending status and spawns a new worker task
