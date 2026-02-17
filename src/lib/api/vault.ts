@@ -128,3 +128,19 @@ export async function getVaultStatus(vaultId: string): Promise<VaultStatus> {
 export async function listVaults(): Promise<VaultInfo[]> {
 	return safeInvoke<VaultInfo[]>('list_vaults');
 }
+
+export async function renameVault(vaultId: string, newName: string): Promise<void> {
+	await invoke('rename_vault', { vaultId, newName });
+}
+
+export async function changeVaultPassword(
+	vaultId: string,
+	oldPassword: string,
+	newPassword: string
+): Promise<void> {
+	await invoke('change_vault_password', { vaultId, oldPassword, newPassword });
+}
+
+export async function deleteVault(vaultId: string, password: string): Promise<void> {
+	await invoke('delete_vault', { vaultId, password });
+}
