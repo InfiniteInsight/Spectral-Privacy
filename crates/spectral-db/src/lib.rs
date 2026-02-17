@@ -168,7 +168,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 4);
+        assert_eq!(version_after, 5);
     }
 
     #[tokio::test]
@@ -222,6 +222,25 @@ mod tests {
             .expect("create database");
 
         db.close().await; // Should not panic
+    }
+}
+
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_005_audit_log_migration() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+        let pool = db.pool();
+        sqlx::query("INSERT INTO audit_log (id, vault_id, timestamp, event_type, subject, data_destination, outcome) VALUES ('test-id', 'vault-1', '2026-01-01T00:00:00Z', 'VaultUnlocked', 'core', 'LocalOnly', 'Allowed')")
+            .execute(pool)
+            .await
+            .expect("audit_log table should exist after migration 005");
     }
 }
 

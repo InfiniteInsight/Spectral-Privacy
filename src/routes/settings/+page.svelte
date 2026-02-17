@@ -137,7 +137,25 @@
 	{:else if activeTab === 'privacy'}
 		<section>
 			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Level</h2>
-			<p class="mb-4 text-sm text-gray-500">Coming soon — permission presets</p>
+			<p class="mb-6 text-sm text-gray-500">
+				Choose how Spectral handles your data. This affects which features are available.
+			</p>
+			<div class="grid grid-cols-2 gap-4">
+				{#each [{ id: 'paranoid', label: 'Paranoid', desc: 'No LLM, no network scanning, manual everything. Full control.' }, { id: 'local', label: 'Local Privacy', desc: 'Local LLM only, filesystem/email scanning, no cloud APIs.', recommended: true }, { id: 'balanced', label: 'Balanced', desc: 'Full features with cloud LLMs, PII filtering enforced.' }, { id: 'custom', label: 'Custom', desc: 'Everything disabled — enable as needed.' }] as preset (preset.id)}
+					<button
+						class="relative rounded-lg border-2 border-gray-200 p-4 text-left hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+					>
+						{#if preset.recommended}
+							<span
+								class="absolute right-3 top-3 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700"
+								>Recommended</span
+							>
+						{/if}
+						<p class="font-medium text-gray-900">{preset.label}</p>
+						<p class="mt-1 text-xs text-gray-500">{preset.desc}</p>
+					</button>
+				{/each}
+			</div>
 		</section>
 	{:else if activeTab === 'email'}
 		<section>
