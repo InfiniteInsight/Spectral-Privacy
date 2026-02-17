@@ -707,6 +707,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
 /// Activity event for the dashboard feed.
 #[derive(Debug, serde::Serialize)]
 pub struct ActivityEvent {
+    pub id: String,
     pub event_type: String,
     pub timestamp: String,
     pub description: String,
@@ -818,6 +819,7 @@ pub async fn get_dashboard_summary(
     let mut events: Vec<ActivityEvent> = scan_rows
         .into_iter()
         .map(|(id, started_at, status)| ActivityEvent {
+            id: id.clone(),
             event_type: "scan".to_string(),
             timestamp: started_at,
             description: format!("Scan {} ({})", &id[..8.min(id.len())], status),
@@ -834,6 +836,7 @@ pub async fn get_dashboard_summary(
 
     for (id, broker_id, created_at, status) in removal_rows {
         events.push(ActivityEvent {
+            id: id.clone(),
             event_type: "removal".to_string(),
             timestamp: created_at,
             description: format!(

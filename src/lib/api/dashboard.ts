@@ -7,6 +7,7 @@ export interface RemovalCounts {
 }
 
 export interface ActivityEvent {
+	id: string;
 	event_type: string;
 	timestamp: string;
 	description: string;

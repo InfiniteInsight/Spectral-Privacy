@@ -17,19 +17,25 @@
 		profileStore.profiles.length > 0 ? profileStore.profiles[0] : null
 	);
 
+	const vaultId = $derived(vaultStore.currentVaultId);
+
 	let dashboard = $state<DashboardSummary | null>(null);
+	let dashboardError = $state<string | null>(null);
 
 	$effect(() => {
-		const vid = vaultStore.currentVaultId;
-		if (!vid) {
+		if (!vaultId) {
 			dashboard = null;
 			return;
 		}
-		getDashboardSummary(vid)
+		getDashboardSummary(vaultId)
 			.then((d) => {
 				dashboard = d;
+				dashboardError = null;
 			})
-			.catch(() => {});
+			.catch((e) => {
+				console.error('Failed to load dashboard:', e);
+				dashboardError = e instanceof Error ? e.message : String(e);
+			});
 	});
 </script>
 
@@ -84,11 +90,16 @@
 					</p>
 				</div>
 
+				{#if dashboardError}
+					<p class="mt-4 text-sm text-red-500">Failed to load dashboard data.</p>
+				{/if}
+
 				{#if dashboard}
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<!-- Privacy Score Card -->
 						<a
 							href="/score"
+							aria-label="View Privacy Score details"
 							class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 hover:shadow-sm"
 						>
 							<p class="text-xs font-medium uppercase text-gray-400">Privacy Score</p>
@@ -124,6 +135,7 @@
 						<!-- Active Removals Card -->
 						<a
 							href="/removals"
+							aria-label="View Active Removals"
 							class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 hover:shadow-sm"
 						>
 							<p class="text-xs font-medium uppercase text-gray-400">Active Removals</p>
@@ -143,10 +155,10 @@
 								Recent Activity
 							</h3>
 							<ul class="divide-y divide-gray-50">
-								{#each dashboard.recent_events as event (event.timestamp + event.description)}
+								{#each dashboard.recent_events as event (event.id)}
 									<li class="flex items-center gap-3 px-4 py-2.5">
-										<span class="text-xs text-gray-400"
-											>{new Date(event.timestamp).toLocaleDateString()}</span
+										<time datetime={event.timestamp} class="text-xs text-gray-400"
+											>{new Date(event.timestamp).toLocaleDateString()}</time
 										>
 										<span class="text-sm text-gray-700">{event.description}</span>
 									</li>
