@@ -28,7 +28,7 @@
 	// SVG gauge helpers
 	const SIZE = 200;
 	const RADIUS = 80;
-	const CIRCUMFERENCE = 2 * Math.PI * RADIUS; // nosemgrep
+	const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 	function gaugeColor(score: number): string {
 		if (score < 40) return '#ef4444'; // red
@@ -38,7 +38,7 @@
 	}
 
 	function strokeDashoffset(score: number): number {
-		return CIRCUMFERENCE * (1 - score / 100); // nosemgrep
+		return CIRCUMFERENCE * (1 - score / 100);
 	}
 </script>
 
@@ -105,29 +105,25 @@
 
 		<!-- Breakdown -->
 		<div class="mb-6 rounded-lg border border-gray-200 bg-white overflow-hidden">
-			<table class="w-full text-sm">
+			<table class="w-full text-sm" aria-label="Privacy score breakdown">
 				<thead class="bg-gray-50 text-xs uppercase text-gray-500">
 					<tr>
 						<th class="px-4 py-3 text-left">Status</th>
 						<th class="px-4 py-3 text-right">Count</th>
-						<th class="px-4 py-3 text-right">Score Impact</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-gray-100">
 					<tr>
 						<td class="px-4 py-3 text-gray-700">Unresolved findings</td>
 						<td class="px-4 py-3 text-right text-gray-900">{result.unresolved_count}</td>
-						<td class="px-4 py-3 text-right text-red-600">-{result.unresolved_count * 8}</td>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 text-gray-700">Confirmed removals</td>
 						<td class="px-4 py-3 text-right text-gray-900">{result.confirmed_count}</td>
-						<td class="px-4 py-3 text-right text-green-600">+{result.confirmed_count * 2}</td>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 text-gray-700">Failed removals</td>
 						<td class="px-4 py-3 text-right text-gray-900">{result.failed_count}</td>
-						<td class="px-4 py-3 text-right text-red-600">-{result.failed_count * 3}</td>
 					</tr>
 				</tbody>
 			</table>
@@ -138,5 +134,9 @@
 				>View removal history <span aria-hidden="true">→</span></a
 			>
 		</div>
+	{:else}
+		<p class="py-12 text-center text-sm text-gray-500">
+			Please unlock a vault to view your privacy score.
+		</p>
 	{/if}
 </div>
