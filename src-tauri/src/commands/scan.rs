@@ -704,6 +704,165 @@ pub async fn retry_removal<R: tauri::Runtime>(
     Ok(())
 }
 
+/// Activity event for the dashboard feed.
+#[derive(Debug, serde::Serialize)]
+pub struct ActivityEvent {
+    pub event_type: String,
+    pub timestamp: String,
+    pub description: String,
+}
+
+/// Removal attempt counts broken down by status.
+#[derive(Debug, serde::Serialize)]
+pub struct RemovalCounts {
+    pub submitted: i64,
+    pub pending: i64,
+    pub failed: i64,
+}
+
+/// Aggregated dashboard summary for the home page.
+#[derive(Debug, serde::Serialize)]
+pub struct DashboardSummary {
+    pub privacy_score: Option<u8>,
+    pub brokers_scanned: i64,
+    pub brokers_total: i64,
+    pub last_scan_at: Option<String>,
+    pub active_removals: RemovalCounts,
+    pub recent_events: Vec<ActivityEvent>,
+}
+
+/// Return a dashboard summary for the given vault.
+///
+/// Aggregates:
+/// - Privacy score (if any findings or removals exist)
+/// - Count of distinct brokers with at least one finding
+/// - Timestamp of the most recent scan job
+/// - Removal attempt counts by status
+/// - Up to 10 recent activity events (last 5 scans + last 5 removals)
+///
+/// All queries are pool-scoped; no vault_id WHERE clause is needed.
+#[tauri::command]
+pub async fn get_dashboard_summary(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<DashboardSummary, String> {
+    info!("get_dashboard_summary: vault_id={}", vault_id);
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let pool = db.pool();
+
+    // Count distinct brokers with at least one finding.
+    let brokers_scanned: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT broker_id) FROM findings")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to count brokers scanned: {}", e))?;
+
+    // Timestamp of the most recently started scan job.
+    let last_scan_at: Option<String> = sqlx::query_scalar("SELECT MAX(started_at) FROM scan_jobs")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to get last scan timestamp: {}", e))?;
+
+    // Removal counts by status.
+    let submitted: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+
+    let pending: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Pending'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count pending removals: {}", e))?;
+
+    let failed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+
+    // Compute score only when there is something to base it on.
+    let has_data = brokers_scanned > 0 || submitted > 0 || failed > 0;
+    let privacy_score = if has_data {
+        // Unresolved = confirmed findings with no removal yet.
+        let unresolved: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to count confirmed findings: {}", e))?;
+
+        Some(calculate_privacy_score(
+            unresolved as u32,
+            submitted as u32,
+            failed as u32,
+            0,
+        ))
+    } else {
+        None
+    };
+
+    // Last 5 scan jobs as activity events.
+    let scan_rows: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT id, started_at, status FROM scan_jobs ORDER BY started_at DESC LIMIT 5",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Failed to fetch recent scan jobs: {}", e))?;
+
+    let mut events: Vec<ActivityEvent> = scan_rows
+        .into_iter()
+        .map(|(id, started_at, status)| ActivityEvent {
+            event_type: "scan".to_string(),
+            timestamp: started_at,
+            description: format!("Scan {} ({})", &id[..8.min(id.len())], status),
+        })
+        .collect();
+
+    // Last 5 removal attempts as activity events.
+    let removal_rows: Vec<(String, String, String, String)> = sqlx::query_as(
+        "SELECT id, broker_id, created_at, status FROM removal_attempts ORDER BY created_at DESC LIMIT 5",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Failed to fetch recent removal attempts: {}", e))?;
+
+    for (id, broker_id, created_at, status) in removal_rows {
+        events.push(ActivityEvent {
+            event_type: "removal".to_string(),
+            timestamp: created_at,
+            description: format!(
+                "Removal {} for {} ({})",
+                &id[..8.min(id.len())],
+                broker_id,
+                status
+            ),
+        });
+    }
+
+    // Sort all events by timestamp descending, keep top 10.
+    events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    events.truncate(10);
+
+    Ok(DashboardSummary {
+        privacy_score,
+        brokers_scanned,
+        brokers_total: 0, // Placeholder — populated in Task 21 (broker explorer)
+        last_scan_at,
+        active_removals: RemovalCounts {
+            submitted,
+            pending,
+            failed,
+        },
+        recent_events: events,
+    })
+}
+
 /// Calculate a privacy score from 0–100 based on finding and removal counts.
 ///
 /// Penalties:

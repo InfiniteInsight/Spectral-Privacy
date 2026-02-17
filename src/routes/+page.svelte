@@ -2,6 +2,7 @@
 	import { UnlockScreen } from '$lib/components';
 	import { vaultStore, profileStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
+	import { getDashboardSummary, type DashboardSummary } from '$lib/api/dashboard';
 
 	// Reactive effect: Load profiles when vault is unlocked
 	$effect(() => {
@@ -15,6 +16,21 @@
 	const currentProfile = $derived(
 		profileStore.profiles.length > 0 ? profileStore.profiles[0] : null
 	);
+
+	let dashboard = $state<DashboardSummary | null>(null);
+
+	$effect(() => {
+		const vid = vaultStore.currentVaultId;
+		if (!vid) {
+			dashboard = null;
+			return;
+		}
+		getDashboardSummary(vid)
+			.then((d) => {
+				dashboard = d;
+			})
+			.catch(() => {});
+	});
 </script>
 
 {#if vaultStore.isCurrentVaultUnlocked}
@@ -67,6 +83,78 @@
 						Search data brokers for your information
 					</p>
 				</div>
+
+				{#if dashboard}
+					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+						<!-- Privacy Score Card -->
+						<a
+							href="/score"
+							class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 hover:shadow-sm"
+						>
+							<p class="text-xs font-medium uppercase text-gray-400">Privacy Score</p>
+							{#if dashboard.privacy_score !== null}
+								<p class="mt-1 text-3xl font-bold text-primary-700">{dashboard.privacy_score}</p>
+								<p class="text-xs text-gray-500">
+									{dashboard.privacy_score >= 90
+										? 'Well Protected'
+										: dashboard.privacy_score >= 70
+											? 'Good'
+											: dashboard.privacy_score >= 40
+												? 'Improving'
+												: 'At Risk'}
+								</p>
+							{:else}
+								<p class="mt-1 text-sm text-gray-400">No data yet</p>
+							{/if}
+						</a>
+
+						<!-- Scan Coverage Card -->
+						<div class="rounded-lg border border-gray-200 bg-white p-4">
+							<p class="text-xs font-medium uppercase text-gray-400">Brokers Scanned</p>
+							<p class="mt-1 text-3xl font-bold text-gray-900">{dashboard.brokers_scanned}</p>
+							{#if dashboard.last_scan_at}
+								<p class="text-xs text-gray-500">
+									Last: {new Date(dashboard.last_scan_at).toLocaleDateString()}
+								</p>
+							{:else}
+								<p class="text-xs text-gray-400">Never scanned</p>
+							{/if}
+						</div>
+
+						<!-- Active Removals Card -->
+						<a
+							href="/removals"
+							class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 hover:shadow-sm"
+						>
+							<p class="text-xs font-medium uppercase text-gray-400">Active Removals</p>
+							<p class="mt-1 text-3xl font-bold text-gray-900">
+								{dashboard.active_removals.submitted + dashboard.active_removals.pending}
+							</p>
+							{#if dashboard.active_removals.failed > 0}
+								<p class="text-xs text-red-500">{dashboard.active_removals.failed} failed</p>
+							{/if}
+						</a>
+					</div>
+
+					<!-- Recent Activity -->
+					{#if dashboard.recent_events.length > 0}
+						<div class="mt-6 rounded-lg border border-gray-200 bg-white">
+							<h3 class="border-b border-gray-100 px-4 py-3 text-sm font-medium text-gray-700">
+								Recent Activity
+							</h3>
+							<ul class="divide-y divide-gray-50">
+								{#each dashboard.recent_events as event (event.timestamp + event.description)}
+									<li class="flex items-center gap-3 px-4 py-2.5">
+										<span class="text-xs text-gray-400"
+											>{new Date(event.timestamp).toLocaleDateString()}</span
+										>
+										<span class="text-sm text-gray-700">{event.description}</span>
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/if}
+				{/if}
 			{:else}
 				<!-- No Profile State -->
 				<div class="text-center py-8">
