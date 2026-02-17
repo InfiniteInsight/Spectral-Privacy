@@ -60,7 +60,7 @@ interface RemovalState {
  * @returns The extracted CAPTCHA URL or null if not found
  */
 function extractCaptchaUrl(outcome: string): string | null {
-	const match = outcome.match(/captcha_url:\s*"([^"]+)"/);
+	const match = /captcha_url:\s*"([^"]+)"/.exec(outcome);
 	return match ? match[1] : null;
 }
 
