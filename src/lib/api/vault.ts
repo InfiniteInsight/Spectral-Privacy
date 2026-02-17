@@ -129,18 +129,40 @@ export async function listVaults(): Promise<VaultInfo[]> {
 	return safeInvoke<VaultInfo[]>('list_vaults');
 }
 
+/**
+ * Rename an existing vault
+ *
+ * @param vaultId - Vault identifier
+ * @param newName - New display name for the vault
+ * @throws {CommandError} If renaming fails
+ */
 export async function renameVault(vaultId: string, newName: string): Promise<void> {
-	await invoke('rename_vault', { vaultId, newName });
+	return safeInvoke<void>('rename_vault', { vaultId, newName });
 }
 
+/**
+ * Change the master password of an existing vault
+ *
+ * @param vaultId - Vault identifier
+ * @param oldPassword - Current master password
+ * @param newPassword - New master password to set
+ * @throws {CommandError} If password change fails
+ */
 export async function changeVaultPassword(
 	vaultId: string,
 	oldPassword: string,
 	newPassword: string
 ): Promise<void> {
-	await invoke('change_vault_password', { vaultId, oldPassword, newPassword });
+	return safeInvoke<void>('change_vault_password', { vaultId, oldPassword, newPassword });
 }
 
+/**
+ * Permanently delete a vault and all its data
+ *
+ * @param vaultId - Vault identifier
+ * @param password - Master password required to confirm deletion
+ * @throws {CommandError} If deletion fails
+ */
 export async function deleteVault(vaultId: string, password: string): Promise<void> {
-	await invoke('delete_vault', { vaultId, password });
+	return safeInvoke<void>('delete_vault', { vaultId, password });
 }

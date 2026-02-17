@@ -49,10 +49,12 @@
 	<h1 class="mb-6 text-2xl font-bold text-gray-900">Settings</h1>
 
 	<!-- Tab bar -->
-	<div class="mb-8 flex gap-1 border-b border-gray-200">
+	<div class="mb-8 flex gap-1 border-b border-gray-200" role="tablist">
 		{#each [['vaults', 'Vaults'], ['privacy', 'Privacy Level'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
 			<a
 				href="/settings?tab={id}"
+				role="tab"
+				aria-selected={activeTab === id}
 				class="px-4 py-2 text-sm font-medium {activeTab === id
 					? 'border-b-2 border-primary-600 text-primary-700'
 					: 'text-gray-500 hover:text-gray-700'}">{label}</a
