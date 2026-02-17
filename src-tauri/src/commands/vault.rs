@@ -5,7 +5,6 @@ use crate::metadata::VaultMetadata;
 use crate::state::AppState;
 use serde::Serialize;
 use spectral_vault::Vault;
-use std::fs;
 use std::sync::Arc;
 use tauri::State;
 use tracing::{info, warn};
@@ -228,6 +227,7 @@ pub async fn rename_vault(
     vault_id: String,
     new_name: String,
 ) -> Result<(), CommandError> {
+    info!("Renaming vault: {vault_id}");
     let new_name = new_name.trim().to_string();
     if new_name.is_empty() {
         return Err(CommandError::new(
@@ -277,6 +277,7 @@ pub async fn change_vault_password(
         ));
     }
 
+    // TODO: verify old_password against the current vault key before re-encrypting
     Err(CommandError::new(
         "NOT_IMPLEMENTED",
         "Password change is not yet implemented",
@@ -293,6 +294,7 @@ pub async fn delete_vault(
     vault_id: String,
     password: String,
 ) -> Result<(), CommandError> {
+    info!("Deleting vault: {vault_id}");
     if !state.vault_exists(&vault_id) {
         return Err(CommandError::new(
             "VAULT_NOT_FOUND",
@@ -309,7 +311,7 @@ pub async fn delete_vault(
 
     // Delete vault directory
     let vault_dir = state.vault_dir(&vault_id);
-    fs::remove_dir_all(&vault_dir)?;
+    tokio::fs::remove_dir_all(&vault_dir).await?;
 
     info!("Deleted vault: {}", vault_id);
     Ok(())
