@@ -10,7 +10,7 @@
 		vaultStore.availableVaults.find((v) => v.vault_id === vaultStore.currentVaultId)
 	);
 
-	async function switchTo(vaultId: string) {
+	function switchTo(vaultId: string) {
 		const isUnlocked = vaultStore.unlockedVaultIds.has(vaultId);
 		if (isUnlocked) {
 			vaultStore.setCurrentVault(vaultId);
@@ -33,11 +33,25 @@
 			unlockError = err instanceof Error ? err.message : String(err);
 		}
 	}
+
+	$effect(() => {
+		if (!open) return;
+		function handleOutsideClick(e: PointerEvent) {
+			const target = e.target as Element | null;
+			if (!target?.closest('[data-vault-switcher]')) {
+				open = false;
+			}
+		}
+		document.addEventListener('pointerdown', handleOutsideClick);
+		return () => document.removeEventListener('pointerdown', handleOutsideClick);
+	});
 </script>
 
-<div class="relative">
+<div class="relative" data-vault-switcher="">
 	<button
 		onclick={() => (open = !open)}
+		aria-haspopup="listbox"
+		aria-expanded={open}
 		class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none"
 	>
 		<span class="max-w-32 truncate">{currentVault?.display_name ?? 'No vault'}</span>
@@ -78,12 +92,18 @@
 
 {#if unlockModalVaultId}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-		<div class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-			<h2 class="mb-4 text-lg font-semibold text-gray-900">Unlock vault</h2>
+		<div
+			class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="vault-unlock-title"
+		>
+			<h2 id="vault-unlock-title" class="mb-4 text-lg font-semibold text-gray-900">Unlock vault</h2>
 			<input
 				type="password"
 				bind:value={unlockPassword}
 				placeholder="Master password"
+				autocomplete="current-password"
 				class="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 				onkeydown={(e) => e.key === 'Enter' && handleUnlock()}
 			/>
