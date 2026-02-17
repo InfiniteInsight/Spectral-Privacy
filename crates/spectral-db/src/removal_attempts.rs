@@ -119,50 +119,7 @@ pub async fn get_by_finding_id(
     .fetch_all(pool)
     .await?;
 
-    let attempts = rows
-        .into_iter()
-        .map(|row| -> Result<RemovalAttempt, sqlx::Error> {
-            let status_str: String = row.get("status");
-            let status = match status_str.as_str() {
-                "Submitted" => RemovalStatus::Submitted,
-                "Completed" => RemovalStatus::Completed,
-                "Failed" => RemovalStatus::Failed,
-                _ => RemovalStatus::Pending, // Default fallback for "Pending" or unknown
-            };
-
-            let created_at_str: String = row.get("created_at");
-            let created_at = DateTime::parse_from_rfc3339(&created_at_str)
-                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?
-                .with_timezone(&Utc);
-
-            let submitted_at = row
-                .try_get::<Option<String>, _>("submitted_at")
-                .ok()
-                .flatten()
-                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
-                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
-
-            let completed_at = row
-                .try_get::<Option<String>, _>("completed_at")
-                .ok()
-                .flatten()
-                .and_then(|s: String| DateTime::parse_from_rfc3339(&s).ok())
-                .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&Utc));
-
-            Ok(RemovalAttempt {
-                id: row.get("id"),
-                finding_id: row.get("finding_id"),
-                broker_id: row.get("broker_id"),
-                status,
-                created_at,
-                submitted_at,
-                completed_at,
-                error_message: row.try_get("error_message").ok().flatten(),
-            })
-        })
-        .collect::<Result<Vec<_>, sqlx::Error>>()?;
-
-    Ok(attempts)
+    parse_removal_attempts_from_rows(rows)
 }
 
 /// Update the status of a removal attempt.
@@ -211,17 +168,33 @@ pub async fn get_by_id(
     .fetch_optional(pool)
     .await?;
 
-    let attempt = row
+    match row {
+        Some(row) => {
+            let rows = vec![row];
+            let mut attempts = parse_removal_attempts_from_rows(rows)?;
+            Ok(attempts.pop())
+        }
+        None => Ok(None),
+    }
+}
+
+/// Parse database rows into `RemovalAttempt` structs.
+///
+/// Helper function to avoid code duplication across query functions.
+fn parse_removal_attempts_from_rows(
+    rows: Vec<sqlx::sqlite::SqliteRow>,
+) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    rows.into_iter()
         .map(|row| -> Result<RemovalAttempt, sqlx::Error> {
-            let status_str: String = row.get("status");
+            let status_str: String = row.get("status"); // nosemgrep: use-zeroize-for-secrets
             let status = match status_str.as_str() {
                 "Submitted" => RemovalStatus::Submitted,
                 "Completed" => RemovalStatus::Completed,
                 "Failed" => RemovalStatus::Failed,
-                _ => RemovalStatus::Pending, // Default fallback for "Pending" or unknown
+                _ => RemovalStatus::Pending,
             };
 
-            let created_at_str: String = row.get("created_at");
+            let created_at_str: String = row.get("created_at"); // nosemgrep: use-zeroize-for-secrets
             let created_at = DateTime::parse_from_rfc3339(&created_at_str)
                 .map_err(|e| sqlx::Error::Decode(Box::new(e)))?
                 .with_timezone(&Utc);
@@ -251,9 +224,69 @@ pub async fn get_by_id(
                 error_message: row.try_get("error_message").ok().flatten(),
             })
         })
-        .transpose()?;
+        .collect()
+}
 
-    Ok(attempt)
+/// Get all removal attempts in the CAPTCHA queue.
+///
+/// Returns removal attempts that are pending and require CAPTCHA resolution,
+/// ordered by oldest first (`created_at` ASC) for FIFO processing.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_captcha_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+         FROM removal_attempts
+         WHERE status = 'Pending' AND error_message LIKE 'CAPTCHA_REQUIRED%'
+         ORDER BY created_at ASC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    parse_removal_attempts_from_rows(rows)
+}
+
+/// Get all removal attempts in the failed queue.
+///
+/// Returns removal attempts that have failed and may need manual intervention,
+/// ordered by newest first (`created_at` DESC) to prioritize recent failures.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_failed_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+         FROM removal_attempts
+         WHERE status = 'Failed'
+         ORDER BY created_at DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    parse_removal_attempts_from_rows(rows)
+}
+
+/// Get all removal attempts for a scan job (via findings table).
+pub async fn get_by_scan_job_id(
+    pool: &Pool<Sqlite>,
+    scan_job_id: &str,
+) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT ra.id, ra.finding_id, ra.broker_id, ra.status, ra.created_at,
+                ra.submitted_at, ra.completed_at, ra.error_message
+         FROM removal_attempts ra
+         INNER JOIN findings f ON ra.finding_id = f.id
+         WHERE f.broker_scan_id IN (
+           SELECT id FROM broker_scans WHERE scan_job_id = ?
+         )
+         ORDER BY ra.created_at ASC",
+    )
+    .bind(scan_job_id)
+    .fetch_all(pool)
+    .await?;
+
+    parse_removal_attempts_from_rows(rows)
 }
 
 #[cfg(test)]
@@ -524,5 +557,162 @@ mod tests {
             .await
             .expect("get by id");
         assert!(not_found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_captcha_queue() {
+        let db = setup_test_db().await;
+
+        // Create 3 removal attempts
+        let attempt1 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt 1");
+
+        // Small delay to ensure different timestamps
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        let attempt2 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-2".to_string())
+                .await
+                .expect("create removal attempt 2");
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        let attempt3 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-3".to_string())
+                .await
+                .expect("create removal attempt 3");
+
+        // Mark attempt1 and attempt2 with CAPTCHA errors
+        update_status(
+            db.pool(),
+            &attempt1.id,
+            RemovalStatus::Pending,
+            None,
+            None,
+            Some("CAPTCHA_REQUIRED: reCAPTCHA v2 detected".to_string()),
+        )
+        .await
+        .expect("update status 1");
+
+        update_status(
+            db.pool(),
+            &attempt2.id,
+            RemovalStatus::Pending,
+            None,
+            None,
+            Some("CAPTCHA_REQUIRED: hCaptcha detected".to_string()),
+        )
+        .await
+        .expect("update status 2");
+
+        // Mark attempt3 as submitted (no CAPTCHA)
+        update_status(
+            db.pool(),
+            &attempt3.id,
+            RemovalStatus::Submitted,
+            Some(Utc::now()),
+            None,
+            None,
+        )
+        .await
+        .expect("update status 3");
+
+        // Query CAPTCHA queue - should return only attempt1 and attempt2
+        let captcha_queue = get_captcha_queue(db.pool())
+            .await
+            .expect("get captcha queue");
+
+        assert_eq!(captcha_queue.len(), 2);
+        // Verify ordered by created_at ASC (oldest first)
+        assert_eq!(captcha_queue[0].id, attempt1.id);
+        assert_eq!(captcha_queue[1].id, attempt2.id);
+        // Verify both have CAPTCHA error messages
+        assert!(captcha_queue[0]
+            .error_message
+            .as_ref()
+            .unwrap()
+            .starts_with("CAPTCHA_REQUIRED"));
+        assert!(captcha_queue[1]
+            .error_message
+            .as_ref()
+            .unwrap()
+            .starts_with("CAPTCHA_REQUIRED"));
+    }
+
+    #[tokio::test]
+    async fn test_get_failed_queue() {
+        let db = setup_test_db().await;
+
+        // Create 3 removal attempts
+        let attempt1 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
+                .await
+                .expect("create removal attempt 1");
+
+        // Small delay to ensure different timestamps
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        let attempt2 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-2".to_string())
+                .await
+                .expect("create removal attempt 2");
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        let attempt3 =
+            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-3".to_string())
+                .await
+                .expect("create removal attempt 3");
+
+        // Mark attempt1 and attempt2 as failed
+        update_status(
+            db.pool(),
+            &attempt1.id,
+            RemovalStatus::Failed,
+            None,
+            None,
+            Some("Network timeout".to_string()),
+        )
+        .await
+        .expect("update status 1");
+
+        update_status(
+            db.pool(),
+            &attempt2.id,
+            RemovalStatus::Failed,
+            None,
+            None,
+            Some("Invalid form data".to_string()),
+        )
+        .await
+        .expect("update status 2");
+
+        // Mark attempt3 as completed (not failed)
+        update_status(
+            db.pool(),
+            &attempt3.id,
+            RemovalStatus::Completed,
+            Some(Utc::now()),
+            Some(Utc::now()),
+            None,
+        )
+        .await
+        .expect("update status 3");
+
+        // Query failed queue - should return only attempt1 and attempt2
+        let failed_queue = get_failed_queue(db.pool()).await.expect("get failed queue");
+
+        assert_eq!(failed_queue.len(), 2);
+        // Verify ordered by created_at DESC (newest first)
+        assert_eq!(failed_queue[0].id, attempt2.id);
+        assert_eq!(failed_queue[1].id, attempt1.id);
+        // Verify both have failed status
+        assert_eq!(failed_queue[0].status, RemovalStatus::Failed);
+        assert_eq!(failed_queue[1].status, RemovalStatus::Failed);
+        // Verify both have error messages
+        assert!(failed_queue[0].error_message.is_some());
+        assert!(failed_queue[1].error_message.is_some());
     }
 }

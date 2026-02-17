@@ -6,6 +6,7 @@
 pub mod commands;
 mod error;
 mod metadata;
+pub mod removal_worker;
 pub mod state;
 pub mod types;
 
@@ -49,6 +50,7 @@ pub fn run() {
     let app_state = state::AppState::new();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .manage(app_state)
         .setup(|app| {
             #[cfg(debug_assertions)]
@@ -83,6 +85,11 @@ pub fn run() {
             commands::scan::get_findings,
             commands::scan::verify_finding,
             commands::scan::submit_removals_for_confirmed,
+            commands::scan::process_removal_batch,
+            commands::scan::get_captcha_queue,
+            commands::scan::get_failed_queue,
+            commands::scan::retry_removal,
+            commands::scan::get_removal_attempts_by_scan_job,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

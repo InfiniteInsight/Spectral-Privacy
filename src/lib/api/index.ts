@@ -10,3 +10,4 @@
 export * from './commands';
 export * from './vault';
 export * from './profile';
+export * from './removal';

@@ -15,6 +15,7 @@ authors = ["Spectral Contributors"]
 tauri = { version = "2.10.0" }
 tauri-build = { version = "2.5.4" }
 tauri-plugin-log = "2"
+tauri-plugin-shell = "2"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

@@ -4,10 +4,12 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import type { Finding } from '$lib/api/scan';
+	import { removalAPI } from '$lib/api/removal';
 
 	const scanJobId = $derived($page.params.id);
 	let expandedFindings = $state<Set<string>>(new Set());
 	let actionError = $state<string | null>(null);
+	let isSubmitting = $state(false);
 
 	onMount(async () => {
 		if (!scanJobId) {
@@ -56,17 +58,36 @@
 	}
 
 	async function handleSubmit() {
-		if (confirmedCount === 0 || !scanJobId || !vaultStore.currentVaultId) {
+		if (confirmedCount === 0 || !scanJobId || !vaultStore.currentVaultId || isSubmitting) {
 			return;
 		}
 
+		isSubmitting = true;
 		actionError = null;
 		try {
-			const count = await scanStore.submitRemovals(vaultStore.currentVaultId, scanJobId);
-			goto(`/removals?count=${count}`);
+			// Step 1: Create removal attempts (existing command)
+			const removalAttemptIds = await scanStore.submitRemovals(
+				vaultStore.currentVaultId,
+				scanJobId
+			);
+
+			// Step 2: Start batch processing
+			const result = await removalAPI.processBatch(vaultStore.currentVaultId, removalAttemptIds);
+
+			// Validate that items were actually queued
+			if (result.queued_count === 0) {
+				actionError = 'No items were queued for processing. Please try again.';
+				console.error('Batch processing failed - nothing queued:', result);
+				return;
+			}
+
+			// Step 3: Navigate to progress page
+			goto(`/removals/progress/${scanJobId}`);
 		} catch (err) {
 			actionError = 'Failed to submit removals. Please try again.';
 			console.error('Submission failed:', err);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -304,11 +325,11 @@
 						</p>
 						<button
 							onclick={handleSubmit}
-							disabled={confirmedCount === 0 || scanStore.loading}
+							disabled={confirmedCount === 0 || isSubmitting}
 							class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							style="background-color: #0284c7; color: white;"
 						>
-							{scanStore.loading ? 'Submitting...' : 'Submit Removals'}
+							{isSubmitting ? 'Submitting...' : 'Submit Removals'}
 						</button>
 					</div>
 				</div>
