@@ -36,7 +36,7 @@ no_results_indicator = ".no-results-found"
 captcha_required = "iframe[src*='recaptcha']"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.beenverified.com/app/optout/search"
 confirmation = "email-verification"
 notes = "Requires finding your listing URL first, then email verification. May take 5-7 business days."

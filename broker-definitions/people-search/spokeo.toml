@@ -30,7 +30,7 @@ no_results_indicator = ".no-results-message"
 captcha_required = "iframe[title*='recaptcha' i]"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.spokeo.com/optout"
 confirmation = "email-verification"
 notes = "Requires email verification. Link expires after 72 hours. Re-check after 3-5 business days."

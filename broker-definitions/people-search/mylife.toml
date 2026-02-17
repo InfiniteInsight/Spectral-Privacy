@@ -31,7 +31,7 @@ no_results_indicator = ".no-matches, .no-results-found"
 captcha_required = "iframe[title*='recaptcha' i], .g-recaptcha"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.mylife.com/privacy-policy"
 confirmation = "manual"
 notes = "MyLife removal is complex. Requires account creation or emailing privacy@mylife.com with specific information. May require government ID verification. Removal can take 7-14 business days. Known to resist removal requests."

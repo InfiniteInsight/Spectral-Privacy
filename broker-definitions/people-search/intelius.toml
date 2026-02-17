@@ -32,7 +32,7 @@ no_results_indicator = ".no-results, .empty-results"
 captcha_required = "iframe[src*='recaptcha'], #recaptcha"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.intelius.com/optout"
 confirmation = "email-verification"
 notes = "Intelius requires email verification. You must access the removal page, find your listing, and submit opt-out request. Check email for verification link. Process takes 3-7 business days. May need to repeat for related sites (PeopleLookup, PublicRecordsNow)."

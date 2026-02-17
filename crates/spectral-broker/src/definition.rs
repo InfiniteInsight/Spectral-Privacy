@@ -343,7 +343,7 @@ impl SearchMethod {
 }
 
 /// CSS selectors for web form elements.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FormSelectors {
     /// Selector for listing URL input
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -362,6 +362,7 @@ pub struct FormSelectors {
     pub last_name_input: Option<String>,
 
     /// Selector for submit button
+    #[serde(default)]
     pub submit_button: String,
 
     /// Selector for CAPTCHA iframe or container
@@ -416,6 +417,22 @@ pub enum RemovalMethod {
         instructions: String,
     },
 
+    /// Browser-automated form for JS-heavy opt-out flows
+    #[serde(rename = "browser-form")]
+    BrowserForm {
+        /// URL of the opt-out form
+        url: String,
+        /// Form field mappings
+        #[serde(default)]
+        fields: HashMap<String, String>,
+        /// CSS selectors for form elements
+        #[serde(default)]
+        form_selectors: FormSelectors,
+        /// Additional notes or instructions
+        #[serde(default)]
+        notes: String,
+    },
+
     /// Manual process with instructions
     Manual {
         /// Instructions for manual removal
@@ -445,6 +462,7 @@ impl RemovalMethod {
                 instructions,
             } => Self::validate_phone(broker_id, phone, instructions),
             Self::Manual { instructions } => Self::validate_manual(broker_id, instructions),
+            Self::BrowserForm { url, .. } => Self::validate_browser_form(broker_id, url),
         }
     }
 
@@ -537,6 +555,16 @@ impl RemovalMethod {
         }
         Ok(())
     }
+
+    fn validate_browser_form(broker_id: &BrokerId, url: &str) -> Result<()> {
+        if url.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "removal.url cannot be empty for browser-form method".to_string(),
+            });
+        }
+        Ok(())
+    }
 }
 
 /// How removal confirmation is handled.
@@ -554,6 +582,55 @@ pub enum ConfirmationType {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_browser_form_deserialization() {
+        let toml_str = r##"
+[broker]
+id = "test"
+name = "Test"
+url = "https://test.com"
+domain = "test.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2025-01-01"
+
+[search]
+method = "url-template"
+template = "https://test.com/{first}"
+requires_fields = ["first_name"]
+
+[search.result_selectors]
+results_container = ".results"
+result_item = ".item"
+listing_url = "a"
+name = ".name"
+age = ".age"
+location = ".loc"
+relatives = ".rel"
+phones = ".ph"
+no_results_indicator = ".none"
+captcha_required = ".cap"
+
+[removal]
+method = "browser-form"
+url = "https://test.com/optout"
+notes = "JS-heavy form"
+
+[removal.fields]
+email = "{user_email}"
+
+[removal.form_selectors]
+email_input = "#email"
+submit_button = "button[type=submit]"
+success_indicator = ".success"
+"##;
+        let def: BrokerDefinition =
+            toml::from_str(toml_str).expect("browser-form TOML should deserialize");
+        assert!(matches!(def.removal, RemovalMethod::BrowserForm { .. }));
+    }
 
     #[test]
     fn test_broker_category_display() {

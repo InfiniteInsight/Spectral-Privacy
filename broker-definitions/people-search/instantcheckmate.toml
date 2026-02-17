@@ -38,7 +38,7 @@ no_results_indicator = ".no-matches, .no-results-found"
 captcha_required = "iframe[src*='recaptcha'], .g-recaptcha, #recaptcha"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.instantcheckmate.com/opt-out/"
 confirmation = "manual"
 notes = "Instant Checkmate has a complex opt-out process. You must find your exact report URL first, then submit opt-out with government ID verification. They may require phone verification. Process takes 7-10 business days. Known to be resistant to removal requests. Consider using certified mail if online form fails."

@@ -30,6 +30,7 @@ VALID_CATEGORIES = {
 
 VALID_REMOVAL_METHODS = {
     "web-form",
+    "browser-form",
     "email",
     "mail",
     "phone",
