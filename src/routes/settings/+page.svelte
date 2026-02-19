@@ -629,8 +629,10 @@
 					<button
 						onclick={() => handleUnlock(unlockTarget!)}
 						disabled={actionLoading || !unlockPassword}
-						class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-						>{actionLoading ? 'Unlocking...' : 'Unlock'}</button
+						class="flex-1 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+						style="background-color: {actionLoading || !unlockPassword
+							? '#d1d5db'
+							: '#0284c7'}; color: white;">{actionLoading ? 'Unlocking...' : 'Unlock'}</button
 					>
 					<button
 						onclick={() => {
@@ -638,8 +640,8 @@
 							unlockPassword = '';
 							actionError = null;
 						}}
-						class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-						>Cancel</button
+						class="flex-1 rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+						style="border-color: #d1d5db; color: #374151;">Cancel</button
 					>
 				</div>
 			</div>
