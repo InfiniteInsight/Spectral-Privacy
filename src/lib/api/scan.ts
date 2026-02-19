@@ -84,3 +84,21 @@ export const scanAPI = {
 		});
 	}
 };
+
+/**
+ * Start a new scan with tier-based or custom broker selection
+ */
+export async function startScan(
+	vaultId: string,
+	profileId: string,
+	options: { tier?: 'Tier1' | 'Tier2' | 'All'; brokerIds?: string[] } = {}
+): Promise<string> {
+	const result = await invoke<ScanJobStatus>('start_scan', {
+		vaultId,
+		profileId,
+		brokerFilter: null,
+		tier: options.tier ?? null,
+		brokerIds: options.brokerIds ?? null
+	});
+	return result.id;
+}

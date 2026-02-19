@@ -3,6 +3,7 @@
 	import { vaultStore, profileStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { getDashboardSummary, type DashboardSummary } from '$lib/api/dashboard';
+	import { startScan } from '$lib/api/scan';
 
 	// Reactive effect: Load profiles when vault is unlocked
 	$effect(() => {
@@ -21,6 +22,10 @@
 
 	let dashboard = $state<DashboardSummary | null>(null);
 	let dashboardError = $state<string | null>(null);
+	let scanStarting = $state(false);
+
+	// Detect first-run: no scans have ever been run
+	const isFirstRun = $derived(dashboard !== null && dashboard.last_scan_at === null);
 
 	$effect(() => {
 		if (!vaultId) {
@@ -37,6 +42,34 @@
 				dashboardError = e instanceof Error ? e.message : String(e);
 			});
 	});
+
+	async function handleFirstRunScan() {
+		if (!vaultId || !currentProfile) return;
+		scanStarting = true;
+		try {
+			const jobId = await startScan(vaultId, currentProfile.id, { tier: 'Tier1' });
+			goto(`/scan/progress/${jobId}`);
+		} catch (err) {
+			console.error('Failed to start scan:', err);
+			dashboardError = err instanceof Error ? err.message : 'Failed to start scan';
+		} finally {
+			scanStarting = false;
+		}
+	}
+
+	async function handleFullScan() {
+		if (!vaultId || !currentProfile) return;
+		scanStarting = true;
+		try {
+			const jobId = await startScan(vaultId, currentProfile.id, { tier: 'All' });
+			goto(`/scan/progress/${jobId}`);
+		} catch (err) {
+			console.error('Failed to start scan:', err);
+			dashboardError = err instanceof Error ? err.message : 'Failed to start scan';
+		} finally {
+			scanStarting = false;
+		}
+	}
 </script>
 
 {#if vaultStore.isCurrentVaultUnlocked}
@@ -76,19 +109,46 @@
 					✓ Vault Unlocked
 				</div>
 
-				<!-- Scan for Data -->
-				<div class="mt-6">
-					<a
-						href="/scan/start"
-						class="block px-6 py-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors text-center"
-						style="background-color: #0284c7; color: white; display: block; text-align: center;"
+				<!-- First-Run Prompt or Scan Button -->
+				{#if isFirstRun}
+					<div
+						class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-xl p-6 text-center mt-6"
 					>
-						Scan for Your Data
-					</a>
-					<p class="text-sm text-gray-500 mt-2 text-center">
-						Search data brokers for your information
-					</p>
-				</div>
+						<h2 class="text-xl font-semibold mb-2">Start your first privacy scan</h2>
+						<p class="text-gray-600 dark:text-gray-400 mb-4">
+							Check the ~10 most common data brokers for your region.
+						</p>
+						<div class="flex gap-3 justify-center">
+							<button
+								onclick={handleFirstRunScan}
+								disabled={scanStarting}
+								class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{scanStarting ? 'Starting...' : 'Start Tier 1 Scan'}
+							</button>
+							<button
+								onclick={handleFullScan}
+								disabled={scanStarting}
+								class="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								Full Scan (all brokers)
+							</button>
+						</div>
+					</div>
+				{:else}
+					<div class="mt-6">
+						<a
+							href="/scan/start"
+							class="block px-6 py-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors text-center"
+							style="background-color: #0284c7; color: white; display: block; text-align: center;"
+						>
+							Scan for Your Data
+						</a>
+						<p class="text-sm text-gray-500 mt-2 text-center">
+							Search data brokers for your information
+						</p>
+					</div>
+				{/if}
 
 				{#if dashboardError}
 					<p class="mt-4 text-sm text-red-500">Failed to load dashboard data.</p>
