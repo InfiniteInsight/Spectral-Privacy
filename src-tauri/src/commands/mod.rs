@@ -3,4 +3,5 @@
 pub mod profile;
 pub mod removal;
 pub mod scan;
+pub mod settings;
 pub mod vault;

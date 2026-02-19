@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { renameVault, deleteVault } from '$lib/api/vault';
+	import { testSmtpConnection, testImapConnection } from '$lib/api/settings';
 
 	// Tab from query param: ?tab=vaults (default), privacy, email, scheduling, audit
 	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'vaults');
@@ -13,6 +14,22 @@
 	let deletePassword = $state('');
 	let actionError = $state<string | null>(null);
 	let actionLoading = $state(false);
+
+	// Email settings state
+	let smtpEnabled = $state(false);
+	let smtpHost = $state('');
+	let smtpPort = $state(587);
+	let smtpUsername = $state('');
+	let smtpPassword = $state('');
+	let imapEnabled = $state(false);
+	let imapHost = $state('');
+	let imapPort = $state(993);
+	let imapUsername = $state('');
+	let imapPassword = $state('');
+	let smtpTestResult = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
+	let imapTestResult = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
+	let smtpError = $state('');
+	let imapError = $state('');
 
 	async function handleRename(vaultId: string) {
 		actionError = null;
@@ -41,6 +58,28 @@
 			actionError = err instanceof Error ? err.message : String(err);
 		} finally {
 			actionLoading = false;
+		}
+	}
+
+	async function handleTestSmtp() {
+		smtpTestResult = 'testing';
+		try {
+			await testSmtpConnection(smtpHost, smtpPort, smtpUsername, smtpPassword);
+			smtpTestResult = 'success';
+		} catch (err) {
+			smtpTestResult = 'error';
+			smtpError = err instanceof Error ? err.message : String(err);
+		}
+	}
+
+	async function handleTestImap() {
+		imapTestResult = 'testing';
+		try {
+			await testImapConnection(imapHost, imapPort, imapUsername, imapPassword);
+			imapTestResult = 'success';
+		} catch (err) {
+			imapTestResult = 'error';
+			imapError = err instanceof Error ? err.message : String(err);
 		}
 	}
 </script>
@@ -158,9 +197,168 @@
 			</div>
 		</section>
 	{:else if activeTab === 'email'}
-		<section>
-			<h2 class="mb-2 text-lg font-semibold text-gray-800">Email</h2>
-			<p class="mb-4 text-sm text-gray-500">Email settings will appear here (Phase 6 Task 15)</p>
+		<section class="space-y-6">
+			<!-- SMTP Configuration Card -->
+			<div class="rounded-lg border border-gray-200 bg-white p-4">
+				<div class="mb-4 flex items-center justify-between">
+					<div>
+						<h3 class="font-medium text-gray-900">SMTP Email Sending</h3>
+						<p class="text-sm text-gray-500">Send opt-out emails via your mail server</p>
+					</div>
+					<label class="flex cursor-pointer items-center gap-2">
+						<span class="text-sm text-gray-700">Enable SMTP</span>
+						<input type="checkbox" bind:checked={smtpEnabled} class="peer sr-only" />
+						<div
+							class="h-6 w-11 rounded-full bg-gray-200 transition-colors peer-checked:bg-primary-600 peer-focus:outline-none"
+						></div>
+					</label>
+				</div>
+				{#if smtpEnabled}
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label for="smtp-host" class="mb-1 block text-sm font-medium text-gray-700"
+								>SMTP Host</label
+							>
+							<input
+								id="smtp-host"
+								type="text"
+								bind:value={smtpHost}
+								placeholder="smtp.gmail.com"
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="smtp-port" class="mb-1 block text-sm font-medium text-gray-700"
+								>SMTP Port</label
+							>
+							<input
+								id="smtp-port"
+								type="number"
+								bind:value={smtpPort}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="smtp-user" class="mb-1 block text-sm font-medium text-gray-700"
+								>Username</label
+							>
+							<input
+								id="smtp-user"
+								type="text"
+								bind:value={smtpUsername}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="smtp-pass" class="mb-1 block text-sm font-medium text-gray-700"
+								>Password</label
+							>
+							<input
+								id="smtp-pass"
+								type="password"
+								bind:value={smtpPassword}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+					</div>
+					<div class="mt-3 flex items-center gap-3">
+						<button
+							onclick={handleTestSmtp}
+							disabled={smtpTestResult === 'testing'}
+							class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
+						>
+							{smtpTestResult === 'testing' ? 'Testing...' : 'Test Connection'}
+						</button>
+						{#if smtpTestResult === 'success'}
+							<span class="text-sm text-green-600">Connected successfully</span>
+						{:else if smtpTestResult === 'error'}
+							<span class="text-sm text-red-600">{smtpError}</span>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<!-- IMAP Configuration Card -->
+			<div class="rounded-lg border border-gray-200 bg-white p-4">
+				<div class="mb-4 flex items-center justify-between">
+					<div>
+						<h3 class="font-medium text-gray-900">IMAP Verification Monitoring</h3>
+						<p class="text-sm text-gray-500">
+							Automatically detect confirmation emails from brokers
+						</p>
+					</div>
+					<label class="flex cursor-pointer items-center gap-2">
+						<span class="text-sm text-gray-700">Enable IMAP</span>
+						<input type="checkbox" bind:checked={imapEnabled} class="peer sr-only" />
+						<div
+							class="h-6 w-11 rounded-full bg-gray-200 transition-colors peer-checked:bg-primary-600 peer-focus:outline-none"
+						></div>
+					</label>
+				</div>
+				{#if imapEnabled}
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<label for="imap-host" class="mb-1 block text-sm font-medium text-gray-700"
+								>IMAP Host</label
+							>
+							<input
+								id="imap-host"
+								type="text"
+								bind:value={imapHost}
+								placeholder="imap.gmail.com"
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="imap-port" class="mb-1 block text-sm font-medium text-gray-700"
+								>IMAP Port</label
+							>
+							<input
+								id="imap-port"
+								type="number"
+								bind:value={imapPort}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="imap-user" class="mb-1 block text-sm font-medium text-gray-700"
+								>Username</label
+							>
+							<input
+								id="imap-user"
+								type="text"
+								bind:value={imapUsername}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+						<div>
+							<label for="imap-pass" class="mb-1 block text-sm font-medium text-gray-700"
+								>Password</label
+							>
+							<input
+								id="imap-pass"
+								type="password"
+								bind:value={imapPassword}
+								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+							/>
+						</div>
+					</div>
+					<div class="mt-3 flex items-center gap-3">
+						<button
+							onclick={handleTestImap}
+							disabled={imapTestResult === 'testing'}
+							class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
+						>
+							{imapTestResult === 'testing' ? 'Testing...' : 'Test Connection'}
+						</button>
+						{#if imapTestResult === 'success'}
+							<span class="text-sm text-green-600">Connected successfully</span>
+						{:else if imapTestResult === 'error'}
+							<span class="text-sm text-red-600">{imapError}</span>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</section>
 	{:else if activeTab === 'scheduling'}
 		<section>

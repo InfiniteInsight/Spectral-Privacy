@@ -98,6 +98,8 @@ pub fn run() {
             commands::scan::get_dashboard_summary,
             commands::scan::get_removal_evidence,
             commands::scan::send_removal_email,
+            commands::settings::test_smtp_connection,
+            commands::settings::test_imap_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
