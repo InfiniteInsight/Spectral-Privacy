@@ -2,7 +2,8 @@
 
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_discovery::PiiPatterns;
+use spectral_discovery::{FileScanResult, PiiMatch, PiiPatterns};
+use std::path::Path;
 use tauri::{Emitter, State};
 use tracing::{error, info};
 
@@ -18,6 +19,63 @@ pub struct DiscoveryFinding {
     pub recommended_action: Option<String>,
     pub remediated: bool,
     pub found_at: String,
+}
+
+/// Process scan results and insert findings into the database
+async fn process_scan_results(
+    results: Vec<FileScanResult>,
+    pool: &sqlx::SqlitePool,
+    vault_id: &str,
+) -> usize {
+    let mut findings_count = 0;
+
+    for result in results {
+        for pii_match in result.matches {
+            if insert_pii_finding(&result.path, pii_match, pool, vault_id)
+                .await
+                .is_ok()
+            {
+                findings_count += 1;
+            }
+        }
+    }
+
+    findings_count
+}
+
+/// Insert a PII finding into the database
+async fn insert_pii_finding(
+    file_path: &Path,
+    pii_match: PiiMatch,
+    pool: &sqlx::SqlitePool,
+    vault_id: &str,
+) -> Result<(), sqlx::Error> {
+    let file_name = match file_path.file_name() {
+        Some(name) => name.to_string_lossy().to_string(),
+        None => {
+            tracing::warn!("Could not extract filename from path: {:?}", file_path);
+            file_path.to_string_lossy().to_string()
+        }
+    };
+
+    let description = format!("{} found in file: {}", pii_match.description(), file_name);
+
+    spectral_db::discovery_findings::insert_discovery_finding(
+        pool,
+        spectral_db::discovery_findings::CreateDiscoveryFinding {
+            vault_id: vault_id.to_string(),
+            source: "filesystem".to_string(),
+            source_detail: file_path.to_string_lossy().to_string(),
+            finding_type: "pii_exposure".to_string(),
+            risk_level: pii_match.risk_level().to_string(),
+            description,
+            recommended_action: Some(
+                "Review file and remove sensitive information if no longer needed".to_string(),
+            ),
+        },
+    )
+    .await
+    .map(|_| ())
 }
 
 /// Start a discovery scan of local files
@@ -83,55 +141,8 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 
             info!("Scanning directory: {:?}", dir);
             let results = spectral_discovery::scan_directory(&dir, &patterns).await;
-
-            for result in results {
-                for pii_match in result.matches {
-                    // Insert finding into database
-                    let source = "filesystem".to_string();
-                    let source_detail = result.path.to_string_lossy().to_string();
-                    let finding_type = "pii_exposure".to_string();
-                    let risk_level = pii_match.risk_level().to_string();
-                    let file_name = match result.path.file_name() {
-                        Some(name) => name.to_string_lossy().to_string(),
-                        None => {
-                            tracing::warn!(
-                                "Could not extract filename from path: {:?}",
-                                result.path
-                            );
-                            result.path.to_string_lossy().to_string() // Use full path as fallback
-                        }
-                    };
-
-                    let description =
-                        format!("{} found in file: {}", pii_match.description(), file_name);
-                    let recommended_action = Some(
-                        "Review file and remove sensitive information if no longer needed"
-                            .to_string(),
-                    );
-
-                    match spectral_db::discovery_findings::insert_discovery_finding(
-                        &pool,
-                        spectral_db::discovery_findings::CreateDiscoveryFinding {
-                            vault_id: vault_id_clone.clone(),
-                            source,
-                            source_detail,
-                            finding_type,
-                            risk_level,
-                            description,
-                            recommended_action,
-                        },
-                    )
-                    .await
-                    {
-                        Ok(_) => {
-                            total_findings += 1;
-                        }
-                        Err(e) => {
-                            error!("Failed to insert discovery finding: {}", e);
-                        }
-                    }
-                }
-            }
+            let findings = process_scan_results(results, &pool, &vault_id_clone).await;
+            total_findings += findings;
         }
 
         info!("Discovery scan complete: {} findings", total_findings);

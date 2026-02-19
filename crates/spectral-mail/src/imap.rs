@@ -49,35 +49,10 @@ pub fn poll_for_verifications(
         return result;
     }
 
-    tracing::debug!("Connecting to IMAP server {}:{}", config.host, config.port);
-
-    // Connect with rustls TLS (handled by rustls-tls feature flag)
-    let client = match imap::ClientBuilder::new(&config.host, config.port).connect() {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::warn!("IMAP connect error: {}", e);
-            result.errors.push(format!("IMAP connect error: {e}"));
-            return result;
-        }
+    let mut session = match establish_imap_session(config, &mut result) {
+        Some(s) => s,
+        None => return result,
     };
-
-    let mut session = match client.login(&config.username, &config.password) {
-        Ok(s) => s,
-        Err((e, _)) => {
-            tracing::warn!("IMAP login error: {}", e);
-            result.errors.push(format!("IMAP login error: {e}"));
-            return result;
-        }
-    };
-
-    tracing::debug!("Successfully logged into IMAP server");
-
-    if let Err(e) = session.select("INBOX") {
-        tracing::warn!("IMAP select INBOX error: {}", e);
-        result.errors.push(format!("IMAP select INBOX error: {e}"));
-        let _ = session.logout();
-        return result;
-    }
 
     // Search for recent unseen messages (last 7 days)
     let seven_days_ago = {
@@ -120,7 +95,60 @@ pub fn poll_for_verifications(
         }
     };
 
-    for msg in messages.iter() {
+    result.verified = extract_verifications_from_messages(messages.iter(), broker_email_to_attempt);
+
+    let _ = session.logout();
+    result
+}
+
+/// Establish IMAP session (connect + login + select INBOX)
+fn establish_imap_session(
+    config: &ImapConfig,
+    result: &mut PollResult,
+) -> Option<imap::Session<Box<dyn imap::ImapConnection>>> {
+    tracing::debug!("Connecting to IMAP server {}:{}", config.host, config.port);
+
+    let client = match imap::ClientBuilder::new(&config.host, config.port).connect() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("IMAP connect error: {}", e);
+            result.errors.push(format!("IMAP connect error: {e}"));
+            return None;
+        }
+    };
+
+    let mut session = match client.login(&config.username, &config.password) {
+        Ok(s) => s,
+        Err((e, _)) => {
+            tracing::warn!("IMAP login error: {}", e);
+            result.errors.push(format!("IMAP login error: {e}"));
+            return None;
+        }
+    };
+
+    tracing::debug!("Successfully logged into IMAP server");
+
+    if let Err(e) = session.select("INBOX") {
+        tracing::warn!("IMAP select INBOX error: {}", e);
+        result.errors.push(format!("IMAP select INBOX error: {e}"));
+        let _ = session.logout();
+        return None;
+    }
+
+    Some(session)
+}
+
+/// Extract verifications from fetched messages
+fn extract_verifications_from_messages<'a, T>(
+    messages: T,
+    broker_email_to_attempt: &HashMap<String, String>,
+) -> HashMap<String, String>
+where
+    T: IntoIterator<Item = &'a imap::types::Fetch<'a>>,
+{
+    let mut verified = HashMap::new();
+
+    for msg in messages.into_iter() {
         if let Some(header_bytes) = msg.header() {
             let headers = String::from_utf8_lossy(header_bytes);
             if let Some(from) = extract_from_header(&headers) {
@@ -130,14 +158,13 @@ pub fn poll_for_verifications(
                         from,
                         attempt_id
                     );
-                    result.verified.insert(from.clone(), attempt_id.clone());
+                    verified.insert(from.clone(), attempt_id.clone());
                 }
             }
         }
     }
 
-    let _ = session.logout();
-    result
+    verified
 }
 
 fn extract_from_header(headers: &str) -> Option<String> {
