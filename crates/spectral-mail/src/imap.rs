@@ -2,18 +2,33 @@
 
 use std::collections::HashMap;
 
+/// Maximum age of verification emails to search for
+const VERIFICATION_WINDOW_DAYS: u64 = 7;
+const SECONDS_PER_DAY: u64 = 86400;
+
 /// Check if a sender address matches any known broker email address.
 pub fn matches_broker_sender(sender: &str, broker_emails: &[String]) -> bool {
     broker_emails.iter().any(|b| b.eq_ignore_ascii_case(sender))
 }
 
 /// Configuration for the IMAP poller
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ImapConfig {
     pub host: String,
     pub port: u16,
     pub username: String,
     pub password: String,
+}
+
+impl std::fmt::Debug for ImapConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImapConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("username", &self.username)
+            .field("password", &"[REDACTED]")
+            .finish()
+    }
 }
 
 /// Result of a single polling pass
@@ -34,10 +49,13 @@ pub fn poll_for_verifications(
         return result;
     }
 
+    tracing::debug!("Connecting to IMAP server {}:{}", config.host, config.port);
+
     // Connect with rustls TLS (handled by rustls-tls feature flag)
     let client = match imap::ClientBuilder::new(&config.host, config.port).connect() {
         Ok(c) => c,
         Err(e) => {
+            tracing::warn!("IMAP connect error: {}", e);
             result.errors.push(format!("IMAP connect error: {e}"));
             return result;
         }
@@ -46,12 +64,16 @@ pub fn poll_for_verifications(
     let mut session = match client.login(&config.username, &config.password) {
         Ok(s) => s,
         Err((e, _)) => {
+            tracing::warn!("IMAP login error: {}", e);
             result.errors.push(format!("IMAP login error: {e}"));
             return result;
         }
     };
 
+    tracing::debug!("Successfully logged into IMAP server");
+
     if let Err(e) = session.select("INBOX") {
+        tracing::warn!("IMAP select INBOX error: {}", e);
         result.errors.push(format!("IMAP select INBOX error: {e}"));
         let _ = session.logout();
         return result;
@@ -63,7 +85,7 @@ pub fn poll_for_verifications(
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let days_ago = now.saturating_sub(7 * 24 * 3600);
+        let days_ago = now.saturating_sub(VERIFICATION_WINDOW_DAYS * SECONDS_PER_DAY);
         format_imap_date(days_ago)
     };
 
@@ -71,11 +93,14 @@ pub fn poll_for_verifications(
     let uids = match session.search(&query) {
         Ok(ids) => ids,
         Err(e) => {
+            tracing::warn!("IMAP search error: {}", e);
             result.errors.push(format!("IMAP search error: {e}"));
             let _ = session.logout();
             return result;
         }
     };
+
+    tracing::debug!("Found {} unseen messages in last 7 days", uids.len());
 
     if uids.is_empty() {
         let _ = session.logout();
@@ -88,6 +113,7 @@ pub fn poll_for_verifications(
     let messages = match session.fetch(&fetch_query, "RFC822.HEADER") {
         Ok(m) => m,
         Err(e) => {
+            tracing::warn!("IMAP fetch error: {}", e);
             result.errors.push(format!("IMAP fetch error: {e}"));
             let _ = session.logout();
             return result;
@@ -99,6 +125,11 @@ pub fn poll_for_verifications(
             let headers = String::from_utf8_lossy(header_bytes);
             if let Some(from) = extract_from_header(&headers) {
                 if let Some(attempt_id) = broker_email_to_attempt.get(&from.to_lowercase()) {
+                    tracing::info!(
+                        "Found verification email from {} for attempt {}",
+                        from,
+                        attempt_id
+                    );
                     result.verified.insert(from.clone(), attempt_id.clone());
                 }
             }
@@ -126,15 +157,9 @@ fn extract_from_header(headers: &str) -> Option<String> {
 }
 
 fn format_imap_date(unix_secs: u64) -> String {
-    let months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let days = unix_secs / 86400;
-    let y = 1970 + (days / 365) as u32; // nosemgrep: llm-prompt-injection-risk
-    let day_of_year = days % 365;
-    let month_idx = (day_of_year / 30).min(11) as usize;
-    let day = (day_of_year % 30) + 1; // nosemgrep: llm-prompt-injection-risk
-    format!("{:02}-{}-{}", day, months[month_idx], y)
+    use chrono::{DateTime, Utc};
+    let dt = DateTime::<Utc>::from_timestamp(unix_secs as i64, 0).unwrap_or_else(Utc::now);
+    dt.format("%d-%b-%Y").to_string()
 }
 
 #[cfg(test)]
