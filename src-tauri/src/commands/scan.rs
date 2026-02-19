@@ -21,6 +21,8 @@ pub enum ScanTier {
     Tier2,
     /// All brokers except ManualOnly
     All,
+    /// Custom broker selection (use broker_ids parameter)
+    Custom,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -11,6 +11,8 @@ difficulty = "Medium"
 typical_removal_days = 10
 recheck_interval_days = 90
 last_verified = "2026-02-13"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
 
 [search]
 method = "manual"
