@@ -15,7 +15,10 @@ pub fn is_tray_supported() -> bool {
                 let libs = String::from_utf8_lossy(&o.stdout);
                 libs.contains("libappindicator3") || libs.contains("libayatana-appindicator3")
             })
-            .unwrap_or(false)
+            .unwrap_or_else(|e| {
+                tracing::debug!("ldconfig check failed: {}, assuming no tray support", e);
+                false
+            })
     }
     #[cfg(not(target_os = "linux"))]
     {

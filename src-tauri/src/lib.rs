@@ -68,11 +68,10 @@ pub fn run() {
                 use tauri::tray::TrayIconBuilder;
 
                 let open_item = MenuItemBuilder::with_id("open", "Open Spectral").build(app)?;
-                let scan_item = MenuItemBuilder::with_id("scan_now", "Run Scan Now").build(app)?;
                 let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
 
                 let menu = MenuBuilder::new(app)
-                    .items(&[&open_item, &scan_item, &quit_item])
+                    .items(&[&open_item, &quit_item])
                     .build()?;
 
                 TrayIconBuilder::new()
