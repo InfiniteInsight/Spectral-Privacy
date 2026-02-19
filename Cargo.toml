@@ -12,7 +12,7 @@ authors = ["Spectral Contributors"]
 
 [workspace.dependencies]
 # Tauri
-tauri = { version = "2.10.0" }
+tauri = { version = "2.10.0", features = ["tray-icon"] }
 tauri-build = { version = "2.5.4" }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"

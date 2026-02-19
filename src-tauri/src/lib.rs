@@ -60,10 +60,39 @@ pub fn run() {
                     window.open_devtools();
                 }
             }
-            #[cfg(not(debug_assertions))]
-            {
-                let _ = app;
+
+            // Set up system tray if supported
+            if spectral_scheduler::tray::is_tray_supported() {
+                use tauri::menu::{MenuBuilder, MenuItemBuilder};
+                use tauri::tray::TrayIconBuilder;
+
+                let open_item = MenuItemBuilder::with_id("open", "Open Spectral").build(app)?;
+                let scan_item = MenuItemBuilder::with_id("scan_now", "Run Scan Now").build(app)?;
+                let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+                let menu = MenuBuilder::new(app)
+                    .items(&[&open_item, &scan_item, &quit_item])
+                    .build()?;
+
+                TrayIconBuilder::new()
+                    .menu(&menu)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "open" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .build(app)?;
+            } else {
+                info!("Tray not supported on this platform — running without tray icon");
             }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
