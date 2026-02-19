@@ -2,7 +2,14 @@
 	import { page } from '$app/stores';
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { renameVault, deleteVault } from '$lib/api/vault';
-	import { testSmtpConnection, testImapConnection } from '$lib/api/settings';
+	import {
+		testSmtpConnection,
+		testImapConnection,
+		getScheduledJobs,
+		updateScheduledJob,
+		runJobNow,
+		type ScheduledJob
+	} from '$lib/api/settings';
 
 	// Tab from query param: ?tab=vaults (default), privacy, email, scheduling, audit
 	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'vaults');
@@ -30,6 +37,10 @@
 	let imapTestResult = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
 	let smtpError = $state('');
 	let imapError = $state('');
+
+	// Scheduling state
+	let scheduledJobs = $state<ScheduledJob[]>([]);
+	let loadingJobs = $state(false);
 
 	async function handleRename(vaultId: string) {
 		actionError = null;
@@ -80,6 +91,44 @@
 		} catch (err) {
 			imapTestResult = 'error';
 			imapError = err instanceof Error ? err.message : String(err);
+		}
+	}
+
+	// Load scheduled jobs when scheduling tab becomes active
+	$effect(() => {
+		if (activeTab === 'scheduling' && vaultStore.currentVaultId) {
+			loadScheduledJobs();
+		}
+	});
+
+	async function loadScheduledJobs() {
+		if (!vaultStore.currentVaultId) return;
+		loadingJobs = true;
+		try {
+			scheduledJobs = await getScheduledJobs(vaultStore.currentVaultId);
+		} catch (err) {
+			console.error('Failed to load scheduled jobs:', err);
+		} finally {
+			loadingJobs = false;
+		}
+	}
+
+	async function handleUpdateJob(jobId: string, intervalDays: number, enabled: boolean) {
+		if (!vaultStore.currentVaultId) return;
+		try {
+			await updateScheduledJob(vaultStore.currentVaultId, jobId, intervalDays, enabled);
+			await loadScheduledJobs(); // Reload to get updated next_run_at
+		} catch (err) {
+			console.error('Failed to update job:', err);
+		}
+	}
+
+	async function handleRunNow(jobType: string) {
+		if (!vaultStore.currentVaultId) return;
+		try {
+			await runJobNow(vaultStore.currentVaultId, jobType);
+		} catch (err) {
+			console.error('Failed to run job:', err);
 		}
 	}
 </script>
@@ -362,10 +411,61 @@
 		</section>
 	{:else if activeTab === 'scheduling'}
 		<section>
-			<h2 class="mb-2 text-lg font-semibold text-gray-800">Scheduling</h2>
-			<p class="mb-4 text-sm text-gray-500">
-				Scheduling settings will appear here (Phase 6 Task 20)
-			</p>
+			<h2 class="mb-4 text-lg font-semibold text-gray-800">Scheduled Jobs</h2>
+			{#if loadingJobs}
+				<p class="text-gray-500">Loading...</p>
+			{:else}
+				<div class="space-y-4">
+					{#each scheduledJobs as job}
+						{@const jobName =
+							job.job_type === 'ScanAll'
+								? 'Weekly Scan'
+								: job.job_type === 'VerifyRemovals'
+									? 'Removal Verification'
+									: job.job_type}
+						<div class="rounded-lg border border-gray-200 p-4">
+							<div class="mb-3 flex items-center justify-between">
+								<div>
+									<h3 class="font-medium text-gray-900">{jobName}</h3>
+									<p class="text-sm text-gray-500">
+										Next run: {new Date(job.next_run_at).toLocaleString()}
+									</p>
+								</div>
+								<label class="flex items-center gap-2">
+									<input
+										type="checkbox"
+										checked={job.enabled}
+										onchange={(e) =>
+											handleUpdateJob(job.id, job.interval_days, e.currentTarget.checked)}
+										class="rounded"
+									/>
+									<span class="text-sm">Enabled</span>
+								</label>
+							</div>
+							<div class="flex items-center gap-4">
+								<select
+									value={job.interval_days}
+									onchange={(e) =>
+										handleUpdateJob(job.id, parseInt(e.currentTarget.value), job.enabled)}
+									class="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+								>
+									<option value="1">Daily</option>
+									<option value="3">Every 3 days</option>
+									<option value="7">Weekly</option>
+									<option value="14">Bi-weekly</option>
+									<option value="30">Monthly</option>
+								</select>
+								<button
+									onclick={() => handleRunNow(job.job_type)}
+									class="rounded-lg bg-primary-600 px-4 py-2 text-sm text-white hover:bg-primary-700"
+								>
+									Run Now
+								</button>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
 		</section>
 	{:else if activeTab === 'audit'}
 		<section>
