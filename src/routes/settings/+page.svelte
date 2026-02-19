@@ -628,8 +628,8 @@
 				<div class="flex gap-3">
 					<button
 						onclick={() => handleUnlock(unlockTarget!)}
-						disabled={actionLoading}
-						class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+						disabled={actionLoading || !unlockPassword}
+						class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
 						>{actionLoading ? 'Unlocking...' : 'Unlock'}</button
 					>
 					<button

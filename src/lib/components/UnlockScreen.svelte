@@ -260,6 +260,7 @@ Computed style test: <span class="bg-red-500 text-white px-2">Should be red</spa
 					disabled={vaultStore.loading || !password}
 					class="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
 					style="background-color: #0284c7; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; width: 100%;"
+					aria-label="Unlock vault"
 				>
 					{vaultStore.loading ? 'Unlocking...' : 'Unlock'}
 				</button>
