@@ -19,7 +19,25 @@ pub async fn test_imap_connection(
     username: String,
     password: String,
 ) -> Result<(), CommandError> {
-    // Stub implementation - IMAP testing added in Task 17
-    let _ = (host, port, username, password);
+    use spectral_mail::imap::{poll_for_verifications, ImapConfig};
+    use std::collections::HashMap;
+
+    let config = ImapConfig {
+        host,
+        port,
+        username,
+        password,
+    };
+
+    // Run synchronous IMAP polling in blocking task
+    let result =
+        tokio::task::spawn_blocking(move || poll_for_verifications(&config, &HashMap::new()))
+            .await
+            .map_err(|e| CommandError::new("TASK_JOIN_ERROR", format!("Task join error: {}", e)))?;
+
+    if let Some(err) = result.errors.first() {
+        return Err(CommandError::new("IMAP_CONNECTION_ERROR", err.clone()));
+    }
+
     Ok(())
 }
