@@ -83,6 +83,7 @@ pub fn run() {
             commands::profile::profile_list,
             commands::profile::get_profile_completeness,
             commands::removal::submit_removal,
+            commands::removal::mark_attempt_verified,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
             commands::scan::get_findings,

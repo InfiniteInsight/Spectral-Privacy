@@ -6,10 +6,11 @@
 	import OverviewTab from '$lib/components/removals/OverviewTab.svelte';
 	import CaptchaQueueTab from '$lib/components/removals/CaptchaQueueTab.svelte';
 	import FailedQueueTab from '$lib/components/removals/FailedQueueTab.svelte';
+	import { markAttemptVerified } from '$lib/api/verification';
 
 	const scanJobId = $derived($page.params.jobId);
 
-	let activeTab = $state<'overview' | 'captcha' | 'failed'>('overview');
+	let activeTab = $state<'overview' | 'captcha' | 'failed' | 'verification'>('overview');
 
 	onMount(async () => {
 		// Validate scan job ID
@@ -55,6 +56,20 @@
 				console.error('Retry failed for', attempt.id, err);
 			}
 		}
+	}
+
+	async function handleMarkVerified(attemptId: string) {
+		if (!vaultStore.currentVaultId) return;
+		await markAttemptVerified(vaultStore.currentVaultId, attemptId);
+		// removal:verified event will update store via listener
+	}
+
+	function getBrokerName(brokerId: string): string {
+		// Simple helper to display broker name
+		return brokerId
+			.split('.')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 	}
 </script>
 
@@ -113,6 +128,22 @@
 							</span>
 						{/if}
 					</button>
+					{#if removalStore.awaitingVerification.length > 0}
+						<button
+							onclick={() => (activeTab = 'verification')}
+							class="py-4 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {activeTab ===
+							'verification'
+								? 'border-blue-600 text-blue-600'
+								: 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'}"
+						>
+							Pending Verification
+							<span
+								class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold"
+							>
+								{removalStore.awaitingVerification.length}
+							</span>
+						</button>
+					{/if}
 				</nav>
 			</div>
 
@@ -152,6 +183,30 @@
 						onRetry={handleRetry}
 						onRetryAll={handleRetryAll}
 					/>
+				{:else if activeTab === 'verification'}
+					<div class="space-y-3">
+						{#each removalStore.awaitingVerification as attempt}
+							{@const broker = getBrokerName(attempt.broker_id)}
+							<div
+								class="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-900/10"
+							>
+								<div class="flex items-center justify-between">
+									<div>
+										<p class="font-medium text-gray-900 dark:text-gray-100">{broker}</p>
+										<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+											Check your inbox for a confirmation email
+										</p>
+									</div>
+									<button
+										onclick={() => handleMarkVerified(attempt.id)}
+										class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors font-medium"
+									>
+										Mark as Verified
+									</button>
+								</div>
+							</div>
+						{/each}
+					</div>
 				{/if}
 			</div>
 

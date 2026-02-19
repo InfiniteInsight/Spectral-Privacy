@@ -42,6 +42,11 @@ interface RemovalRetryEvent {
 	attempt_num: number;
 }
 
+interface RemovalVerifiedEvent {
+	attempt_id: string;
+	broker_id: string;
+}
+
 /**
  * Removal state interface
  */
@@ -96,6 +101,12 @@ function createRemovalStore() {
 
 	const inProgress = $derived(state.removalAttempts.filter((r) => r.status === 'Processing'));
 
+	const awaitingVerification = $derived(
+		state.removalAttempts.filter(
+			(r) => r.status === 'Pending' && r.error_message === 'AWAITING_VERIFICATION'
+		)
+	);
+
 	return {
 		// Getters for reactive access
 		get removalAttempts() {
@@ -123,6 +134,9 @@ function createRemovalStore() {
 		},
 		get inProgress() {
 			return inProgress;
+		},
+		get awaitingVerification() {
+			return awaitingVerification;
 		},
 		get allComplete() {
 			// True when all terminal states reached: nothing in progress,
@@ -247,6 +261,14 @@ function createRemovalStore() {
 				});
 			});
 			unlisteners.push(unlistenRetry);
+
+			// removal:verified
+			const unlistenVerified = await listen<RemovalVerifiedEvent>('removal:verified', (event) => {
+				this.updateAttempt(event.payload.attempt_id, {
+					status: 'Completed'
+				});
+			});
+			unlisteners.push(unlistenVerified);
 		},
 
 		/**
