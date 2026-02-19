@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { vaultStore } from '$lib/stores/vault.svelte';
-	import { renameVault, deleteVault } from '$lib/api/vault';
 	import {
 		testSmtpConnection,
 		testImapConnection,
@@ -11,18 +10,8 @@
 		type ScheduledJob
 	} from '$lib/api/settings';
 
-	// Tab from query param: ?tab=vaults (default), privacy, email, scheduling, audit
-	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'vaults');
-
-	// Vault management state
-	let renameTarget = $state<string | null>(null);
-	let renameValue = $state('');
-	let deleteTarget = $state<string | null>(null);
-	let deletePassword = $state('');
-	let unlockTarget = $state<string | null>(null);
-	let unlockPassword = $state('');
-	let actionError = $state<string | null>(null);
-	let actionLoading = $state(false);
+	// Tab from query param: ?tab=privacy (default), email, scheduling, audit
+	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'privacy');
 
 	// Email settings state
 	let smtpEnabled = $state(false);
@@ -44,62 +33,6 @@
 	let scheduledJobs = $state<ScheduledJob[]>([]);
 	let loadingJobs = $state(false);
 	let schedulingError = $state<string | null>(null);
-
-	async function handleRename(vaultId: string) {
-		actionError = null;
-		actionLoading = true;
-		try {
-			await renameVault(vaultId, renameValue);
-			await vaultStore.loadVaults();
-			renameTarget = null;
-			renameValue = '';
-		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
-		} finally {
-			actionLoading = false;
-		}
-	}
-
-	async function handleDelete(vaultId: string) {
-		actionError = null;
-		actionLoading = true;
-		try {
-			await deleteVault(vaultId, deletePassword);
-			await vaultStore.loadVaults();
-			deleteTarget = null;
-			deletePassword = '';
-		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
-		} finally {
-			actionLoading = false;
-		}
-	}
-
-	async function handleLock(vaultId: string) {
-		actionError = null;
-		actionLoading = true;
-		try {
-			await vaultStore.lock(vaultId);
-		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
-		} finally {
-			actionLoading = false;
-		}
-	}
-
-	async function handleUnlock(vaultId: string) {
-		actionError = null;
-		actionLoading = true;
-		try {
-			await vaultStore.unlock(vaultId, unlockPassword);
-			unlockTarget = null;
-			unlockPassword = '';
-		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
-		} finally {
-			actionLoading = false;
-		}
-	}
 
 	async function handleTestSmtp() {
 		smtpTestResult = 'testing';
@@ -173,7 +106,7 @@
 
 	<!-- Tab bar -->
 	<div class="mb-8 flex gap-1 border-b border-gray-200" role="tablist">
-		{#each [['vaults', 'Vaults'], ['privacy', 'Privacy Level'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
+		{#each [['privacy', 'Privacy Level'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
 			<a
 				href="/settings?tab={id}"
 				role="tab"
@@ -185,96 +118,8 @@
 		{/each}
 	</div>
 
-	<!-- Vaults tab -->
-	{#if activeTab === 'vaults'}
-		<section>
-			<h2 class="mb-4 text-lg font-semibold text-gray-800">Your vaults</h2>
-			<div class="space-y-3">
-				{#each vaultStore.availableVaults as vault (vault.vault_id)}
-					<div class="rounded-lg border border-gray-200 bg-white p-4">
-						{#if renameTarget === vault.vault_id}
-							<div class="flex items-center gap-3">
-								<input
-									bind:value={renameValue}
-									class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-									onkeydown={(e) => e.key === 'Enter' && handleRename(vault.vault_id)}
-								/>
-								<button
-									onclick={() => handleRename(vault.vault_id)}
-									disabled={actionLoading}
-									class="rounded-md bg-primary-600 px-3 py-1.5 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
-									>Save</button
-								>
-								<button
-									onclick={() => {
-										renameTarget = null;
-										renameValue = '';
-										actionError = null;
-									}}
-									class="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-									>Cancel</button
-								>
-							</div>
-						{:else}
-							<div class="flex items-center justify-between">
-								<div>
-									<p class="font-medium text-gray-900">{vault.display_name}</p>
-									<p class="text-xs text-gray-400">
-										Last accessed: {new Date(vault.last_accessed).toLocaleDateString()}
-									</p>
-								</div>
-								<div class="flex gap-2">
-									{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
-										<button
-											onclick={() => handleLock(vault.vault_id)}
-											disabled={actionLoading}
-											class="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-											>Lock</button
-										>
-									{:else}
-										<button
-											onclick={() => {
-												unlockTarget = vault.vault_id;
-												actionError = null;
-											}}
-											class="rounded-md border border-primary-200 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50"
-											>Unlock</button
-										>
-									{/if}
-									<button
-										onclick={() => {
-											renameTarget = vault.vault_id;
-											renameValue = vault.display_name;
-										}}
-										class="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
-										>Rename</button
-									>
-									<button
-										onclick={() => {
-											deleteTarget = vault.vault_id;
-											actionError = null;
-										}}
-										class="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-										>Delete</button
-									>
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-			{#if actionError && (renameTarget !== null || deleteTarget !== null)}
-				<p class="mt-2 text-sm text-red-600">{actionError}</p>
-			{/if}
-			<div class="mt-4">
-				<a
-					href="/profile/setup"
-					class="inline-block rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-					>+ Add new vault</a
-				>
-			</div>
-		</section>
-	{:else if activeTab === 'privacy'}
+	<!-- Privacy Level tab -->
+	{#if activeTab === 'privacy'}
 		<section>
 			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Level</h2>
 			<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -554,97 +399,5 @@
 			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Audit Log</h2>
 			<p class="mb-4 text-sm text-gray-500">Audit log will appear here (Phase 6 Task 5)</p>
 		</section>
-	{/if}
-
-	<!-- Delete vault confirmation modal -->
-	{#if deleteTarget}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-			<div
-				class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="delete-vault-title"
-			>
-				<h2 id="delete-vault-title" class="mb-2 text-lg font-semibold text-gray-900">
-					Delete vault?
-				</h2>
-				<p class="mb-4 text-sm text-gray-500">
-					This permanently deletes all data in this vault. Enter your master password to confirm.
-				</p>
-				<input
-					type="password"
-					bind:value={deletePassword}
-					placeholder="Master password"
-					autocomplete="current-password"
-					class="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-400"
-				/>
-				{#if actionError}
-					<p class="mb-3 text-sm text-red-600">{actionError}</p>
-				{/if}
-				<div class="flex gap-3">
-					<button
-						onclick={() => handleDelete(deleteTarget!)}
-						disabled={actionLoading}
-						class="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-						>Delete permanently</button
-					>
-					<button
-						onclick={() => {
-							deleteTarget = null;
-							deletePassword = '';
-							actionError = null;
-						}}
-						class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-						>Cancel</button
-					>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Unlock vault modal -->
-	{#if unlockTarget}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-			<div
-				class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="unlock-vault-title"
-			>
-				<h2 id="unlock-vault-title" class="mb-4 text-lg font-semibold text-gray-900">
-					Unlock vault
-				</h2>
-				<input
-					type="password"
-					bind:value={unlockPassword}
-					placeholder="Master password"
-					autocomplete="current-password"
-					class="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-					onkeydown={(e) => e.key === 'Enter' && handleUnlock(unlockTarget!)}
-				/>
-				{#if actionError}
-					<p class="mb-3 text-sm text-red-600">{actionError}</p>
-				{/if}
-				<div class="flex gap-3">
-					<button
-						onclick={() => handleUnlock(unlockTarget!)}
-						disabled={actionLoading || !unlockPassword}
-						class="flex-1 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-						style="background-color: {actionLoading || !unlockPassword
-							? '#d1d5db'
-							: '#0284c7'}; color: white;">{actionLoading ? 'Unlocking...' : 'Unlock'}</button
-					>
-					<button
-						onclick={() => {
-							unlockTarget = null;
-							unlockPassword = '';
-							actionError = null;
-						}}
-						class="flex-1 rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
-						style="border-color: #d1d5db; color: #374151;">Cancel</button
-					>
-				</div>
-			</div>
-		</div>
 	{/if}
 </div>
