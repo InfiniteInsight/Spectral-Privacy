@@ -41,6 +41,7 @@
 	// Scheduling state
 	let scheduledJobs = $state<ScheduledJob[]>([]);
 	let loadingJobs = $state(false);
+	let schedulingError = $state<string | null>(null);
 
 	async function handleRename(vaultId: string) {
 		actionError = null;
@@ -104,9 +105,11 @@
 	async function loadScheduledJobs() {
 		if (!vaultStore.currentVaultId) return;
 		loadingJobs = true;
+		schedulingError = null;
 		try {
 			scheduledJobs = await getScheduledJobs(vaultStore.currentVaultId);
 		} catch (err) {
+			schedulingError = err instanceof Error ? err.message : String(err);
 			console.error('Failed to load scheduled jobs:', err);
 		} finally {
 			loadingJobs = false;
@@ -115,19 +118,23 @@
 
 	async function handleUpdateJob(jobId: string, intervalDays: number, enabled: boolean) {
 		if (!vaultStore.currentVaultId) return;
+		schedulingError = null;
 		try {
 			await updateScheduledJob(vaultStore.currentVaultId, jobId, intervalDays, enabled);
 			await loadScheduledJobs(); // Reload to get updated next_run_at
 		} catch (err) {
+			schedulingError = err instanceof Error ? err.message : String(err);
 			console.error('Failed to update job:', err);
 		}
 	}
 
 	async function handleRunNow(jobType: string) {
 		if (!vaultStore.currentVaultId) return;
+		schedulingError = null;
 		try {
 			await runJobNow(vaultStore.currentVaultId, jobType);
 		} catch (err) {
+			schedulingError = err instanceof Error ? err.message : String(err);
 			console.error('Failed to run job:', err);
 		}
 	}
@@ -412,6 +419,11 @@
 	{:else if activeTab === 'scheduling'}
 		<section>
 			<h2 class="mb-4 text-lg font-semibold text-gray-800">Scheduled Jobs</h2>
+			{#if schedulingError}
+				<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+					{schedulingError}
+				</div>
+			{/if}
 			{#if loadingJobs}
 				<p class="text-gray-500">Loading...</p>
 			{:else}
