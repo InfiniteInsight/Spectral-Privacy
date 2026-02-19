@@ -149,28 +149,31 @@ impl Database {
         .fetch_all(self.pool.pool())
         .await?;
 
-        let jobs = rows
+        let jobs: Result<Vec<_>> = rows
             .into_iter()
             .map(
-                |(id, job_type, interval_days, next_run_at, last_run_at, enabled)| {
+                |(id, job_type_str, interval_days, next_run_at, last_run_at, enabled)| {
                     let job_type: spectral_scheduler::JobType =
-                        serde_json::from_str(&format!("\"{job_type}\""))
-                            .expect("job_type from DB should be valid");
+                        serde_json::from_str(&format!("\"{job_type_str}\"")).map_err(|e| {
+                            DatabaseError::Decode(format!(
+                                "Invalid job_type '{job_type_str}' in scheduled_jobs table: {e}"
+                            ))
+                        })?;
                     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                     let interval_days = interval_days as u32;
-                    spectral_scheduler::ScheduledJob {
+                    Ok(spectral_scheduler::ScheduledJob {
                         id,
                         job_type,
                         interval_days,
                         next_run_at,
                         last_run_at,
                         enabled: enabled != 0,
-                    }
+                    })
                 },
             )
             .collect();
 
-        Ok(jobs)
+        jobs
     }
 
     /// Update job's `next_run_at` and `last_run_at` timestamps
@@ -180,12 +183,20 @@ impl Database {
         next_run_at: &str,
         last_run_at: &str,
     ) -> Result<()> {
-        sqlx::query("UPDATE scheduled_jobs SET next_run_at = ?, last_run_at = ? WHERE id = ?")
-            .bind(next_run_at)
-            .bind(last_run_at)
-            .bind(job_id)
-            .execute(self.pool.pool())
-            .await?;
+        let result =
+            sqlx::query("UPDATE scheduled_jobs SET next_run_at = ?, last_run_at = ? WHERE id = ?")
+                .bind(next_run_at)
+                .bind(last_run_at)
+                .bind(job_id)
+                .execute(self.pool.pool())
+                .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DatabaseError::NotFoundWithMessage(format!(
+                "Scheduled job '{job_id}' not found"
+            )));
+        }
+
         Ok(())
     }
 }
@@ -345,6 +356,92 @@ mod migration_tests {
         );
         assert_eq!(verify_removals.interval_days, 3);
         assert!(verify_removals.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_get_scheduled_jobs_handles_invalid_job_type() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        // Insert a job with an invalid job_type
+        sqlx::query(
+            "INSERT INTO scheduled_jobs (id, job_type, interval_days, next_run_at, enabled)
+             VALUES ('invalid-job', 'InvalidJobType', 1, datetime('now'), 1)",
+        )
+        .execute(db.pool())
+        .await
+        .expect("insert invalid job");
+
+        // Should return an error instead of panicking
+        let result = db.get_scheduled_jobs().await;
+        assert!(result.is_err());
+        match result {
+            Err(DatabaseError::Decode(msg)) => {
+                assert!(msg.contains("Invalid job_type 'InvalidJobType'"));
+            }
+            _ => panic!("Expected Decode error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_job_next_run_handles_missing_job() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        // Try to update a non-existent job
+        let result = db
+            .update_job_next_run(
+                "non-existent-job",
+                "2026-03-01T00:00:00Z",
+                "2026-02-01T00:00:00Z",
+            )
+            .await;
+
+        assert!(result.is_err());
+        match result {
+            Err(DatabaseError::NotFoundWithMessage(msg)) => {
+                assert!(msg.contains("Scheduled job 'non-existent-job' not found"));
+            }
+            _ => panic!("Expected NotFoundWithMessage error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_job_next_run_succeeds_for_existing_job() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        // Update an existing job
+        let result = db
+            .update_job_next_run(
+                "default-scan-all",
+                "2026-03-01T00:00:00Z",
+                "2026-02-01T00:00:00Z",
+            )
+            .await;
+
+        assert!(result.is_ok());
+
+        // Verify the update
+        let jobs = db.get_scheduled_jobs().await.expect("get jobs");
+        let updated_job = jobs
+            .iter()
+            .find(|j| j.id == "default-scan-all")
+            .expect("find updated job");
+        assert_eq!(updated_job.next_run_at, "2026-03-01T00:00:00Z");
+        assert_eq!(
+            updated_job.last_run_at,
+            Some("2026-02-01T00:00:00Z".to_string())
+        );
     }
 }
 

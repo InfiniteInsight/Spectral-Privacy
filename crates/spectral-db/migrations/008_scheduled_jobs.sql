@@ -7,6 +7,10 @@ CREATE TABLE IF NOT EXISTS scheduled_jobs (
     enabled INTEGER NOT NULL DEFAULT 1
 );
 
+-- Add index for efficient job scheduling queries
+CREATE INDEX IF NOT EXISTS idx_scheduled_jobs_next_run
+    ON scheduled_jobs(enabled, next_run_at);
+
 -- Seed default jobs
 INSERT OR IGNORE INTO scheduled_jobs (id, job_type, interval_days, next_run_at, enabled)
 VALUES

@@ -31,6 +31,14 @@ pub enum DatabaseError {
     #[error("record not found")]
     NotFound,
 
+    /// Database record with provided identifier not found.
+    #[error("{0}")]
+    NotFoundWithMessage(String),
+
+    /// Failed to decode database value.
+    #[error("decode error: {0}")]
+    Decode(String),
+
     /// Invalid encryption key provided.
     #[error("invalid encryption key")]
     InvalidKey,
