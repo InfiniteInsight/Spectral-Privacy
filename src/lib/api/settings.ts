@@ -17,11 +17,3 @@ export async function testImapConnection(
 ): Promise<void> {
 	return await invoke('test_imap_connection', { host, port, username, password });
 }
-
-export async function setPermissionPreset(vaultId: string, preset: string): Promise<void> {
-	return await invoke('set_permission_preset', { vaultId, preset });
-}
-
-export async function getPermissionPreset(vaultId: string): Promise<string> {
-	return await invoke('get_permission_preset', { vaultId });
-}
