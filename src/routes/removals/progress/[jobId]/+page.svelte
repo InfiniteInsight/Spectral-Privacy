@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { vaultStore, removalStore } from '$lib/stores';
@@ -12,7 +11,7 @@
 
 	let activeTab = $state<'overview' | 'captcha' | 'failed' | 'verification'>('overview');
 
-	onMount(async () => {
+	$effect(() => {
 		// Validate scan job ID
 		if (!scanJobId) {
 			goto('/');
@@ -20,20 +19,22 @@
 		}
 
 		// Validate vault is unlocked
-		if (!vaultStore.currentVaultId) {
+		const currentVaultId = vaultStore.currentVaultId;
+		if (!currentVaultId) {
 			goto('/');
 			return;
 		}
 
-		// Load removal attempts
-		await removalStore.loadRemovalAttempts(vaultStore.currentVaultId, scanJobId);
+		// Load removal attempts and set up listeners
+		(async () => {
+			await removalStore.loadRemovalAttempts(currentVaultId, scanJobId);
+			await removalStore.setupEventListeners();
+		})();
 
-		// Set up event listeners
-		await removalStore.setupEventListeners();
-	});
-
-	onDestroy(() => {
-		removalStore.cleanupEventListeners();
+		// Cleanup function (replaces onDestroy)
+		return () => {
+			removalStore.cleanupEventListeners();
+		};
 	});
 
 	async function handleRetry(attemptId: string) {
@@ -60,8 +61,14 @@
 
 	async function handleMarkVerified(attemptId: string) {
 		if (!vaultStore.currentVaultId) return;
-		await markAttemptVerified(vaultStore.currentVaultId, attemptId);
-		// removal:verified event will update store via listener
+
+		try {
+			await markAttemptVerified(vaultStore.currentVaultId, attemptId);
+			// removal:verified event will update store via listener
+		} catch (err) {
+			console.error('Failed to mark as verified:', err);
+			// User will see the attempt remain in the queue if it fails
+		}
 	}
 
 	function getBrokerName(brokerId: string): string {

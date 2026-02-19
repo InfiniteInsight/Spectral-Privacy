@@ -54,6 +54,12 @@ pub async fn mark_attempt_verified(
         .database()
         .map_err(|e| format!("Failed to access database: {}", e))?;
 
+    // Get removal attempt to retrieve broker_id
+    let removal_attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
+        .await
+        .map_err(|e| format!("Failed to get removal attempt: {}", e))?
+        .ok_or_else(|| "Removal attempt not found".to_string())?;
+
     // Update status to Completed
     spectral_db::removal_attempts::update_status(
         db.pool(),
@@ -72,7 +78,7 @@ pub async fn mark_attempt_verified(
             "removal:verified",
             serde_json::json!({
                 "attempt_id": attempt_id,
-                "broker_id": ""
+                "broker_id": removal_attempt.broker_id
             }),
         )
         .map_err(|e| format!("Failed to emit event: {}", e))?;
