@@ -145,7 +145,7 @@ pub async fn start_scan(
     state: State<'_, AppState>,
     vault_id: String,
     profile_id: String,
-    broker_filter: Option<String>,
+    _broker_filter: Option<String>, // Deprecated: use tier parameter instead
     tier: Option<ScanTier>,
     broker_ids: Option<Vec<String>>,
 ) -> Result<ScanJobResponse, String> {
@@ -172,12 +172,6 @@ pub async fn start_scan(
     let db = vault
         .database()
         .map_err(|e| format!("Failed to get vault database: {}", e))?;
-
-    // Parse broker filter
-    let filter = match broker_filter.as_deref() {
-        Some("all") | None => BrokerFilter::All,
-        Some(cat) => BrokerFilter::Category(cat.to_string()),
-    };
 
     // Create orchestrator for this scan
     // TODO: These should be cached/shared across scans
@@ -254,9 +248,20 @@ pub async fn start_scan(
         return Err("No brokers matched the specified tier or IDs".to_string());
     }
 
-    // Start the scan with selected brokers
-    // Note: We need to modify the orchestrator to accept a custom broker list
-    // For now, we'll start with the regular filter and document this limitation
+    // Convert selected brokers to IDs for filtering
+    let broker_ids_filter: Vec<String> = selected_brokers
+        .iter()
+        .map(|b| b.broker.id.to_string())
+        .collect();
+
+    // Create appropriate filter based on selected brokers
+    let filter = if broker_ids_filter.is_empty() {
+        BrokerFilter::All
+    } else {
+        BrokerFilter::Specific(broker_ids_filter)
+    };
+
+    // Start the scan with tier-based filter
     let job_id = orchestrator
         .start_scan(&profile, filter, vault_key)
         .await

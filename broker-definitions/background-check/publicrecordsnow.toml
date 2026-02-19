@@ -11,7 +11,7 @@ difficulty = "Medium"
 typical_removal_days = 7
 recheck_interval_days = 30
 last_verified = "2026-02-13"
-scan_priority = "OnRequest"
+scan_priority = "AutoScanTier2"
 region_relevance = ["Global"]
 
 [search]
