@@ -19,6 +19,8 @@
 	let renameValue = $state('');
 	let deleteTarget = $state<string | null>(null);
 	let deletePassword = $state('');
+	let unlockTarget = $state<string | null>(null);
+	let unlockPassword = $state('');
 	let actionError = $state<string | null>(null);
 	let actionLoading = $state(false);
 
@@ -66,6 +68,32 @@
 			await vaultStore.loadVaults();
 			deleteTarget = null;
 			deletePassword = '';
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : String(err);
+		} finally {
+			actionLoading = false;
+		}
+	}
+
+	async function handleLock(vaultId: string) {
+		actionError = null;
+		actionLoading = true;
+		try {
+			await vaultStore.lock(vaultId);
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : String(err);
+		} finally {
+			actionLoading = false;
+		}
+	}
+
+	async function handleUnlock(vaultId: string) {
+		actionError = null;
+		actionLoading = true;
+		try {
+			await vaultStore.unlock(vaultId, unlockPassword);
+			unlockTarget = null;
+			unlockPassword = '';
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : String(err);
 		} finally {
@@ -196,6 +224,23 @@
 									</p>
 								</div>
 								<div class="flex gap-2">
+									{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
+										<button
+											onclick={() => handleLock(vault.vault_id)}
+											disabled={actionLoading}
+											class="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+											>Lock</button
+										>
+									{:else}
+										<button
+											onclick={() => {
+												unlockTarget = vault.vault_id;
+												actionError = null;
+											}}
+											class="rounded-md border border-primary-200 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50"
+											>Unlock</button
+										>
+									{/if}
 									<button
 										onclick={() => {
 											renameTarget = vault.vault_id;
@@ -232,24 +277,49 @@
 	{:else if activeTab === 'privacy'}
 		<section>
 			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Level</h2>
-			<p class="mb-6 text-sm text-gray-500">
-				Choose how Spectral handles your data. This affects which features are available.
-			</p>
-			<div class="grid grid-cols-2 gap-4">
-				{#each [{ id: 'paranoid', label: 'Paranoid', desc: 'No LLM, no network scanning, manual everything. Full control.' }, { id: 'local', label: 'Local Privacy', desc: 'Local LLM only, filesystem/email scanning, no cloud APIs.', recommended: true }, { id: 'balanced', label: 'Balanced', desc: 'Full features with cloud LLMs, PII filtering enforced.' }, { id: 'custom', label: 'Custom', desc: 'Everything disabled — enable as needed.' }] as preset (preset.id)}
-					<button
-						class="relative rounded-lg border-2 border-gray-200 p-4 text-left hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+			<div class="rounded-lg border border-blue-200 bg-blue-50 p-6">
+				<div class="flex items-start gap-3">
+					<svg
+						class="h-6 w-6 flex-shrink-0 text-blue-600"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
 					>
-						{#if preset.recommended}
-							<span
-								class="absolute right-3 top-3 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700"
-								>Recommended</span
-							>
-						{/if}
-						<p class="font-medium text-gray-900">{preset.label}</p>
-						<p class="mt-1 text-xs text-gray-500">{preset.desc}</p>
-					</button>
-				{/each}
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					<div>
+						<h3 class="mb-2 font-medium text-blue-900">Coming Soon</h3>
+						<p class="mb-3 text-sm text-blue-800">
+							This tab will allow you to configure privacy presets and LLM integration preferences
+							in a future release. Options will include:
+						</p>
+						<ul class="mb-3 space-y-1 text-sm text-blue-800">
+							<li class="flex items-center gap-2">
+								<span class="text-blue-600">•</span>
+								<span>Local-only processing with no cloud services</span>
+							</li>
+							<li class="flex items-center gap-2">
+								<span class="text-blue-600">•</span>
+								<span>Optional LLM assistance for form filling and email drafting</span>
+							</li>
+							<li class="flex items-center gap-2">
+								<span class="text-blue-600">•</span>
+								<span>Configurable privacy/convenience trade-offs</span>
+							</li>
+						</ul>
+						<p class="text-sm text-blue-700">
+							For now, view your current <a
+								href="/score"
+								class="font-medium underline hover:text-blue-900">Privacy Score</a
+							> to track your data exposure reduction progress.
+						</p>
+					</div>
+				</div>
 			</div>
 		</section>
 	{:else if activeTab === 'email'}
@@ -522,6 +592,50 @@
 						onclick={() => {
 							deleteTarget = null;
 							deletePassword = '';
+							actionError = null;
+						}}
+						class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+						>Cancel</button
+					>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Unlock vault modal -->
+	{#if unlockTarget}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+			<div
+				class="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="unlock-vault-title"
+			>
+				<h2 id="unlock-vault-title" class="mb-4 text-lg font-semibold text-gray-900">
+					Unlock vault
+				</h2>
+				<input
+					type="password"
+					bind:value={unlockPassword}
+					placeholder="Master password"
+					autocomplete="current-password"
+					class="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+					onkeydown={(e) => e.key === 'Enter' && handleUnlock(unlockTarget!)}
+				/>
+				{#if actionError}
+					<p class="mb-3 text-sm text-red-600">{actionError}</p>
+				{/if}
+				<div class="flex gap-3">
+					<button
+						onclick={() => handleUnlock(unlockTarget!)}
+						disabled={actionLoading}
+						class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+						>{actionLoading ? 'Unlocking...' : 'Unlock'}</button
+					>
+					<button
+						onclick={() => {
+							unlockTarget = null;
+							unlockPassword = '';
 							actionError = null;
 						}}
 						class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"

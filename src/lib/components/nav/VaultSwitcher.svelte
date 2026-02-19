@@ -5,6 +5,7 @@
 	let unlockModalVaultId = $state<string | null>(null);
 	let unlockPassword = $state('');
 	let unlockError = $state<string | null>(null);
+	let unlockLoading = $state(false);
 
 	const currentVault = $derived(
 		vaultStore.availableVaults.find((v) => v.vault_id === vaultStore.currentVaultId)
@@ -24,6 +25,7 @@
 	async function handleUnlock() {
 		if (!unlockModalVaultId) return;
 		unlockError = null;
+		unlockLoading = true;
 		try {
 			await vaultStore.unlock(unlockModalVaultId, unlockPassword);
 			vaultStore.setCurrentVault(unlockModalVaultId);
@@ -31,6 +33,8 @@
 			unlockPassword = '';
 		} catch (err) {
 			unlockError = err instanceof Error ? err.message : String(err);
+		} finally {
+			unlockLoading = false;
 		}
 	}
 
@@ -113,8 +117,9 @@
 			<div class="flex gap-3">
 				<button
 					onclick={handleUnlock}
-					class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-					>Unlock</button
+					disabled={unlockLoading}
+					class="flex-1 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					>{unlockLoading ? 'Unlocking...' : 'Unlock'}</button
 				>
 				<button
 					onclick={() => {
