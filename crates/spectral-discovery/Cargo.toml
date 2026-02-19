@@ -8,6 +8,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+once_cell = "1.19"
 regex = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }

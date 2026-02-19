@@ -3,11 +3,32 @@
 //! Scans local files for personally identifiable information (PII)
 //! including email addresses, phone numbers, and SSNs.
 
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, warn};
+
+/// Maximum file size to scan (100MB)
+const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
+
+/// Maximum directory depth to scan
+const MAX_SCAN_DEPTH: usize = 10;
+
+/// Compiled regex patterns (initialized once at startup)
+static EMAIL_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
+        .expect("Email regex is hardcoded and valid")
+});
+
+static PHONE_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}")
+        .expect("Phone regex is hardcoded and valid")
+});
+
+static SSN_PATTERN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").expect("SSN regex is hardcoded and valid"));
 
 /// Pattern matchers for different types of PII
 #[derive(Debug)]
@@ -21,17 +42,9 @@ impl PiiPatterns {
     /// Create a new set of PII pattern matchers
     pub fn new() -> Self {
         Self {
-            // Email: basic pattern (doesn't catch all valid emails, but good enough for discovery)
-            email: Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
-                .expect("email regex"),
-            // Phone: US phone numbers in various formats
-            // Matches: (555) 123-4567, 555-123-4567, 555.123.4567, 5551234567
-            phone: Regex::new(
-                r"(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}",
-            )
-            .expect("phone regex"),
-            // SSN: xxx-xx-xxxx format
-            ssn: Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").expect("ssn regex"),
+            email: EMAIL_PATTERN.clone(),
+            phone: PHONE_PATTERN.clone(),
+            ssn: SSN_PATTERN.clone(),
         }
     }
 
@@ -128,6 +141,25 @@ pub async fn scan_file(path: &Path, patterns: &PiiPatterns) -> Option<FileScanRe
         return None;
     }
 
+    // Check file size before reading
+    let metadata = match fs::metadata(path).await {
+        Ok(m) => m,
+        Err(e) => {
+            debug!("Failed to read metadata for {}: {}", path.display(), e);
+            return None;
+        }
+    };
+
+    // Skip files that are too large
+    if metadata.len() > MAX_FILE_SIZE {
+        debug!(
+            "Skipping large file ({}MB): {}",
+            metadata.len() / 1024 / 1024,
+            path.display()
+        );
+        return None;
+    }
+
     match fs::read_to_string(path).await {
         Ok(contents) => {
             let matches = patterns.find_all(&contents);
@@ -150,15 +182,22 @@ pub async fn scan_file(path: &Path, patterns: &PiiPatterns) -> Option<FileScanRe
 
 /// Recursively scan a directory for files containing PII
 pub async fn scan_directory(dir: &Path, patterns: &PiiPatterns) -> Vec<FileScanResult> {
-    scan_directory_impl(dir, patterns).await
+    scan_directory_impl(dir, patterns, MAX_SCAN_DEPTH).await
 }
 
-/// Internal implementation that boxes the future to handle recursion
+/// Internal implementation that boxes the future to handle recursion with depth limiting
 fn scan_directory_impl<'a>(
     dir: &'a Path,
     patterns: &'a PiiPatterns,
+    max_depth: usize,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Vec<FileScanResult>> + Send + 'a>> {
     Box::pin(async move {
+        // Check depth limit
+        if max_depth == 0 {
+            debug!("Max depth reached, skipping: {:?}", dir);
+            return Vec::new();
+        }
+
         let mut results = Vec::new();
 
         let mut entries = match fs::read_dir(dir).await {
@@ -172,11 +211,26 @@ fn scan_directory_impl<'a>(
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
 
-            if path.is_dir() {
-                // Recursively scan subdirectories
-                let mut subdir_results = scan_directory_impl(&path, patterns).await;
+            // Get metadata to check for symlinks and file type
+            let metadata = match entry.metadata().await {
+                Ok(m) => m,
+                Err(e) => {
+                    debug!("Failed to read metadata for {:?}: {}", path, e);
+                    continue;
+                }
+            };
+
+            // Skip symlinks to prevent symlink attacks and infinite loops
+            if metadata.is_symlink() {
+                debug!("Skipping symlink: {:?}", path);
+                continue;
+            }
+
+            if metadata.is_dir() {
+                // Recursively scan subdirectories with decremented depth
+                let mut subdir_results = scan_directory_impl(&path, patterns, max_depth - 1).await;
                 results.append(&mut subdir_results);
-            } else if path.is_file() {
+            } else if metadata.is_file() {
                 // Scan individual file
                 if let Some(result) = scan_file(&path, patterns).await {
                     results.push(result);

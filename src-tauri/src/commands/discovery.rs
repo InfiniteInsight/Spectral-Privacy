@@ -91,15 +91,19 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
                     let source_detail = result.path.to_string_lossy().to_string();
                     let finding_type = "pii_exposure".to_string();
                     let risk_level = pii_match.risk_level().to_string();
-                    let description = format!(
-                        "{} found in file: {}",
-                        pii_match.description(),
-                        result
-                            .path
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                    );
+                    let file_name = match result.path.file_name() {
+                        Some(name) => name.to_string_lossy().to_string(),
+                        None => {
+                            tracing::warn!(
+                                "Could not extract filename from path: {:?}",
+                                result.path
+                            );
+                            result.path.to_string_lossy().to_string() // Use full path as fallback
+                        }
+                    };
+
+                    let description =
+                        format!("{} found in file: {}", pii_match.description(), file_name);
                     let recommended_action = Some(
                         "Review file and remove sensitive information if no longer needed"
                             .to_string(),
