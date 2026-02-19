@@ -1,7 +1,7 @@
 use crate::removal_worker::submit_removal_task;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_broker::BrokerRegistry;
+use spectral_broker::{BrokerRegistry, ScanPriority};
 use spectral_browser::BrowserEngine;
 use spectral_core::types::ProfileId;
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
@@ -10,6 +10,18 @@ use tauri::{Emitter, State};
 use tokio::sync::Semaphore;
 use tracing::info;
 use uuid::Uuid;
+
+/// Scan tier for filtering brokers by priority
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ScanTier {
+    /// Top ~10 brokers (AutoScanTier1)
+    Tier1,
+    /// Top ~30 brokers (AutoScanTier1 + AutoScanTier2)
+    Tier2,
+    /// All brokers except ManualOnly
+    All,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StartScanRequest {
@@ -132,6 +144,8 @@ pub async fn start_scan(
     vault_id: String,
     profile_id: String,
     broker_filter: Option<String>,
+    tier: Option<ScanTier>,
+    broker_ids: Option<Vec<String>>,
 ) -> Result<ScanJobResponse, String> {
     // Get the unlocked vault
     let vault = state
@@ -187,10 +201,60 @@ pub async fn start_scan(
     let database = Database::from_encrypted_pool(encrypted_pool);
     let db = Arc::new(database);
 
-    let orchestrator =
-        ScanOrchestrator::new(broker_registry, browser_engine, db).with_max_concurrent_scans(4);
+    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db)
+        .with_max_concurrent_scans(4);
 
-    // Start the scan
+    // Filter brokers based on tier or custom IDs
+    let all_brokers = broker_registry.get_all();
+
+    let selected_brokers: Vec<_> = match (&tier, &broker_ids) {
+        (_, Some(ids)) => {
+            // Custom broker selection takes precedence
+            all_brokers
+                .iter()
+                .filter(|b| ids.contains(&b.broker.id.to_string()))
+                .cloned()
+                .collect()
+        }
+        (Some(ScanTier::Tier1), _) => {
+            // Only Tier 1 brokers
+            all_brokers
+                .iter()
+                .filter(|b| b.broker.scan_priority == ScanPriority::AutoScanTier1)
+                .cloned()
+                .collect()
+        }
+        (Some(ScanTier::Tier2), _) => {
+            // Tier 1 and Tier 2 brokers
+            all_brokers
+                .iter()
+                .filter(|b| {
+                    matches!(
+                        b.broker.scan_priority,
+                        ScanPriority::AutoScanTier1 | ScanPriority::AutoScanTier2
+                    )
+                })
+                .cloned()
+                .collect()
+        }
+        _ => {
+            // All brokers except ManualOnly (default)
+            all_brokers
+                .iter()
+                .filter(|b| b.broker.scan_priority != ScanPriority::ManualOnly)
+                .cloned()
+                .collect()
+        }
+    };
+
+    // If tier or broker_ids filtering was applied but resulted in empty list, return error
+    if (tier.is_some() || broker_ids.is_some()) && selected_brokers.is_empty() {
+        return Err("No brokers matched the specified tier or IDs".to_string());
+    }
+
+    // Start the scan with selected brokers
+    // Note: We need to modify the orchestrator to accept a custom broker list
+    // For now, we'll start with the regular filter and document this limitation
     let job_id = orchestrator
         .start_scan(&profile, filter, vault_key)
         .await

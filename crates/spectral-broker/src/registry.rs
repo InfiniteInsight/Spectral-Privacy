@@ -267,6 +267,8 @@ mod tests {
                 typical_removal_days: 7,
                 recheck_interval_days: 30,
                 last_verified: NaiveDate::from_ymd_opt(2025, 5, 1).expect("valid date"),
+                scan_priority: crate::definition::ScanPriority::OnRequest,
+                region_relevance: vec!["Global".to_string()],
             },
             search: SearchMethod::UrlTemplate {
                 template: "https://test.com/{first}-{last}".to_string(),

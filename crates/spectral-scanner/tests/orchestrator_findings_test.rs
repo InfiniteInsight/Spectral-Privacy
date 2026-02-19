@@ -25,6 +25,8 @@ fn create_test_broker_with_selectors(
             typical_removal_days: 7,
             recheck_interval_days: 30,
             last_verified: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).expect("valid date"),
+            scan_priority: spectral_broker::ScanPriority::OnRequest,
+            region_relevance: vec!["Global".to_string()],
         },
         search: SearchMethod::UrlTemplate {
             template: format!(

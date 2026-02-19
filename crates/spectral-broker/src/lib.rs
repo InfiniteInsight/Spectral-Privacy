@@ -48,7 +48,7 @@ pub mod removal;
 // Re-export commonly used types
 pub use definition::{
     BrokerCategory, BrokerDefinition, BrokerMetadata, ConfirmationType, RemovalDifficulty,
-    RemovalMethod, SearchMethod,
+    RemovalMethod, ScanPriority, SearchMethod,
 };
 pub use error::{BrokerError, Result};
 pub use loader::BrokerLoader;

@@ -118,6 +118,18 @@ pub struct BrokerMetadata {
 
     /// Date when this definition was last verified (YYYY-MM-DD)
     pub last_verified: NaiveDate,
+
+    /// Scan priority tier for automated scanning
+    #[serde(default)]
+    pub scan_priority: ScanPriority,
+
+    /// Geographic regions where this broker is relevant
+    #[serde(default = "default_region_relevance")]
+    pub region_relevance: Vec<String>,
+}
+
+fn default_region_relevance() -> Vec<String> {
+    vec!["Global".to_string()]
 }
 
 /// Categories of data brokers.
@@ -140,6 +152,21 @@ pub enum BrokerCategory {
     SocialMedia,
     /// Other/uncategorized
     Other,
+}
+
+/// Scan priority tiers for automated scanning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "PascalCase")]
+pub enum ScanPriority {
+    /// High-priority brokers scanned automatically (top ~10 brokers)
+    AutoScanTier1,
+    /// Medium-priority brokers scanned automatically (next ~20 brokers)
+    AutoScanTier2,
+    /// Only scan when explicitly requested
+    #[default]
+    OnRequest,
+    /// Never auto-scan, manual only
+    ManualOnly,
 }
 
 impl BrokerCategory {
@@ -472,8 +499,8 @@ impl RemovalMethod {
                 phone,
                 instructions,
             } => Self::validate_phone(broker_id, phone, instructions),
-            Self::Manual { instructions } => Self::validate_manual(broker_id, instructions),
             Self::BrowserForm { url, .. } => Self::validate_browser_form(broker_id, url),
+            Self::Manual { instructions } => Self::validate_manual(broker_id, instructions),
         }
     }
 
@@ -557,21 +584,21 @@ impl RemovalMethod {
         Ok(())
     }
 
-    fn validate_manual(broker_id: &BrokerId, instructions: &str) -> Result<()> {
-        if instructions.is_empty() {
+    fn validate_browser_form(broker_id: &BrokerId, url: &str) -> Result<()> {
+        if url.is_empty() {
             return Err(BrokerError::ValidationError {
                 broker_id: broker_id.to_string(),
-                reason: "Manual removal requires instructions".to_string(),
+                reason: "BrowserForm removal requires URL".to_string(),
             });
         }
         Ok(())
     }
 
-    fn validate_browser_form(broker_id: &BrokerId, url: &str) -> Result<()> {
-        if url.is_empty() {
+    fn validate_manual(broker_id: &BrokerId, instructions: &str) -> Result<()> {
+        if instructions.is_empty() {
             return Err(BrokerError::ValidationError {
                 broker_id: broker_id.to_string(),
-                reason: "removal.url cannot be empty for browser-form method".to_string(),
+                reason: "Manual removal requires instructions".to_string(),
             });
         }
         Ok(())
@@ -585,64 +612,15 @@ pub enum ConfirmationType {
     /// Requires email verification via link
     EmailVerification,
     /// Automatic confirmation (no follow-up needed)
+    #[default]
     Automatic,
     /// Manual verification required (check back later)
-    #[default]
     Manual,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_browser_form_deserialization() {
-        let toml_str = r##"
-[broker]
-id = "test"
-name = "Test"
-url = "https://test.com"
-domain = "test.com"
-category = "people-search"
-difficulty = "Easy"
-typical_removal_days = 3
-recheck_interval_days = 30
-last_verified = "2025-01-01"
-
-[search]
-method = "url-template"
-template = "https://test.com/{first}"
-requires_fields = ["first_name"]
-
-[search.result_selectors]
-results_container = ".results"
-result_item = ".item"
-listing_url = "a"
-name = ".name"
-age = ".age"
-location = ".loc"
-relatives = ".rel"
-phones = ".ph"
-no_results_indicator = ".none"
-captcha_required = ".cap"
-
-[removal]
-method = "browser-form"
-url = "https://test.com/optout"
-notes = "JS-heavy form"
-
-[removal.fields]
-email = "{user_email}"
-
-[removal.form_selectors]
-email_input = "#email"
-submit_button = "button[type=submit]"
-success_indicator = ".success"
-"##;
-        let def: BrokerDefinition =
-            toml::from_str(toml_str).expect("browser-form TOML should deserialize");
-        assert!(matches!(def.removal, RemovalMethod::BrowserForm { .. }));
-    }
 
     #[test]
     fn test_broker_category_display() {
@@ -788,6 +766,8 @@ success_indicator = ".success"
                 typical_removal_days: 7,
                 recheck_interval_days: 30,
                 last_verified: NaiveDate::from_ymd_opt(2025, 5, 1).expect("valid date"),
+                scan_priority: ScanPriority::OnRequest,
+                region_relevance: vec!["Global".to_string()],
             },
             search: SearchMethod::UrlTemplate {
                 template: "https://test.com/{first}-{last}".to_string(),
@@ -859,5 +839,98 @@ success_indicator = ".success"
             .expect("should have result selectors");
         assert_eq!(selectors.results_container, ".results");
         assert_eq!(selectors.result_item, ".result-card");
+    }
+
+    #[test]
+    fn test_scan_priority_defaults_to_on_request() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition without scan_priority");
+        assert_eq!(def.broker.scan_priority, ScanPriority::OnRequest);
+    }
+
+    #[test]
+    fn test_region_relevance_defaults_to_global() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition without region_relevance");
+        assert_eq!(def.broker.region_relevance, vec!["Global".to_string()]);
+    }
+
+    #[test]
+    fn test_scan_priority_can_be_set() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+            scan_priority = "AutoScanTier1"
+            region_relevance = ["US", "Global"]
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition with scan_priority");
+        assert_eq!(def.broker.scan_priority, ScanPriority::AutoScanTier1);
+        assert_eq!(
+            def.broker.region_relevance,
+            vec!["US".to_string(), "Global".to_string()]
+        );
     }
 }

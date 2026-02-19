@@ -11,6 +11,8 @@ difficulty = "Medium"
 typical_removal_days = 7
 recheck_interval_days = 30
 last_verified = "2026-02-13"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US", "Global"]
 
 [search]
 method = "url-template"
