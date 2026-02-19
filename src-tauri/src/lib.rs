@@ -97,6 +97,7 @@ pub fn run() {
             commands::scan::get_privacy_score,
             commands::scan::get_dashboard_summary,
             commands::scan::get_removal_evidence,
+            commands::scan::send_removal_email,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

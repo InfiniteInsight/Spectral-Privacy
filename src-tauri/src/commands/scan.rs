@@ -1020,6 +1020,43 @@ pub async fn get_removal_evidence(
     }))
 }
 
+/// Re-trigger email send for a pending email attempt.
+///
+/// This command is a stub for Task 16 (Email Verification Manual Tab).
+/// It will load the removal attempt, broker definition, and profile data,
+/// then regenerate and send the email.
+#[tauri::command]
+pub async fn send_removal_email<R: tauri::Runtime>(
+    state: State<'_, AppState>,
+    _app: tauri::AppHandle<R>,
+    vault_id: String,
+    attempt_id: String,
+) -> Result<(), String> {
+    info!(
+        "send_removal_email: vault_id={}, attempt_id={}",
+        vault_id, attempt_id
+    );
+
+    // Get unlocked vault
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Verify the attempt exists
+    let _attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Removal attempt not found")?;
+
+    // Full implementation requires:
+    // 1. Loading broker definition
+    // 2. Loading profile and decrypting fields
+    // 3. Rendering email template
+    // 4. Opening mailto: URL via app handle
+    // This will be implemented in Task 16.
+
+    Err("Email retry not yet implemented - see Task 16".to_string())
+}
+
 #[cfg(test)]
 mod score_tests {
     use super::calculate_privacy_score;
