@@ -36,6 +36,7 @@
 
 pub mod broker_scans;
 pub mod connection;
+pub mod discovery_findings;
 pub mod error;
 pub mod findings;
 pub mod migrations;
@@ -228,7 +229,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 8);
+        assert_eq!(version_after, 9);
     }
 
     #[tokio::test]
@@ -254,6 +255,7 @@ mod tests {
                 "audit_log",
                 "broker_results",
                 "broker_scans",
+                "discovery_findings",
                 "email_removals",
                 "findings",
                 "profiles",

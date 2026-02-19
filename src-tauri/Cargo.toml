@@ -36,6 +36,7 @@ spectral-scanner = { path = "../crates/spectral-scanner" }
 spectral-browser = { path = "../crates/spectral-browser" }
 spectral-mail = { path = "../crates/spectral-mail" }
 spectral-scheduler = { path = "../crates/spectral-scheduler" }
+spectral-discovery = { path = "../crates/spectral-discovery" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true
 regex.workspace = true

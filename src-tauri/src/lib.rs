@@ -135,6 +135,9 @@ pub fn run() {
             commands::scheduler::run_job_now,
             commands::brokers::list_brokers,
             commands::brokers::get_broker_detail,
+            commands::discovery::start_discovery_scan,
+            commands::discovery::get_discovery_findings,
+            commands::discovery::mark_finding_remediated,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

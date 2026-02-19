@@ -1,6 +1,7 @@
 //! Tauri command handlers.
 
 pub mod brokers;
+pub mod discovery;
 pub mod profile;
 pub mod removal;
 pub mod scan;

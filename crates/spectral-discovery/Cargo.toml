@@ -1,0 +1,15 @@
+[package]
+name = "spectral-discovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+regex = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["fs", "rt"] }
+uuid = { workspace = true }

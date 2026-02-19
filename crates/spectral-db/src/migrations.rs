@@ -83,6 +83,7 @@ mod tests {
                 "audit_log",
                 "broker_results",
                 "broker_scans",
+                "discovery_findings",
                 "email_removals",
                 "findings",
                 "profiles",
@@ -109,7 +110,7 @@ mod tests {
         run_migrations(pool.pool()).await.expect("run migrations");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 8); // Eight migrations applied
+        assert_eq!(version, 9); // Nine migrations applied
     }
 
     #[tokio::test]
@@ -129,6 +130,6 @@ mod tests {
             .expect("second migration run should be idempotent");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
     }
 }
