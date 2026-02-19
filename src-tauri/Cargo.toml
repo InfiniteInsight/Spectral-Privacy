@@ -17,6 +17,7 @@ tauri-build.workspace = true
 
 [dependencies]
 tauri.workspace = true
+tauri-plugin-autostart = "2"
 tauri-plugin-log.workspace = true
 tauri-plugin-shell.workspace = true
 serde.workspace = true

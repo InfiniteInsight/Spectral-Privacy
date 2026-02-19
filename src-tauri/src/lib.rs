@@ -63,6 +63,7 @@ pub fn run() {
 
             // Set up system tray if supported
             if spectral_scheduler::tray::is_tray_supported() {
+                use spectral_scheduler::tray;
                 use tauri::menu::{MenuBuilder, MenuItemBuilder};
                 use tauri::tray::TrayIconBuilder;
 
@@ -77,13 +78,13 @@ pub fn run() {
                 TrayIconBuilder::new()
                     .menu(&menu)
                     .on_menu_event(|app, event| match event.id.as_ref() {
-                        "open" => {
+                        tray::MENU_OPEN => {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
                         }
-                        "quit" => {
+                        tray::MENU_QUIT => {
                             app.exit(0);
                         }
                         _ => {}
