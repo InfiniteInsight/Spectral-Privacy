@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
 	import { vaultStore } from '$lib/stores';
+	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
 
 	const brokerId = $derived($page.params.brokerId);
 
@@ -39,24 +40,6 @@
 
 		loadBrokerDetail();
 	});
-
-	function getDifficultyColor(difficulty: string): string {
-		switch (difficulty) {
-			case 'Easy':
-				return 'text-green-700 bg-green-100';
-			case 'Medium':
-				return 'text-yellow-700 bg-yellow-100';
-			case 'Hard':
-				return 'text-red-700 bg-red-100';
-			default:
-				return 'text-gray-700 bg-gray-100';
-		}
-	}
-
-	function getCategoryDisplay(category: string): string {
-		// Convert PascalCase to readable format
-		return category.replace(/([A-Z])/g, ' $1').trim();
-	}
 
 	function getRemovalMethodDisplay(method: string): string {
 		// Convert PascalCase to readable format

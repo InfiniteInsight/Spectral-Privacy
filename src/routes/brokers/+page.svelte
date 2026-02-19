@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
+	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
 
 	let brokers = $state<BrokerSummary[]>([]);
 	let loading = $state(true);
@@ -60,24 +61,6 @@
 	function handleRowClick(brokerId: string) {
 		goto(`/brokers/${brokerId}`);
 	}
-
-	function getDifficultyColor(difficulty: string): string {
-		switch (difficulty) {
-			case 'Easy':
-				return 'text-green-700 bg-green-100';
-			case 'Medium':
-				return 'text-yellow-700 bg-yellow-100';
-			case 'Hard':
-				return 'text-red-700 bg-red-100';
-			default:
-				return 'text-gray-700 bg-gray-100';
-		}
-	}
-
-	function getCategoryDisplay(category: string): string {
-		// Convert PascalCase to readable format
-		return category.replace(/([A-Z])/g, ' $1').trim();
-	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 p-4">
@@ -108,6 +91,7 @@
 							type="text"
 							bind:value={searchQuery}
 							placeholder="Search by name or domain..."
+							aria-label="Search brokers by name or domain"
 							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						/>
 					</div>
@@ -116,6 +100,7 @@
 					<div class="w-full md:w-48">
 						<select
 							bind:value={categoryFilter}
+							aria-label="Filter by category"
 							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						>
 							{#each categories as category}
@@ -130,6 +115,7 @@
 					<div class="w-full md:w-48">
 						<select
 							bind:value={difficultyFilter}
+							aria-label="Filter by difficulty"
 							class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
 						>
 							{#each difficulties as difficulty}
@@ -142,7 +128,7 @@
 				</div>
 
 				<!-- Results Count -->
-				{#if !loading && searchQuery.trim()}
+				{#if !loading && (searchQuery.trim() !== '' || categoryFilter !== 'all' || difficultyFilter !== 'all')}
 					<p class="text-sm text-gray-600 mt-3">
 						Showing {filteredBrokers.length} of {brokers.length} brokers
 					</p>
@@ -184,7 +170,16 @@
 						<tbody>
 							{#each filteredBrokers as broker (broker.id)}
 								<tr
+									role="button"
+									tabindex="0"
 									onclick={() => handleRowClick(broker.id)}
+									onkeypress={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											handleRowClick(broker.id);
+										}
+									}}
+									aria-label="View details for {broker.name}"
 									class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
 								>
 									<td class="py-3 px-4 font-medium text-gray-900">{broker.name}</td>
