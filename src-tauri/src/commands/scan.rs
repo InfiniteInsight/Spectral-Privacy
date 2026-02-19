@@ -1005,7 +1005,7 @@ pub async fn get_removal_evidence(
 
     use sqlx::Row;
     let row = sqlx::query(
-        "SELECT id, attempt_id, screenshot_bytes, captured_at FROM removal_evidence WHERE attempt_id = ?"
+        "SELECT id, attempt_id, screenshot_bytes, captured_at FROM removal_evidence WHERE attempt_id = ? ORDER BY captured_at DESC LIMIT 1"
     )
     .bind(&attempt_id)
     .fetch_optional(db.pool())

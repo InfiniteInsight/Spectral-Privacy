@@ -236,7 +236,13 @@ pub async fn submit_via_browser(
                 "CAPTCHA detected on browser-form for attempt {}",
                 attempt_id
             );
-            let screenshot = engine.screenshot().await.unwrap_or_default();
+            let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+                warn!(
+                    "Screenshot capture failed for attempt {}: {}",
+                    attempt_id, e
+                );
+                vec![]
+            });
             store_screenshot_evidence(db, attempt_id, screenshot).await?;
             return Ok(RemovalOutcome::RequiresCaptcha {
                 captcha_url: url.clone(),
@@ -262,7 +268,13 @@ pub async fn submit_via_browser(
                 .extract_text(error_selector)
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            let screenshot = engine.screenshot().await.unwrap_or_default();
+            let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+                warn!(
+                    "Screenshot capture failed for attempt {}: {}",
+                    attempt_id, e
+                );
+                vec![]
+            });
             store_screenshot_evidence(db, attempt_id, screenshot).await?;
             return Ok(RemovalOutcome::Failed {
                 reason: format!("Form error: {}", error_text),
@@ -272,7 +284,13 @@ pub async fn submit_via_browser(
     }
 
     // Take screenshot as evidence
-    let screenshot = engine.screenshot().await.unwrap_or_default();
+    let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+        warn!(
+            "Screenshot capture failed for attempt {}: {}",
+            attempt_id, e
+        );
+        vec![]
+    });
     store_screenshot_evidence(db, attempt_id, screenshot).await?;
 
     info!(
