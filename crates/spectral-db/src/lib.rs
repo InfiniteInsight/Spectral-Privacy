@@ -139,6 +139,55 @@ impl Database {
     pub async fn close(self) {
         self.pool.close().await;
     }
+
+    /// Get all scheduled jobs
+    pub async fn get_scheduled_jobs(&self) -> Result<Vec<spectral_scheduler::ScheduledJob>> {
+        let rows = sqlx::query_as::<_, (String, String, i64, String, Option<String>, i64)>(
+            r"SELECT id, job_type, interval_days, next_run_at, last_run_at, enabled
+               FROM scheduled_jobs",
+        )
+        .fetch_all(self.pool.pool())
+        .await?;
+
+        let jobs = rows
+            .into_iter()
+            .map(
+                |(id, job_type, interval_days, next_run_at, last_run_at, enabled)| {
+                    let job_type: spectral_scheduler::JobType =
+                        serde_json::from_str(&format!("\"{job_type}\""))
+                            .expect("job_type from DB should be valid");
+                    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                    let interval_days = interval_days as u32;
+                    spectral_scheduler::ScheduledJob {
+                        id,
+                        job_type,
+                        interval_days,
+                        next_run_at,
+                        last_run_at,
+                        enabled: enabled != 0,
+                    }
+                },
+            )
+            .collect();
+
+        Ok(jobs)
+    }
+
+    /// Update job's `next_run_at` and `last_run_at` timestamps
+    pub async fn update_job_next_run(
+        &self,
+        job_id: &str,
+        next_run_at: &str,
+        last_run_at: &str,
+    ) -> Result<()> {
+        sqlx::query("UPDATE scheduled_jobs SET next_run_at = ?, last_run_at = ? WHERE id = ?")
+            .bind(next_run_at)
+            .bind(last_run_at)
+            .bind(job_id)
+            .execute(self.pool.pool())
+            .await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -168,7 +217,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 7);
+        assert_eq!(version_after, 8);
     }
 
     #[tokio::test]
@@ -199,7 +248,8 @@ mod tests {
                 "profiles",
                 "removal_attempts",
                 "removal_evidence",
-                "scan_jobs"
+                "scan_jobs",
+                "scheduled_jobs"
             ]
         );
 
@@ -262,6 +312,39 @@ mod migration_tests {
             .execute(conn.as_mut())
             .await
             .expect("removal_evidence table must exist");
+    }
+
+    #[tokio::test]
+    async fn test_008_scheduled_jobs_migration() {
+        let key = vec![0u8; 32];
+        let db = Database::new(":memory:", key)
+            .await
+            .expect("create database");
+        db.run_migrations().await.expect("run migrations");
+
+        // Verify table exists and has default jobs
+        let jobs = db.get_scheduled_jobs().await.expect("get scheduled jobs");
+        assert_eq!(jobs.len(), 2);
+
+        // Verify default jobs
+        let scan_all = jobs
+            .iter()
+            .find(|j| j.id == "default-scan-all")
+            .expect("scan-all job");
+        assert_eq!(scan_all.job_type, spectral_scheduler::JobType::ScanAll);
+        assert_eq!(scan_all.interval_days, 7);
+        assert!(scan_all.enabled);
+
+        let verify_removals = jobs
+            .iter()
+            .find(|j| j.id == "default-verify-removals")
+            .expect("verify-removals job");
+        assert_eq!(
+            verify_removals.job_type,
+            spectral_scheduler::JobType::VerifyRemovals
+        );
+        assert_eq!(verify_removals.interval_days, 3);
+        assert!(verify_removals.enabled);
     }
 }
 

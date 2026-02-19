@@ -11,6 +11,7 @@ authors.workspace = true
 [dependencies]
 spectral-core = { path = "../spectral-core" }
 spectral-broker = { path = "../spectral-broker" }
+spectral-scheduler = { path = "../spectral-scheduler" }
 sqlx.workspace = true
 thiserror.workspace = true
 serde.workspace = true
