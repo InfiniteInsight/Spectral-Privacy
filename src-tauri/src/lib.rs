@@ -133,6 +133,8 @@ pub fn run() {
             commands::scheduler::get_scheduled_jobs,
             commands::scheduler::update_scheduled_job,
             commands::scheduler::run_job_now,
+            commands::brokers::list_brokers,
+            commands::brokers::get_broker_detail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

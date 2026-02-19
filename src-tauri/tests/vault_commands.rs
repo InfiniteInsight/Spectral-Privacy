@@ -16,6 +16,7 @@ fn create_test_app() -> (tauri::App<tauri::test::MockRuntime>, TempDir) {
         vaults_dir,
         unlocked_vaults: std::sync::RwLock::new(std::collections::HashMap::new()),
         browser_engine: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+        broker_registry: std::sync::Arc::new(spectral_broker::BrokerRegistry::new()),
     };
 
     let app = tauri::test::mock_app();
