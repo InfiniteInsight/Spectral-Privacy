@@ -43,6 +43,7 @@ pub mod migrations;
 pub mod removal_attempts;
 /// Scan job management for tracking broker scan operations.
 pub mod scan_jobs;
+pub mod settings;
 
 // Re-export commonly used types
 pub use connection::EncryptedPool;
