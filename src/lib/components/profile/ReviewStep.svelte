@@ -10,11 +10,22 @@
 	let { data, onEdit }: Props = $props();
 	/* eslint-enable no-unused-vars */
 
-	// Format date for display
+	// Format date for display (parse as local date to avoid timezone issues)
 	function formatDate(dateStr: string | undefined): string {
 		if (!dateStr) return 'Not provided';
-		const date = new Date(dateStr);
+		// Parse as YYYY-MM-DD in local timezone
+		const [year, month, day] = dateStr.split('-').map(Number);
+		const date = new Date(year, month - 1, day);
 		return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+	}
+
+	// Format alias name
+	function formatAliasName(alias: any): string {
+		const parts = [alias.first_name, alias.middle_name, alias.last_name].filter(Boolean).join(' ');
+		if (alias.nickname) {
+			return parts ? `${parts} "${alias.nickname}"` : `"${alias.nickname}"`;
+		}
+		return parts || 'Unnamed';
 	}
 
 	// Format relative name
@@ -97,10 +108,33 @@
 			</button>
 		</div>
 		<dl class="space-y-2 text-sm">
-			<div>
-				<dt class="text-gray-500">Email</dt>
-				<dd class="text-gray-900">{data.email || 'Not provided'}</dd>
-			</div>
+			<!-- Email Addresses -->
+			{#if data.email_addresses && data.email_addresses.length > 0}
+				<div>
+					<dt class="text-gray-500">Email Addresses</dt>
+					<dd class="text-gray-900">
+						{#each data.email_addresses as email}
+							<div>{email.email} ({email.email_type})</div>
+						{/each}
+					</dd>
+				</div>
+			{:else}
+				<div>
+					<dt class="text-gray-500">Email</dt>
+					<dd class="text-gray-900">{data.email || 'Not provided'}</dd>
+				</div>
+			{/if}
+			<!-- Phone Numbers -->
+			{#if data.phone_numbers && data.phone_numbers.length > 0}
+				<div>
+					<dt class="text-gray-500">Phone Numbers</dt>
+					<dd class="text-gray-900">
+						{#each data.phone_numbers as phone}
+							<div>{phone.number} ({phone.phone_type})</div>
+						{/each}
+					</dd>
+				</div>
+			{/if}
 		</dl>
 	</div>
 
@@ -121,17 +155,6 @@
 				<dt class="text-gray-500">Current Address</dt>
 				<dd class="text-gray-900">{fullAddress()}</dd>
 			</div>
-			<!-- Phone Numbers -->
-			{#if data.phone_numbers && data.phone_numbers.length > 0}
-				<div>
-					<dt class="text-gray-500">Phone Numbers</dt>
-					<dd class="text-gray-900">
-						{#each data.phone_numbers as phone}
-							<div>{phone.number} ({phone.phone_type})</div>
-						{/each}
-					</dd>
-				</div>
-			{/if}
 			<!-- Previous Addresses -->
 			{#if data.previous_addresses && data.previous_addresses.length > 0}
 				<div>
@@ -176,7 +199,7 @@
 					<dt class="text-gray-500">Aliases</dt>
 					<dd class="text-gray-900">
 						{#each data.aliases as alias}
-							<div>{alias}</div>
+							<div>{formatAliasName(alias)}</div>
 						{/each}
 					</dd>
 				</div>
