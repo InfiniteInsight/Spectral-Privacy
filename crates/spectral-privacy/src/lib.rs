@@ -39,10 +39,13 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+/// Privacy engine orchestrator.
+pub mod engine;
 /// Error types for privacy operations.
 pub mod error;
 /// Core types for privacy controls.
 pub mod types;
 
+pub use engine::PrivacyEngine;
 pub use error::{PrivacyError, Result};
 pub use types::{Feature, FeatureFlags, PermissionResult, PrivacyLevel};

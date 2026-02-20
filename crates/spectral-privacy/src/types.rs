@@ -14,6 +14,14 @@ pub enum PrivacyLevel {
     Custom,
 }
 
+impl PrivacyLevel {
+    /// Convert privacy level to feature flags
+    #[must_use]
+    pub fn to_feature_flags(self) -> FeatureFlags {
+        FeatureFlags::from_privacy_level(self)
+    }
+}
+
 /// Granular feature control flags
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[allow(clippy::struct_excessive_bools)]
@@ -62,6 +70,27 @@ impl FeatureFlags {
                 allow_pii_scanning: true,
             },
             PrivacyLevel::Custom => Self::default(),
+        }
+    }
+
+    /// Check if a feature is allowed under these flags
+    #[must_use]
+    pub fn check_feature(&self, feature: Feature) -> PermissionResult {
+        let allowed = match feature {
+            Feature::LocalLlm => self.allow_local_llm,
+            Feature::CloudLlm => self.allow_cloud_llm,
+            Feature::BrowserAutomation => self.allow_browser_automation,
+            Feature::EmailSending => self.allow_email_sending,
+            Feature::ImapMonitoring => self.allow_imap_monitoring,
+            Feature::PiiScanning => self.allow_pii_scanning,
+        };
+
+        if allowed {
+            PermissionResult::Allowed
+        } else {
+            PermissionResult::Denied {
+                reason: format!("Feature {feature:?} is not allowed by current privacy settings"),
+            }
         }
     }
 }

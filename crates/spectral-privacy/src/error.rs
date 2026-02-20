@@ -7,6 +7,10 @@ pub enum PrivacyError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 
+    /// Database layer error.
+    #[error("Database layer error: {0}")]
+    DatabaseLayer(#[from] spectral_db::DatabaseError),
+
     /// JSON serialization/deserialization failed.
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
