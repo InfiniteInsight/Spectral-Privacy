@@ -92,5 +92,18 @@ export default [
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'no-console': ['warn', { allow: ['warn', 'error'] }]
 		}
+	},
+	{
+		files: ['scripts/**/*.js'],
+		languageOptions: {
+			ecmaVersion: 'latest',
+			sourceType: 'commonjs',
+			globals: {
+				...globals.node
+			}
+		},
+		rules: {
+			'no-console': 'off'
+		}
 	}
 ];

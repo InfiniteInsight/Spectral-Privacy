@@ -196,7 +196,12 @@ npm run tauri:dev
 - `cargo tauri dev` (won't sync ports)
 - `npm run dev` (only starts frontend)
 
-The dev script:
+The dev script works on **all platforms** (Windows, macOS, Linux):
+- **Windows**: Runs `scripts/dev.ps1` (PowerShell)
+- **Linux/macOS**: Runs `scripts/dev.sh` (Bash)
+- **Auto-detected**: `scripts/dev.js` launcher picks the right one
+
+How it works:
 1. Finds an available port starting from 5737
 2. Updates Tauri config to use that port
 3. Exports PORT env var for Vite

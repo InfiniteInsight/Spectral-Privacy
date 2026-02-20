@@ -1,0 +1,27 @@
+# Auto detect text files and normalize line endings to LF in the repository
+* text=auto
+
+# Ensure Unix scripts have LF line endings
+*.sh text eol=lf
+
+# Ensure Windows scripts have CRLF line endings
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Node.js scripts should use LF
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+
+# Force binary files to be treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
