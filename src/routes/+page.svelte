@@ -123,6 +123,7 @@
 								onclick={handleFirstRunScan}
 								disabled={scanStarting}
 								class="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								style="background-color: #0284c7; color: white;"
 							>
 								{scanStarting ? 'Starting...' : 'Start Tier 1 Scan'}
 							</button>
