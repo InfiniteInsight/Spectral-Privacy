@@ -14,7 +14,7 @@
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"tauri": "tauri",
-		"tauri:dev": "node scripts/dev.js",
+		"tauri:dev": "node scripts/dev.cjs",
 		"tauri:build": "tauri build"
 	},
 	"devDependencies": {

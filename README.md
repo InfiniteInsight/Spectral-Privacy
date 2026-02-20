@@ -199,7 +199,7 @@ npm run tauri:dev
 The dev script works on **all platforms** (Windows, macOS, Linux):
 - **Windows**: Runs `scripts/dev.ps1` (PowerShell)
 - **Linux/macOS**: Runs `scripts/dev.sh` (Bash)
-- **Auto-detected**: `scripts/dev.js` launcher picks the right one
+- **Auto-detected**: `scripts/dev.cjs` launcher picks the right one
 
 How it works:
 1. Finds an available port starting from 5737
