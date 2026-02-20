@@ -134,10 +134,24 @@
 	}
 
 	export function validate(): boolean {
-		// Check all email addresses and phone numbers are valid
-		return (
-			emailErrors.every((error) => error === null) && phoneErrors.every((error) => error === null)
-		);
+		// Require at least one email address
+		const hasValidEmail =
+			emailAddresses.length > 0 &&
+			emailAddresses.some((email) => email.email.trim() !== '') &&
+			emailErrors.every((error) => error === null);
+
+		if (!hasValidEmail) {
+			alert('Please add at least one email address');
+			return false;
+		}
+
+		// Check all phone numbers are valid
+		if (!phoneErrors.every((error) => error === null)) {
+			alert('Please fix the invalid phone numbers');
+			return false;
+		}
+
+		return true;
 	}
 </script>
 

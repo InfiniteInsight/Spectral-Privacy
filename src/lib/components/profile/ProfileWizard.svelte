@@ -132,18 +132,44 @@
 
 	// Save profile
 	async function handleSave() {
-		// Final validation
-		if (
-			!formData.first_name ||
-			!formData.last_name ||
-			!formData.email ||
-			!formData.address_line1 ||
-			!formData.city ||
-			!formData.state ||
-			!formData.zip_code
-		) {
-			alert('Please fill in all required fields');
+		// Final validation - check all required fields
+		const missingFields: string[] = [];
+
+		if (!formData.first_name?.trim()) {
+			missingFields.push('First Name');
+		}
+		if (!formData.last_name?.trim()) {
+			missingFields.push('Last Name');
+		}
+		// Check new email_addresses array (or fallback to old email field)
+		const hasEmail =
+			(formData.email_addresses && formData.email_addresses.length > 0) || formData.email?.trim();
+		if (!hasEmail) {
+			missingFields.push('Email Address');
+		}
+		if (!formData.address_line1?.trim()) {
+			missingFields.push('Street Address');
+		}
+		if (!formData.city?.trim()) {
+			missingFields.push('City');
+		}
+		if (!formData.state?.trim()) {
+			missingFields.push('State');
+		}
+		if (!formData.zip_code?.trim()) {
+			missingFields.push('ZIP Code');
+		}
+
+		if (missingFields.length > 0) {
+			alert(
+				`Please fill in the following required fields:\n\n• ${missingFields.join('\n• ')}\n\nGo back to the relevant step to complete these fields.`
+			);
 			return;
+		}
+
+		// Populate old email field from email_addresses array for backward compatibility
+		if (formData.email_addresses && formData.email_addresses.length > 0 && !formData.email) {
+			formData.email = formData.email_addresses[0].email;
 		}
 
 		const profile = await profileStore.createProfile(

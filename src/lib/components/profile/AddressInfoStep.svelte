@@ -38,7 +38,27 @@
 	}
 
 	export function validate(): boolean {
-		// All fields optional - always valid
+		// Validate required current address fields
+		const missingFields: string[] = [];
+
+		if (!profile.address_line1?.trim()) {
+			missingFields.push('Street Address');
+		}
+		if (!profile.city?.trim()) {
+			missingFields.push('City');
+		}
+		if (!profile.state?.trim()) {
+			missingFields.push('State');
+		}
+		if (!profile.zip_code?.trim()) {
+			missingFields.push('ZIP Code');
+		}
+
+		if (missingFields.length > 0) {
+			alert(`Please fill in the following required fields:\n• ${missingFields.join('\n• ')}`);
+			return false;
+		}
+
 		return true;
 	}
 </script>
