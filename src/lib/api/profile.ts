@@ -11,7 +11,8 @@ import { invoke } from '@tauri-apps/api/core';
  * Phone number with type classification
  */
 export interface PhoneNumber {
-	number: string;
+	number: string; // Display format as entered by user
+	number_normalized?: string; // Normalized format for matching (digits only)
 	phone_type: 'Mobile' | 'Home' | 'Work';
 }
 

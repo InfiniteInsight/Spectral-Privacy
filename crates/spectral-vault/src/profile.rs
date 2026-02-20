@@ -88,10 +88,66 @@ pub enum PhoneType {
 /// Phone number with type classification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhoneNumber {
-    /// Encrypted phone number
+    /// Encrypted phone number (display format, as entered by user)
     pub number: EncryptedField<String>,
+    /// Encrypted normalized phone number (digits only, for matching)
+    /// Format: 10 digits for US numbers (e.g., "5551234567")
+    #[serde(default)]
+    pub number_normalized: Option<EncryptedField<String>>,
     /// Type of phone number
     pub phone_type: PhoneType,
+}
+
+impl PhoneNumber {
+    /// Create a new phone number with normalization
+    pub fn new(
+        number: impl Into<String>,
+        phone_type: PhoneType,
+        key: &[u8; 32],
+    ) -> crate::error::Result<Self> {
+        use crate::cipher::encrypt_string;
+
+        let raw_number = number.into();
+        let normalized = normalize_phone_number(&raw_number)?;
+
+        Ok(Self {
+            number: encrypt_string(&raw_number, key)?,
+            number_normalized: Some(encrypt_string(&normalized, key)?),
+            phone_type,
+        })
+    }
+}
+
+/// Normalize phone number to digits-only format for matching.
+///
+/// Accepts various formats:
+/// - (555) 123-4567
+/// - 555-123-4567
+/// - 555.123.4567
+/// - +1-555-123-4567
+/// - 5551234567
+///
+/// Returns: 10-digit US phone number (e.g., "5551234567")
+fn normalize_phone_number(phone: &str) -> crate::error::Result<String> {
+    // Extract all digits
+    // nosemgrep: use-zeroize-for-secrets - transient variable, immediately encrypted by caller
+    let digits: String = phone.chars().filter(char::is_ascii_digit).collect();
+
+    // Handle US country code
+    let normalized = if digits.len() == 11 && digits.starts_with('1') {
+        // +1-555-123-4567 -> 5551234567
+        digits[1..].to_string()
+    } else if digits.len() == 10 {
+        // Already 10 digits
+        digits
+    } else {
+        return Err(crate::error::VaultError::InvalidData(format!(
+            "Invalid phone number format. Expected 10 digits, got {}",
+            digits.len()
+        )));
+    };
+
+    Ok(normalized)
 }
 
 /// Previous address with date range.
@@ -621,10 +677,7 @@ mod tests {
     #[test]
     fn test_phone_number_serialization() {
         let key = test_key();
-        let phone = PhoneNumber {
-            number: encrypt_string("555-123-4567", &key).expect("encrypt"),
-            phone_type: PhoneType::Mobile,
-        };
+        let phone = PhoneNumber::new("555-123-4567", PhoneType::Mobile, &key).expect("create");
 
         let json = serde_json::to_string(&phone).expect("serialize");
         let deserialized: PhoneNumber = serde_json::from_str(&json).expect("deserialize");
@@ -632,6 +685,15 @@ mod tests {
         let decrypted = deserialized.number.decrypt(&key).expect("decrypt");
         assert_eq!(decrypted, "555-123-4567");
         assert_eq!(deserialized.phone_type, PhoneType::Mobile);
+
+        // Check normalized field
+        let normalized = deserialized
+            .number_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(normalized, "5551234567");
     }
 
     #[test]
@@ -693,10 +755,8 @@ mod tests {
         let mut profile = UserProfile::new(id.clone());
 
         // Add Phase 2 fields
-        profile.phone_numbers = vec![PhoneNumber {
-            number: encrypt_string("555-1234", &key).expect("encrypt"),
-            phone_type: PhoneType::Mobile,
-        }];
+        profile.phone_numbers =
+            vec![PhoneNumber::new("555-123-4567", PhoneType::Mobile, &key).expect("create")];
 
         profile.aliases = vec![Alias {
             first_name: Some(encrypt_string("Johnny", &key).expect("encrypt")),
@@ -761,10 +821,8 @@ mod tests {
         profile.zip_code = Some(encrypt_string("60601", &key).expect("encrypt"));
 
         // Enhanced matching (30 points)
-        profile.phone_numbers = vec![PhoneNumber {
-            number: encrypt_string("555-1234", &key).expect("encrypt"),
-            phone_type: PhoneType::Mobile,
-        }];
+        profile.phone_numbers =
+            vec![PhoneNumber::new("555-123-4567", PhoneType::Mobile, &key).expect("create")];
         profile.previous_addresses_v2 = vec![PreviousAddress {
             address_line1: encrypt_string("456 Oak", &key).expect("encrypt"),
             address_line2: None,
@@ -791,5 +849,96 @@ mod tests {
         assert_eq!(completeness.tier, CompletenessTier::Excellent);
         assert_eq!(completeness.score, 100);
         assert_eq!(completeness.percentage, 100);
+    }
+
+    #[test]
+    fn test_normalize_phone_number() {
+        // Various formats should normalize to same 10-digit string
+        assert_eq!(
+            normalize_phone_number("(555) 123-4567").unwrap(),
+            "5551234567"
+        );
+        assert_eq!(
+            normalize_phone_number("555-123-4567").unwrap(),
+            "5551234567"
+        );
+        assert_eq!(
+            normalize_phone_number("555.123.4567").unwrap(),
+            "5551234567"
+        );
+        assert_eq!(normalize_phone_number("5551234567").unwrap(), "5551234567");
+
+        // With country code
+        assert_eq!(
+            normalize_phone_number("+1-555-123-4567").unwrap(),
+            "5551234567"
+        );
+        assert_eq!(
+            normalize_phone_number("1-555-123-4567").unwrap(),
+            "5551234567"
+        );
+
+        // Invalid formats
+        assert!(normalize_phone_number("555-1234").is_err()); // Too short
+        assert!(normalize_phone_number("555-123-45678").is_err()); // Too long
+        assert!(normalize_phone_number("abc-def-ghij").is_err()); // No digits
+    }
+
+    #[test]
+    fn test_phone_number_with_normalization() {
+        let key = test_key();
+
+        // Create phone number with normalization
+        let phone =
+            PhoneNumber::new("(555) 123-4567", PhoneType::Mobile, &key).expect("create phone");
+
+        // Display format preserved
+        let display = phone.number.decrypt(&key).expect("decrypt display");
+        assert_eq!(display, "(555) 123-4567");
+
+        // Normalized format stored
+        let normalized = phone
+            .number_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt normalized");
+        assert_eq!(normalized, "5551234567");
+    }
+
+    #[test]
+    fn test_phone_number_normalization_matching() {
+        let key = test_key();
+
+        // Different input formats
+        let phone1 =
+            PhoneNumber::new("(555) 123-4567", PhoneType::Mobile, &key).expect("create phone1");
+        let phone2 =
+            PhoneNumber::new("555-123-4567", PhoneType::Home, &key).expect("create phone2");
+        let phone3 = PhoneNumber::new("5551234567", PhoneType::Work, &key).expect("create phone3");
+
+        // All normalize to same value for matching
+        let norm1 = phone1
+            .number_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+        let norm2 = phone2
+            .number_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+        let norm3 = phone3
+            .number_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+
+        assert_eq!(norm1, norm2);
+        assert_eq!(norm2, norm3);
+        assert_eq!(norm1, "5551234567");
     }
 }
