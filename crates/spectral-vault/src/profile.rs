@@ -63,7 +63,7 @@ pub struct UserProfile {
     pub previous_addresses_v2: Vec<PreviousAddress>,
     /// Phase 2: Aliases or alternative names
     #[serde(default)]
-    pub aliases: Vec<EncryptedField<String>>,
+    pub aliases: Vec<Alias>,
     /// Phase 2: Relatives and family members
     #[serde(default)]
     pub relatives: Vec<Relative>,
@@ -111,6 +111,19 @@ pub struct PreviousAddress {
     pub lived_from: Option<String>,
     /// End date (YYYY-MM-DD format)
     pub lived_to: Option<String>,
+}
+
+/// Alias or alternative name.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Alias {
+    /// First name
+    pub first_name: Option<EncryptedField<String>>,
+    /// Middle name
+    pub middle_name: Option<EncryptedField<String>>,
+    /// Last name
+    pub last_name: Option<EncryptedField<String>>,
+    /// Nickname
+    pub nickname: Option<EncryptedField<String>>,
 }
 
 /// Type of relationship to a relative.
@@ -685,7 +698,12 @@ mod tests {
             phone_type: PhoneType::Mobile,
         }];
 
-        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+        profile.aliases = vec![Alias {
+            first_name: Some(encrypt_string("Johnny", &key).expect("encrypt")),
+            middle_name: None,
+            last_name: None,
+            nickname: Some(encrypt_string("JJ", &key).expect("encrypt")),
+        }];
 
         profile.relatives = vec![Relative {
             name: encrypt_string("Jane", &key).expect("encrypt"),
@@ -757,7 +775,12 @@ mod tests {
             lived_to: Some("2022-12-31".to_string()),
         }];
         profile.date_of_birth = Some(encrypt_string("1990-01-01", &key).expect("encrypt"));
-        profile.aliases = vec![encrypt_string("Johnny", &key).expect("encrypt")];
+        profile.aliases = vec![Alias {
+            first_name: Some(encrypt_string("Johnny", &key).expect("encrypt")),
+            middle_name: None,
+            last_name: None,
+            nickname: Some(encrypt_string("JJ", &key).expect("encrypt")),
+        }];
         profile.relatives = vec![Relative {
             name: encrypt_string("Jane", &key).expect("encrypt"),
             relationship: RelationshipType::Spouse,

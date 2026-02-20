@@ -1,7 +1,8 @@
 <script lang="ts">
 	/* eslint-disable no-unused-vars */
-	import type { ProfileInput, Relative } from '$lib/api/profile';
+	import type { ProfileInput, Relative, Alias } from '$lib/api/profile';
 	import RelativeModal from './shared/RelativeModal.svelte';
+	import AliasModal from './shared/AliasModal.svelte';
 
 	interface Props {
 		profile: Partial<ProfileInput>;
@@ -11,25 +12,39 @@
 	let { profile, onUpdate }: Props = $props();
 	/* eslint-enable no-unused-vars */
 
-	let aliases = $state<string[]>(profile.aliases || []);
+	let aliases = $state<Alias[]>(profile.aliases || []);
 	let relatives = $state<Relative[]>(profile.relatives || []);
+	let showAliasModal = $state(false);
 	let showRelativeModal = $state(false);
+	let editingAliasIndex = $state<number | null>(null);
 	let editingRelativeIndex = $state<number | null>(null);
 
-	function addAlias() {
-		aliases = [...aliases, ''];
+	function openAliasModal(index?: number) {
+		editingAliasIndex = index ?? null;
+		showAliasModal = true;
 	}
 
-	function updateAlias(index: number, value: string) {
-		aliases = aliases.map((a, i) => (i === index ? value : a));
-		// Filter out empty aliases before updating
-		const nonEmpty = aliases.filter((a) => a.trim());
-		onUpdate({ aliases: nonEmpty });
+	function saveAlias(alias: Alias) {
+		if (editingAliasIndex !== null) {
+			aliases = aliases.map((a, i) => (i === editingAliasIndex ? alias : a));
+		} else {
+			aliases = [...aliases, alias];
+		}
+		onUpdate({ aliases });
+		showAliasModal = false;
 	}
 
 	function removeAlias(index: number) {
 		aliases = aliases.filter((_, i) => i !== index);
 		onUpdate({ aliases });
+	}
+
+	function formatAliasDisplay(alias: Alias): string {
+		const parts = [alias.first_name, alias.middle_name, alias.last_name].filter(Boolean).join(' ');
+		if (alias.nickname) {
+			return parts ? `${parts} "${alias.nickname}"` : `"${alias.nickname}"`;
+		}
+		return parts;
 	}
 
 	function openRelativeModal(index?: number) {
@@ -69,27 +84,31 @@
 		{#if aliases.length > 0}
 			<div class="space-y-2 mb-3">
 				{#each aliases as alias, i (i)}
-					<div class="flex gap-2">
-						<input
-							type="text"
-							value={alias}
-							oninput={(e) => updateAlias(i, e.currentTarget.value)}
-							class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-							placeholder="Former or alternate name"
-						/>
-						<button
-							onclick={() => removeAlias(i)}
-							class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
-							aria-label="Remove alias"
-						>
-							Remove
-						</button>
+					<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+						<div class="text-sm font-medium">{formatAliasDisplay(alias)}</div>
+						<div class="flex gap-2">
+							<button
+								onclick={() => openAliasModal(i)}
+								class="text-blue-600 hover:text-blue-700 text-sm"
+							>
+								Edit
+							</button>
+							<button
+								onclick={() => removeAlias(i)}
+								class="text-red-600 hover:text-red-700 text-sm"
+							>
+								Remove
+							</button>
+						</div>
 					</div>
 				{/each}
 			</div>
 		{/if}
 
-		<button onclick={addAlias} class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+		<button
+			onclick={() => openAliasModal()}
+			class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+		>
 			+ Add Alias
 		</button>
 	</div>
@@ -136,6 +155,14 @@
 		</button>
 	</div>
 </div>
+
+{#if showAliasModal}
+	<AliasModal
+		initialAlias={editingAliasIndex !== null ? aliases[editingAliasIndex] : undefined}
+		onSave={saveAlias}
+		onCancel={() => (showAliasModal = false)}
+	/>
+{/if}
 
 {#if showRelativeModal}
 	<RelativeModal

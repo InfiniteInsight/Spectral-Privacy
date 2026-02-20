@@ -123,3 +123,4 @@ vite.config.ts.timestamp-*
 .worktrees/
 *.sbom.json
 *-sbom.json
+*.cdx.json

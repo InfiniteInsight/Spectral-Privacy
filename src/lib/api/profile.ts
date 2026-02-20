@@ -29,6 +29,16 @@ export interface PreviousAddress {
 }
 
 /**
+ * Alias or alternative name
+ */
+export interface Alias {
+	first_name?: string;
+	middle_name?: string;
+	last_name?: string;
+	nickname?: string;
+}
+
+/**
  * Relative or family member
  */
 export interface Relative {
@@ -66,7 +76,7 @@ export interface ProfileInput {
 	// Phase 2 fields
 	phone_numbers?: PhoneNumber[];
 	previous_addresses?: PreviousAddress[];
-	aliases?: string[];
+	aliases?: Alias[];
 	relatives?: Relative[];
 }
 
