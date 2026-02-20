@@ -74,6 +74,7 @@ secrets/
 # Claude Code settings (user-specific)
 # -----------------------------------------------------------------------------
 .claude/settings.local.json
+CLAUDE.md
 
 # -----------------------------------------------------------------------------
 # Testing & Coverage
