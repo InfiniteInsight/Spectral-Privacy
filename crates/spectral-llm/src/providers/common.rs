@@ -1,7 +1,7 @@
 //! Common utilities shared across LLM providers.
 
 use crate::error::{LlmError, Result};
-use crate::provider::Role;
+use crate::provider::{CompletionRequest, CompletionResponse, CompletionStream, Role, Usage};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -64,6 +64,48 @@ pub struct StandardUsage {
     pub prompt_tokens: u32,
     /// Number of tokens in the completion/output
     pub completion_tokens: u32,
+}
+
+/// Create a stub completion response for testing.
+///
+/// # Arguments
+/// * `provider_name` - Name of the provider (e.g., "`OpenAI`", "Gemini")
+/// * `model` - Model name
+/// * `request` - Original request
+#[must_use]
+pub fn create_stub_response(
+    provider_name: &str,
+    model: impl Into<String>,
+    request: &CompletionRequest,
+) -> CompletionResponse {
+    let model_str = model.into();
+    CompletionResponse {
+        content: format!(
+            "[Stub] {} {} would respond to: {}",
+            provider_name,
+            model_str,
+            request.messages.last().map_or("", |m| &m.content)
+        ),
+        model: model_str,
+        stop_reason: Some("stop".to_string()),
+        usage: Some(Usage {
+            input_tokens: 50,
+            output_tokens: 100,
+        }),
+    }
+}
+
+/// Return a "not implemented" error for streaming.
+///
+/// # Arguments
+/// * `provider_name` - Name of the provider (e.g., "`OpenAI`", "Gemini")
+///
+/// # Errors
+/// Always returns an error indicating streaming is not implemented.
+pub fn streaming_not_implemented(provider_name: &str) -> Result<CompletionStream> {
+    Err(LlmError::Internal(format!(
+        "streaming not yet implemented for {provider_name}"
+    )))
 }
 
 #[cfg(test)]

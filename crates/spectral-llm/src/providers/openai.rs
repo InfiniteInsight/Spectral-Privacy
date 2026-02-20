@@ -1,6 +1,9 @@
 //! `OpenAI` API provider implementation.
 
-use super::common::{build_http_client, convert_role_standard, StandardMessage, StandardUsage};
+use super::common::{
+    build_http_client, convert_role_standard, create_stub_response, streaming_not_implemented,
+    StandardMessage, StandardUsage,
+};
 use crate::error::{LlmError, Result};
 use crate::provider::{
     CompletionRequest, CompletionResponse, CompletionStream, LlmProvider, ProviderCapabilities,
@@ -113,25 +116,11 @@ impl LlmProvider for OpenAiProvider {
             .json(&api_request);
 
         // Mock response for stub
-        Ok(CompletionResponse {
-            content: format!(
-                "[Stub] OpenAI {} would respond to: {}",
-                self.model,
-                request.messages.last().map_or("", |m| &m.content)
-            ),
-            model: self.model.clone(),
-            stop_reason: Some("stop".to_string()),
-            usage: Some(Usage {
-                input_tokens: 50,
-                output_tokens: 100,
-            }),
-        })
+        Ok(create_stub_response("OpenAI", &self.model, &request))
     }
 
     async fn stream(&self, _request: CompletionRequest) -> Result<CompletionStream> {
-        Err(LlmError::Internal(
-            "streaming not yet implemented for OpenAI".to_string(),
-        ))
+        streaming_not_implemented("OpenAI")
     }
 
     fn capabilities(&self) -> ProviderCapabilities {
