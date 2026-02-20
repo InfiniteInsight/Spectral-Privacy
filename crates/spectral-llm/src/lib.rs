@@ -70,5 +70,7 @@ pub use provider::{
     CompletionRequest, CompletionResponse, CompletionStream, LlmProvider, Message,
     ProviderCapabilities, Role, StreamChunk, Usage,
 };
-pub use providers::{AnthropicProvider, OllamaProvider};
+pub use providers::{
+    AnthropicProvider, GeminiProvider, LmStudioProvider, OllamaProvider, OpenAiProvider,
+};
 pub use router::{LlmRouter, RoutingPreference, TaskType};

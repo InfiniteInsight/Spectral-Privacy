@@ -21,6 +21,8 @@ pub enum LlmProvider {
     Gemini,
     /// Anthropic `Claude` (cloud).
     Claude,
+    /// `Ollama` (local).
+    Ollama,
     /// `LM Studio` (local).
     LmStudio,
 }

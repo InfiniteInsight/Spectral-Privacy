@@ -12,6 +12,7 @@ authors.workspace = true
 # Internal dependencies
 spectral-core = { path = "../spectral-core" }
 spectral-db = { path = "../spectral-db" }
+spectral-llm = { path = "../spectral-llm" }
 
 # Error handling
 thiserror = { workspace = true }

@@ -26,6 +26,10 @@ pub enum PrivacyError {
     /// Invalid privacy configuration.
     #[error("Invalid configuration: {0}")]
     InvalidConfiguration(String),
+
+    /// LLM request failed.
+    #[error("LLM request failed: {0}")]
+    LlmRequest(String),
 }
 
 /// Result type alias for privacy operations.

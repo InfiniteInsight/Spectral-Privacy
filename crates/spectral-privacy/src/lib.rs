@@ -43,6 +43,8 @@
 pub mod engine;
 /// Error types for privacy operations.
 pub mod error;
+/// Privacy-aware LLM router.
+pub mod llm_router;
 /// LLM provider settings management.
 pub mod llm_settings;
 /// Core types for privacy controls.
@@ -50,6 +52,7 @@ pub mod types;
 
 pub use engine::PrivacyEngine;
 pub use error::{PrivacyError, Result};
+pub use llm_router::PrivacyAwareLlmRouter;
 pub use llm_settings::{
     delete_api_key, get_api_key, get_primary_provider, get_provider_preference, set_api_key,
     set_primary_provider, set_provider_preference, LlmProvider, TaskType,
