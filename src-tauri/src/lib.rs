@@ -10,7 +10,6 @@ pub mod removal_worker;
 pub mod state;
 pub mod types;
 
-#[cfg(debug_assertions)]
 use tauri::Manager;
 use tracing::info;
 
