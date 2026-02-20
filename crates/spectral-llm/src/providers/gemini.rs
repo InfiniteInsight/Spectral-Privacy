@@ -1,9 +1,10 @@
 //! Google Gemini API provider implementation.
 
+use super::common::{build_http_client, convert_role_gemini};
 use crate::error::{LlmError, Result};
 use crate::provider::{
     CompletionRequest, CompletionResponse, CompletionStream, LlmProvider, ProviderCapabilities,
-    Role, Usage,
+    Usage,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -34,15 +35,10 @@ impl GeminiProvider {
     /// # Errors
     /// Returns error if the HTTP client cannot be created.
     pub fn with_model(api_key: impl Into<String>, model: impl Into<String>) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
-            .build()
-            .map_err(|e| LlmError::Internal(format!("failed to create HTTP client: {e}")))?;
-
         Ok(Self {
             api_key: api_key.into(),
             model: model.into(),
-            client,
+            client: build_http_client(Some(60))?,
             base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
         })
     }
@@ -63,13 +59,8 @@ impl GeminiProvider {
         // Convert messages to Gemini format
         // Gemini uses "user" and "model" roles (not "assistant")
         for message in &request.messages {
-            let role = match message.role {
-                Role::User | Role::System => "user".to_string(),
-                Role::Assistant => "model".to_string(),
-            };
-
             contents.push(GeminiContent {
-                role,
+                role: convert_role_gemini(message.role),
                 parts: vec![GeminiPart {
                     text: message.content.clone(),
                 }],

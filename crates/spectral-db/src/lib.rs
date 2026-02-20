@@ -230,7 +230,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 9);
+        assert_eq!(version_after, 10);
     }
 
     #[tokio::test]
@@ -263,7 +263,8 @@ mod tests {
                 "removal_attempts",
                 "removal_evidence",
                 "scan_jobs",
-                "scheduled_jobs"
+                "scheduled_jobs",
+                "settings"
             ]
         );
 

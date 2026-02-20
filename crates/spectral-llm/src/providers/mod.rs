@@ -1,6 +1,7 @@
 //! LLM provider implementations.
 
 pub mod anthropic;
+pub mod common;
 pub mod gemini;
 pub mod lmstudio;
 pub mod ollama;

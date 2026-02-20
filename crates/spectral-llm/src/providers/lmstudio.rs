@@ -1,9 +1,10 @@
 //! LM Studio local provider implementation.
 
+use super::common::{build_http_client, convert_role_standard, StandardMessage, StandardUsage};
 use crate::error::{LlmError, Result};
 use crate::provider::{
     CompletionRequest, CompletionResponse, CompletionStream, LlmProvider, ProviderCapabilities,
-    Role, Usage,
+    Usage,
 };
 use async_trait::async_trait;
 use reqwest::Client;
@@ -33,14 +34,9 @@ impl LmStudioProvider {
     /// # Errors
     /// Returns error if the HTTP client cannot be created.
     pub fn with_url(base_url: impl Into<String>) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
-            .build()
-            .map_err(|e| LlmError::Internal(format!("failed to create HTTP client: {e}")))?;
-
         Ok(Self {
             model: "local-model".to_string(), // Will be determined at runtime
-            client,
+            client: build_http_client(Some(120))?,
             base_url: base_url.into(),
         })
     }
@@ -65,11 +61,11 @@ impl LmStudioProvider {
     /// Convert internal request to LM Studio (OpenAI-compatible) API format.
     #[allow(clippy::unused_self)]
     fn to_api_request(&self, request: &CompletionRequest) -> LmStudioRequest {
-        let mut messages: Vec<LmStudioMessage> = Vec::new();
+        let mut messages: Vec<StandardMessage> = Vec::new();
 
         // Add system message if present
         if let Some(system) = &request.system_prompt {
-            messages.push(LmStudioMessage {
+            messages.push(StandardMessage {
                 role: "system".to_string(),
                 content: system.clone(),
             });
@@ -77,12 +73,8 @@ impl LmStudioProvider {
 
         // Add conversation messages
         for message in &request.messages {
-            messages.push(LmStudioMessage {
-                role: match message.role {
-                    Role::System => "system".to_string(),
-                    Role::User => "user".to_string(),
-                    Role::Assistant => "assistant".to_string(),
-                },
+            messages.push(StandardMessage {
+                role: convert_role_standard(message.role),
                 content: message.content.clone(),
             });
         }
@@ -186,7 +178,7 @@ impl LlmProvider for LmStudioProvider {
 #[derive(Debug, Serialize)]
 struct LmStudioRequest {
     model: String,
-    messages: Vec<LmStudioMessage>,
+    messages: Vec<StandardMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -195,32 +187,19 @@ struct LmStudioRequest {
     stop: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct LmStudioMessage {
-    role: String,
-    content: String,
-}
-
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct LmStudioResponse {
     model: String,
     choices: Vec<LmStudioChoice>,
-    usage: Option<LmStudioUsage>,
+    usage: Option<StandardUsage>,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct LmStudioChoice {
-    message: LmStudioMessage,
+    message: StandardMessage,
     finish_reason: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct LmStudioUsage {
-    prompt_tokens: u32,
-    completion_tokens: u32,
 }
 
 #[cfg(test)]
