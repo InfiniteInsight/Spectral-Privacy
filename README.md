@@ -1,6 +1,6 @@
 # Spectral
 
-Privacy-focused email automation assistant with configurable LLM integration.
+Privacy-focused email automation assistant with configurable LLM integration. It is still a work in progress.
 
 ## Table of Contents
 
@@ -218,8 +218,5 @@ See [docs/testing/privacy-llm-manual-tests.md](docs/testing/privacy-llm-manual-t
 
 ## License
 
-[Your License Here]
+TBD
 
-## Contributing
-
-[Your Contributing Guidelines Here]
