@@ -27,6 +27,7 @@ pub struct WorkerResult {
 /// Map profile and finding data to form fields.
 ///
 /// Extracts required fields from profile and finding for form submission.
+#[allow(deprecated)]
 pub fn map_fields_for_submission(
     profile: &UserProfile,
     finding_listing_url: &str,
@@ -684,6 +685,7 @@ mod tests {
             social_media: None,
             previous_addresses_v1: None,
             phone_numbers: vec![],
+            email_addresses: vec![],
             previous_addresses_v2: vec![],
             aliases: vec![],
             relatives: vec![],
@@ -707,6 +709,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_map_fields_missing_email() {
         let key = test_key();
         let mut profile = create_test_profile(&key);

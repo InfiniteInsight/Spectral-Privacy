@@ -26,6 +26,7 @@ pub struct UserProfile {
     /// Last name
     pub last_name: Option<EncryptedField<String>>,
     /// Email address
+    #[deprecated(note = "Use email_addresses instead")]
     pub email: Option<EncryptedField<String>>,
     /// Phone number
     #[deprecated(note = "Use phone_numbers instead")]
@@ -58,6 +59,9 @@ pub struct UserProfile {
     /// Phase 2: Phone numbers with type classification
     #[serde(default)]
     pub phone_numbers: Vec<PhoneNumber>,
+    /// Phase 2: Email addresses with type classification
+    #[serde(default)]
+    pub email_addresses: Vec<EmailAddress>,
     /// Phase 2: Previous addresses with structured data
     #[serde(default, rename = "previous_addresses_v2")]
     pub previous_addresses_v2: Vec<PreviousAddress>,
@@ -71,6 +75,68 @@ pub struct UserProfile {
     pub created_at: Timestamp,
     /// Profile last update timestamp
     pub updated_at: Timestamp,
+}
+
+/// Type of email address.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum EmailType {
+    /// Personal email
+    Personal,
+    /// Work/office email
+    Work,
+    /// Other email
+    Other,
+}
+
+/// Email address with type classification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailAddress {
+    /// Encrypted email address
+    pub email: EncryptedField<String>,
+    /// Encrypted normalized email (lowercase, for matching)
+    #[serde(default)]
+    pub email_normalized: Option<EncryptedField<String>>,
+    /// Type of email address
+    pub email_type: EmailType,
+}
+
+impl EmailAddress {
+    /// Create a new email address with normalization
+    pub fn new(
+        email: impl Into<String>,
+        email_type: EmailType,
+        key: &[u8; 32],
+    ) -> crate::error::Result<Self> {
+        use crate::cipher::encrypt_string;
+
+        let raw_email = email.into();
+        let normalized = normalize_email(&raw_email)?;
+
+        Ok(Self {
+            email: encrypt_string(&raw_email, key)?,
+            email_normalized: Some(encrypt_string(&normalized, key)?),
+            email_type,
+        })
+    }
+}
+
+/// Normalize email address for matching.
+///
+/// Converts to lowercase and trims whitespace.
+/// Email addresses are case-insensitive per RFC 5321.
+fn normalize_email(email: &str) -> crate::error::Result<String> {
+    let trimmed = email.trim();
+
+    // Basic validation
+    if !trimmed.contains('@') || trimmed.split('@').count() != 2 {
+        return Err(crate::error::VaultError::InvalidData(
+            "Invalid email format: missing or multiple @ symbols".to_string(),
+        ));
+    }
+
+    let normalized = trimmed.to_lowercase();
+    Ok(normalized)
 }
 
 /// Type of phone number.
@@ -266,6 +332,7 @@ impl UserProfile {
             previous_addresses_v1: None,
             // Phase 2 fields
             phone_numbers: Vec::new(),
+            email_addresses: Vec::new(),
             previous_addresses_v2: Vec::new(),
             aliases: Vec::new(),
             relatives: Vec::new(),
@@ -412,7 +479,8 @@ impl UserProfile {
         if self.last_name.is_some() {
             score += 15;
         }
-        if self.email.is_some() {
+        #[allow(deprecated)]
+        if self.email.is_some() || !self.email_addresses.is_empty() {
             score += 10;
         }
 
@@ -495,6 +563,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_new_profile() {
         let id = ProfileId::generate();
         let profile = UserProfile::new(id.clone());
@@ -505,6 +574,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_profile_with_encrypted_fields() {
         let key = test_key();
         let mut profile = UserProfile::new(ProfileId::generate());
@@ -517,6 +587,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(deprecated)]
     async fn test_save_and_load_profile() {
         let key = test_key();
         let db = Database::new(":memory:", key.to_vec())
@@ -790,6 +861,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_completeness_tier_basic() {
         let key = test_key();
         let mut profile = UserProfile::new(ProfileId::generate());
@@ -805,6 +877,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_completeness_tier_excellent() {
         let key = test_key();
         let mut profile = UserProfile::new(ProfileId::generate());
@@ -940,5 +1013,88 @@ mod tests {
         assert_eq!(norm1, norm2);
         assert_eq!(norm2, norm3);
         assert_eq!(norm1, "5551234567");
+    }
+
+    #[test]
+    fn test_normalize_email() {
+        // Case normalization
+        assert_eq!(
+            normalize_email("User@Example.COM").unwrap(),
+            "user@example.com"
+        );
+        assert_eq!(
+            normalize_email("John.Doe@WORK.COM").unwrap(),
+            "john.doe@work.com"
+        );
+
+        // Whitespace trimming
+        assert_eq!(
+            normalize_email("  user@example.com  ").unwrap(),
+            "user@example.com"
+        );
+
+        // Invalid formats
+        assert!(normalize_email("not-an-email").is_err());
+        assert!(normalize_email("@@example.com").is_err());
+        assert!(normalize_email("user@@example.com").is_err());
+    }
+
+    #[test]
+    fn test_email_address_with_normalization() {
+        let key = test_key();
+
+        // Create email with normalization
+        let email =
+            EmailAddress::new("User@Example.COM", EmailType::Personal, &key).expect("create email");
+
+        // Display format preserved (case-sensitive)
+        let display = email.email.decrypt(&key).expect("decrypt display");
+        assert_eq!(display, "User@Example.COM");
+
+        // Normalized format stored (lowercase)
+        let normalized = email
+            .email_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt normalized");
+        assert_eq!(normalized, "user@example.com");
+    }
+
+    #[test]
+    fn test_email_address_normalization_matching() {
+        let key = test_key();
+
+        // Different case variations
+        let email1 = EmailAddress::new("User@Example.COM", EmailType::Personal, &key)
+            .expect("create email1");
+        let email2 =
+            EmailAddress::new("user@example.com", EmailType::Work, &key).expect("create email2");
+        let email3 =
+            EmailAddress::new("USER@EXAMPLE.COM", EmailType::Other, &key).expect("create email3");
+
+        // All normalize to same value for matching
+        let norm1 = email1
+            .email_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+        let norm2 = email2
+            .email_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+        let norm3 = email3
+            .email_normalized
+            .as_ref()
+            .expect("normalized field present")
+            .decrypt(&key)
+            .expect("decrypt");
+
+        assert_eq!(norm1, norm2);
+        assert_eq!(norm2, norm3);
+        assert_eq!(norm1, "user@example.com");
     }
 }

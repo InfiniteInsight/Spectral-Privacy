@@ -12,6 +12,7 @@ use tracing::info;
 /// Create a new profile in the vault.
 ///
 /// Creates a profile with validated input and returns the profile with generated ID.
+#[allow(deprecated)]
 #[tauri::command]
 pub async fn profile_create(
     state: State<'_, AppState>,
@@ -90,6 +91,7 @@ pub async fn profile_create(
 /// Get a profile by ID.
 ///
 /// Loads a profile from the vault and decrypts all fields.
+#[allow(deprecated)]
 #[tauri::command]
 pub async fn profile_get(
     state: State<'_, AppState>,
@@ -197,6 +199,7 @@ pub async fn profile_get(
 /// Update an existing profile.
 ///
 /// Updates all fields of a profile with validated input.
+#[allow(deprecated)]
 #[tauri::command]
 pub async fn profile_update(
     state: State<'_, AppState>,
@@ -279,6 +282,7 @@ pub async fn profile_update(
 /// List all profiles in the vault.
 ///
 /// Returns a summary of all profiles with basic information.
+#[allow(deprecated)]
 #[tauri::command]
 pub async fn profile_list(
     state: State<'_, AppState>,

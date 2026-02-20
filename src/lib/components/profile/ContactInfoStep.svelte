@@ -1,6 +1,6 @@
 <script lang="ts">
 	/* eslint-disable no-unused-vars */
-	import type { ProfileInput, PhoneNumber } from '$lib/api/profile';
+	import type { ProfileInput, PhoneNumber, EmailAddress } from '$lib/api/profile';
 
 	interface Props {
 		profile: Partial<ProfileInput>;
@@ -9,8 +9,66 @@
 
 	let { profile, onUpdate }: Props = $props();
 
+	let emailAddresses = $state<EmailAddress[]>(profile.email_addresses || []);
+	let emailErrors = $state<(string | null)[]>([]);
 	let phoneNumbers = $state<PhoneNumber[]>(profile.phone_numbers || []);
 	let phoneErrors = $state<(string | null)[]>([]);
+
+	function addEmailAddress() {
+		emailAddresses = [...emailAddresses, { email: '', email_type: 'Personal' }];
+		emailErrors = [...emailErrors, null];
+	}
+
+	function removeEmailAddress(index: number) {
+		emailAddresses = emailAddresses.filter((_, i) => i !== index);
+		emailErrors = emailErrors.filter((_, i) => i !== index);
+		onUpdate({ email_addresses: emailAddresses });
+	}
+
+	function normalizeEmail(email: string): string | null {
+		const trimmed = email.trim();
+		if (!trimmed) return null;
+
+		// Basic validation
+		if (!trimmed.includes('@') || trimmed.split('@').length !== 2) {
+			return null;
+		}
+
+		return trimmed.toLowerCase();
+	}
+
+	function validateEmail(email: string): string | null {
+		if (!email.trim()) {
+			return null; // Empty is okay (optional field)
+		}
+
+		const normalized = normalizeEmail(email);
+		if (!normalized) {
+			return 'Invalid email format';
+		}
+
+		return null;
+	}
+
+	function updateEmailAddress(index: number, field: keyof EmailAddress, value: unknown) {
+		emailAddresses = emailAddresses.map((email, i) => {
+			if (i === index) {
+				const updated = { ...email, [field]: value };
+				if (field === 'email') {
+					// Validate and update error
+					emailErrors[i] = validateEmail(value as string);
+					// Add normalized version
+					const normalized = normalizeEmail(value as string);
+					if (normalized) {
+						updated.email_normalized = normalized;
+					}
+				}
+				return updated;
+			}
+			return email;
+		});
+		onUpdate({ email_addresses: emailAddresses });
+	}
 
 	function addPhoneNumber() {
 		phoneNumbers = [...phoneNumbers, { number: '', phone_type: 'Mobile' }];
@@ -76,23 +134,65 @@
 	}
 
 	export function validate(): boolean {
-		// Check all phone numbers are valid
-		return phoneErrors.every((error) => error === null);
+		// Check all email addresses and phone numbers are valid
+		return (
+			emailErrors.every((error) => error === null) && phoneErrors.every((error) => error === null)
+		);
 	}
 </script>
 
 <div class="space-y-6">
 	<div>
-		<label class="block text-sm font-medium mb-2" for="email"> Email Address </label>
-		<input
-			id="email"
-			type="email"
-			value={profile.email || ''}
-			oninput={(e) => onUpdate({ email: e.currentTarget.value })}
-			class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-			placeholder="your.email@example.com"
-		/>
-		<p class="text-xs text-gray-600 mt-1">Used to match records on data broker sites</p>
+		<label class="block text-sm font-medium mb-2"> Email Addresses </label>
+		<p class="text-sm text-gray-600 mb-3">
+			Adding email addresses helps identify records across more data brokers. Emails are
+			case-insensitive and will be normalized for matching.
+		</p>
+
+		{#if emailAddresses.length > 0}
+			<div class="space-y-3 mb-3">
+				{#each emailAddresses as email, i (i)}
+					<div>
+						<div class="flex gap-2">
+							<input
+								type="email"
+								value={email.email}
+								oninput={(e) => updateEmailAddress(i, 'email', e.currentTarget.value)}
+								class="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {emailErrors[
+									i
+								]
+									? 'border-red-500'
+									: ''}"
+								placeholder="your.email@example.com"
+							/>
+							<select
+								value={email.email_type}
+								onchange={(e) => updateEmailAddress(i, 'email_type', e.currentTarget.value)}
+								class="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+							>
+								<option value="Personal">Personal</option>
+								<option value="Work">Work</option>
+								<option value="Other">Other</option>
+							</select>
+							<button
+								onclick={() => removeEmailAddress(i)}
+								class="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+								aria-label="Remove email address"
+							>
+								Remove
+							</button>
+						</div>
+						{#if emailErrors[i]}
+							<p class="text-sm text-red-600 mt-1">{emailErrors[i]}</p>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
+
+		<button onclick={addEmailAddress} class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+			+ Add Email Address
+		</button>
 	</div>
 
 	<div>

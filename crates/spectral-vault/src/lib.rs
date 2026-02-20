@@ -552,6 +552,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(deprecated)]
     async fn test_save_and_load_profile() {
         let (_temp_dir, db_path) = test_vault_path();
         let password = "test_password";

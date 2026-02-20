@@ -8,6 +8,15 @@
 import { invoke } from '@tauri-apps/api/core';
 
 /**
+ * Email address with type classification
+ */
+export interface EmailAddress {
+	email: string; // Display format as entered by user
+	email_normalized?: string; // Normalized format for matching (lowercase)
+	email_type: 'Personal' | 'Work' | 'Other';
+}
+
+/**
  * Phone number with type classification
  */
 export interface PhoneNumber {
@@ -76,6 +85,7 @@ export interface ProfileInput {
 
 	// Phase 2 fields
 	phone_numbers?: PhoneNumber[];
+	email_addresses?: EmailAddress[];
 	previous_addresses?: PreviousAddress[];
 	aliases?: Alias[];
 	relatives?: Relative[];
