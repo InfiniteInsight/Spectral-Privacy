@@ -4,8 +4,32 @@ use crate::error::CommandError;
 use crate::state::AppState;
 use serde::Serialize;
 use spectral_privacy::{FeatureFlags, LlmProvider, PrivacyEngine, PrivacyLevel, TaskType};
+use sqlx::SqlitePool;
 use tauri::State;
 use tracing::info;
+
+/// Helper function to get database pool for a vault.
+///
+/// # Errors
+/// Returns `CommandError` if vault is locked or database access fails.
+fn get_vault_pool(state: &AppState, vault_id: &str) -> Result<SqlitePool, CommandError> {
+    let vault = state
+        .get_vault(vault_id)
+        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
+
+    let pool = vault
+        .database()
+        .map_err(|e| {
+            CommandError::new(
+                "VAULT_ERROR",
+                format!("Failed to access vault database: {e}"),
+            )
+        })?
+        .pool()
+        .clone();
+
+    Ok(pool)
+}
 
 /// Privacy settings response
 #[derive(Debug, Serialize)]
@@ -35,24 +59,7 @@ pub async fn get_privacy_settings(
 ) -> Result<PrivacySettings, CommandError> {
     info!("Getting privacy settings for vault: {}", vault_id);
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    // Get database pool
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool()
-        .clone();
-
-    // Create privacy engine
+    let pool = get_vault_pool(&state, &vault_id)?;
     let engine = PrivacyEngine::new(pool);
 
     // Get settings
@@ -90,24 +97,7 @@ pub async fn set_privacy_level(
         level, vault_id
     );
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    // Get database pool
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool()
-        .clone();
-
-    // Create privacy engine
+    let pool = get_vault_pool(&state, &vault_id)?;
     let engine = PrivacyEngine::new(pool);
 
     // Set privacy level
@@ -143,24 +133,7 @@ pub async fn set_custom_feature_flags(
 ) -> Result<(), CommandError> {
     info!("Setting custom feature flags for vault: {}", vault_id);
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    // Get database pool
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool()
-        .clone();
-
-    // Create privacy engine
+    let pool = get_vault_pool(&state, &vault_id)?;
     let engine = PrivacyEngine::new(pool);
 
     // Set feature flags
@@ -184,23 +157,10 @@ pub async fn get_llm_provider_settings(
 ) -> Result<LlmProviderSettings, CommandError> {
     info!("Getting LLM provider settings for vault: {}", vault_id);
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool();
+    let pool = get_vault_pool(&state, &vault_id)?;
 
     // Get primary provider
-    let primary_provider = spectral_privacy::get_primary_provider(pool)
+    let primary_provider = spectral_privacy::get_primary_provider(&pool)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -211,7 +171,7 @@ pub async fn get_llm_provider_settings(
 
     // Get task-specific providers
     let email_draft_provider =
-        spectral_privacy::get_provider_preference(pool, TaskType::EmailDraft)
+        spectral_privacy::get_provider_preference(&pool, TaskType::EmailDraft)
             .await
             .map_err(|e| {
                 CommandError::new(
@@ -220,7 +180,7 @@ pub async fn get_llm_provider_settings(
                 )
             })?;
 
-    let form_fill_provider = spectral_privacy::get_provider_preference(pool, TaskType::FormFill)
+    let form_fill_provider = spectral_privacy::get_provider_preference(&pool, TaskType::FormFill)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -230,7 +190,7 @@ pub async fn get_llm_provider_settings(
         })?;
 
     // Check which API keys are configured
-    let has_openai_key = spectral_privacy::get_api_key(pool, LlmProvider::OpenAi)
+    let has_openai_key = spectral_privacy::get_api_key(&pool, LlmProvider::OpenAi)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -240,7 +200,7 @@ pub async fn get_llm_provider_settings(
         })?
         .is_some();
 
-    let has_gemini_key = spectral_privacy::get_api_key(pool, LlmProvider::Gemini)
+    let has_gemini_key = spectral_privacy::get_api_key(&pool, LlmProvider::Gemini)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -250,7 +210,7 @@ pub async fn get_llm_provider_settings(
         })?
         .is_some();
 
-    let has_claude_key = spectral_privacy::get_api_key(pool, LlmProvider::Claude)
+    let has_claude_key = spectral_privacy::get_api_key(&pool, LlmProvider::Claude)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -284,23 +244,10 @@ pub async fn set_llm_primary_provider(
         provider, vault_id
     );
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool();
+    let pool = get_vault_pool(&state, &vault_id)?;
 
     // Set primary provider
-    spectral_privacy::set_primary_provider(pool, provider)
+    spectral_privacy::set_primary_provider(&pool, provider)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -327,23 +274,10 @@ pub async fn set_llm_task_provider(
         task_type, provider, vault_id
     );
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool();
+    let pool = get_vault_pool(&state, &vault_id)?;
 
     // Set task-specific provider
-    spectral_privacy::set_provider_preference(pool, task_type, provider)
+    spectral_privacy::set_provider_preference(&pool, task_type, provider)
         .await
         .map_err(|e| {
             CommandError::new(
@@ -370,23 +304,10 @@ pub async fn set_llm_api_key(
         provider, vault_id
     );
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool();
+    let pool = get_vault_pool(&state, &vault_id)?;
 
     // Set API key
-    spectral_privacy::set_api_key(pool, provider, &api_key)
+    spectral_privacy::set_api_key(&pool, provider, &api_key)
         .await
         .map_err(|e| CommandError::new("PRIVACY_ERROR", format!("Failed to set API key: {}", e)))?;
 
@@ -408,20 +329,7 @@ pub async fn test_llm_provider(
         provider, vault_id
     );
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool();
+    let pool = get_vault_pool(&state, &vault_id)?;
 
     // For local providers (Ollama, LM Studio), just check if they're running
     // For cloud providers, verify API key is set
@@ -433,7 +341,7 @@ pub async fn test_llm_provider(
         }
         LlmProvider::OpenAi | LlmProvider::Gemini | LlmProvider::Claude => {
             // Check if API key is configured
-            let has_key = spectral_privacy::get_api_key(pool, provider)
+            let has_key = spectral_privacy::get_api_key(&pool, provider)
                 .await
                 .map_err(|e| {
                     CommandError::new("PRIVACY_ERROR", format!("Failed to check API key: {}", e))

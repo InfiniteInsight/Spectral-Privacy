@@ -4,8 +4,32 @@ use crate::error::CommandError;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_privacy::{CompletionRequest, PrivacyAwareLlmRouter, TaskType};
+use sqlx::SqlitePool;
 use tauri::State;
 use tracing::info;
+
+/// Helper function to get database pool for a vault.
+///
+/// # Errors
+/// Returns `CommandError` if vault is locked or database access fails.
+fn get_vault_pool(state: &AppState, vault_id: &str) -> Result<SqlitePool, CommandError> {
+    let vault = state
+        .get_vault(vault_id)
+        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
+
+    let pool = vault
+        .database()
+        .map_err(|e| {
+            CommandError::new(
+                "VAULT_ERROR",
+                format!("Failed to access vault database: {e}"),
+            )
+        })?
+        .pool()
+        .clone();
+
+    Ok(pool)
+}
 
 /// Email draft request parameters
 #[derive(Debug, Deserialize)]
@@ -113,23 +137,7 @@ pub async fn draft_email(
 ) -> Result<EmailDraftResponse, CommandError> {
     info!("Drafting email for vault: {}", vault_id);
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool()
-        .clone();
-
-    // Create router
+    let pool = get_vault_pool(&state, &vault_id)?;
     let router = PrivacyAwareLlmRouter::new(pool);
 
     // Build prompt
@@ -285,23 +293,7 @@ pub async fn fill_form(
 ) -> Result<FormFillingResponse, CommandError> {
     info!("Filling form for vault: {}", vault_id);
 
-    // Get vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
-
-    let pool = vault
-        .database()
-        .map_err(|e| {
-            CommandError::new(
-                "VAULT_ERROR",
-                format!("Failed to access vault database: {}", e),
-            )
-        })?
-        .pool()
-        .clone();
-
-    // Create router
+    let pool = get_vault_pool(&state, &vault_id)?;
     let router = PrivacyAwareLlmRouter::new(pool);
 
     // Build prompt
