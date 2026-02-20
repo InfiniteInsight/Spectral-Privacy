@@ -27,6 +27,14 @@ pub enum LlmProvider {
     LmStudio,
 }
 
+impl LlmProvider {
+    /// Check if this provider runs locally (doesn't send data to cloud).
+    #[must_use]
+    pub fn is_local(self) -> bool {
+        matches!(self, Self::Ollama | Self::LmStudio)
+    }
+}
+
 /// Task types that can have provider preferences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

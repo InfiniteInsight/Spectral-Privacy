@@ -11,10 +11,11 @@ use crate::error::Result;
 use crate::llm_settings::{get_primary_provider, get_provider_preference, LlmProvider, TaskType};
 use crate::types::Feature;
 use spectral_llm::{
-    AnthropicProvider, CompletionRequest, CompletionResponse, GeminiProvider,
-    LlmProvider as LlmProviderTrait, LmStudioProvider, OllamaProvider, OpenAiProvider,
+    AnthropicProvider, CompletionRequest, CompletionResponse, FilterStrategy, GeminiProvider,
+    LlmProvider as LlmProviderTrait, LmStudioProvider, OllamaProvider, OpenAiProvider, PiiFilter,
 };
 use sqlx::SqlitePool;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Privacy-aware LLM router.
@@ -57,18 +58,29 @@ impl PrivacyAwareLlmRouter {
         // 3. Create provider instance
         let provider = self.create_provider(provider_type)?;
 
-        // 4. TODO (Phase 5): Apply PII filtering for cloud providers
-        // For now, pass through directly
+        // 4. Apply PII filtering for cloud providers
+        let (filtered_request, token_map) = if provider_type.is_local() {
+            // Local providers: no filtering needed
+            (request, None)
+        } else {
+            // Cloud providers: apply tokenization to protect PII
+            Self::apply_pii_filtering(request)?
+        };
 
         // 5. Make request
         let response = provider
-            .complete(request)
+            .complete(filtered_request)
             .await
             .map_err(|e| crate::error::PrivacyError::LlmRequest(e.to_string()))?;
 
-        // 6. TODO (Phase 5): Detokenize PII in response if needed
+        // 6. Detokenize PII in response if filtering was applied
+        let final_response = if let Some(token_map) = token_map {
+            Self::detokenize_response(response, &token_map)
+        } else {
+            response
+        };
 
-        Ok(response)
+        Ok(final_response)
     }
 
     /// Select the provider to use based on task preferences.
@@ -157,6 +169,82 @@ impl PrivacyAwareLlmRouter {
                 })?;
                 Ok(Arc::new(provider))
             }
+        }
+    }
+
+    /// Apply PII filtering to a request for cloud providers.
+    ///
+    /// Uses tokenization strategy to replace PII with reversible tokens.
+    /// Returns the filtered request and the token map for detokenization.
+    fn apply_pii_filtering(
+        request: CompletionRequest,
+    ) -> Result<(CompletionRequest, Option<HashMap<String, String>>)> {
+        let filter = PiiFilter::with_strategy(FilterStrategy::Tokenize);
+
+        // Filter each message's content
+        let mut filtered_messages = Vec::new();
+        let mut combined_token_map = HashMap::new();
+
+        for message in request.messages {
+            let filter_result = filter
+                .filter(&message.content)
+                .map_err(|e| crate::error::PrivacyError::LlmRequest(e.to_string()))?;
+
+            // Merge token maps from all messages
+            if let Some(token_map) = filter_result.token_map {
+                combined_token_map.extend(token_map);
+            }
+
+            filtered_messages.push(spectral_llm::Message {
+                role: message.role,
+                content: filter_result.filtered_text,
+            });
+        }
+
+        // Also filter system prompt if present
+        let filtered_system_prompt = if let Some(system_prompt) = request.system_prompt {
+            let filter_result = filter
+                .filter(&system_prompt)
+                .map_err(|e| crate::error::PrivacyError::LlmRequest(e.to_string()))?;
+
+            if let Some(token_map) = filter_result.token_map {
+                combined_token_map.extend(token_map);
+            }
+
+            Some(filter_result.filtered_text)
+        } else {
+            None
+        };
+
+        let filtered_request = CompletionRequest {
+            messages: filtered_messages,
+            max_tokens: request.max_tokens,
+            temperature: request.temperature,
+            system_prompt: filtered_system_prompt,
+            stop_sequences: request.stop_sequences,
+            extra: request.extra,
+        };
+
+        let token_map = if combined_token_map.is_empty() {
+            None
+        } else {
+            Some(combined_token_map)
+        };
+
+        Ok((filtered_request, token_map))
+    }
+
+    /// Detokenize a response by replacing tokens with original PII values.
+    fn detokenize_response(
+        response: CompletionResponse,
+        token_map: &HashMap<String, String>,
+    ) -> CompletionResponse {
+        let filter = PiiFilter::with_strategy(FilterStrategy::Tokenize);
+        let detokenized_content = filter.detokenize(&response.content, token_map);
+
+        CompletionResponse {
+            content: detokenized_content,
+            ..response
         }
     }
 }
