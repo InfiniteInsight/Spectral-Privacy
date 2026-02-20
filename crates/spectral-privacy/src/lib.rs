@@ -41,5 +41,8 @@
 
 /// Error types for privacy operations.
 pub mod error;
+/// Core types for privacy controls.
+pub mod types;
 
 pub use error::{PrivacyError, Result};
+pub use types::{Feature, FeatureFlags, PermissionResult, PrivacyLevel};
