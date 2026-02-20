@@ -159,3 +159,171 @@ pub async fn draft_email(
         }),
     })
 }
+
+// ============================================================================
+// Form Filling
+// ============================================================================
+
+/// A form field to be filled
+#[derive(Debug, Deserialize)]
+pub struct FormField {
+    /// Field identifier or name
+    pub name: String,
+    /// Field label or description
+    pub label: String,
+    /// Field type (e.g., "text", "email", "phone", "address")
+    #[serde(rename = "type")]
+    pub field_type: String,
+    /// Whether this field is required
+    pub required: Option<bool>,
+}
+
+/// Form filling request parameters
+#[derive(Debug, Deserialize)]
+pub struct FormFillingRequest {
+    /// The form fields to fill
+    pub fields: Vec<FormField>,
+    /// Optional context about the form or purpose
+    pub context: Option<String>,
+}
+
+/// Form filling response metadata
+#[derive(Debug, Serialize)]
+pub struct FormFillingMetadata {
+    /// The provider used for generation
+    pub provider: String,
+    /// Whether PII filtering was applied
+    pub pii_filtered: bool,
+    /// Number of fields filled
+    pub fields_filled: usize,
+}
+
+/// Form filling response
+#[derive(Debug, Serialize)]
+pub struct FormFillingResponse {
+    /// Filled field values, keyed by field name
+    pub values: std::collections::HashMap<String, String>,
+    /// Metadata about the generation
+    pub metadata: Option<FormFillingMetadata>,
+}
+
+/// Build a prompt for form filling
+fn build_form_prompt(request: &FormFillingRequest) -> String {
+    let mut parts = vec!["Fill the following form fields with appropriate values:".to_string()];
+
+    if let Some(context) = &request.context {
+        parts.push(format!("Context: {}", context));
+    }
+
+    parts.push("\nFields:".to_string());
+    for field in &request.fields {
+        let required = if field.required.unwrap_or(false) {
+            " (required)"
+        } else {
+            ""
+        };
+        parts.push(format!(
+            "- {} ({}): {}{}",
+            field.name, field.field_type, field.label, required
+        ));
+    }
+
+    parts.push("\nProvide the response in the following format:".to_string());
+    parts.push("field_name: value".to_string());
+    parts.push("\nOnly provide realistic values appropriate for each field type.".to_string());
+
+    parts.join("\n")
+}
+
+/// Parse form filling response from LLM
+fn parse_form_response(
+    content: &str,
+    fields: &[FormField],
+) -> Result<std::collections::HashMap<String, String>, CommandError> {
+    use std::collections::HashMap;
+
+    let mut values = HashMap::new();
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        // Parse "field_name: value" format
+        if let Some(colon_pos) = line.find(':') {
+            let field_name = line[..colon_pos].trim().to_string();
+            let value = line[colon_pos + 1..].trim().to_string();
+
+            // Validate field exists
+            if fields.iter().any(|f| f.name == field_name) {
+                values.insert(field_name, value);
+            }
+        }
+    }
+
+    if values.is_empty() {
+        return Err(CommandError::new(
+            "LLM_PARSE_ERROR",
+            "Failed to parse form values from LLM response",
+        ));
+    }
+
+    Ok(values)
+}
+
+/// Fill a form using LLM.
+///
+/// Uses the privacy-aware LLM router to generate form field values based on
+/// the field definitions and optional context. The router will select an
+/// appropriate LLM provider based on privacy settings and apply PII filtering.
+#[tauri::command]
+pub async fn fill_form(
+    state: State<'_, AppState>,
+    vault_id: String,
+    request: FormFillingRequest,
+) -> Result<FormFillingResponse, CommandError> {
+    info!("Filling form for vault: {}", vault_id);
+
+    // Get vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| CommandError::new("VAULT_LOCKED", "Vault is locked"))?;
+
+    let pool = vault
+        .database()
+        .map_err(|e| {
+            CommandError::new(
+                "VAULT_ERROR",
+                format!("Failed to access vault database: {}", e),
+            )
+        })?
+        .pool()
+        .clone();
+
+    // Create router
+    let router = PrivacyAwareLlmRouter::new(pool);
+
+    // Build prompt
+    let prompt = build_form_prompt(&request);
+
+    // Make LLM request
+    let completion_request = CompletionRequest::new(&prompt);
+    let response = router
+        .route(TaskType::FormFill, completion_request)
+        .await
+        .map_err(|e| CommandError::new("LLM_ERROR", format!("Failed to fill form: {}", e)))?;
+
+    // Parse response
+    let values = parse_form_response(&response.content, &request.fields)?;
+    let fields_filled = values.len();
+
+    Ok(FormFillingResponse {
+        values,
+        metadata: Some(FormFillingMetadata {
+            provider: "stub".to_string(), // TODO: Get actual provider from router
+            pii_filtered: false,          // TODO: Get actual filtering status
+            fields_filled,
+        }),
+    })
+}
