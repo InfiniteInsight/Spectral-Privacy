@@ -269,8 +269,14 @@ pub enum RelationshipType {
 /// Relative or family member information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relative {
-    /// Encrypted name of relative
-    pub name: EncryptedField<String>,
+    /// Encrypted first name of relative
+    pub first_name: Option<EncryptedField<String>>,
+    /// Encrypted middle name of relative
+    pub middle_name: Option<EncryptedField<String>>,
+    /// Encrypted last name of relative
+    pub last_name: Option<EncryptedField<String>>,
+    /// Encrypted maiden name (for relatives who changed their last name)
+    pub maiden_name: Option<EncryptedField<String>>,
     /// Type of relationship
     pub relationship: RelationshipType,
 }
@@ -802,15 +808,40 @@ mod tests {
     fn test_relative_serialization() {
         let key = test_key();
         let relative = Relative {
-            name: encrypt_string("Jane Doe", &key).expect("encrypt"),
+            first_name: Some(encrypt_string("Jane", &key).expect("encrypt")),
+            middle_name: None,
+            last_name: Some(encrypt_string("Doe", &key).expect("encrypt")),
+            maiden_name: Some(encrypt_string("Smith", &key).expect("encrypt")),
             relationship: RelationshipType::Spouse,
         };
 
         let json = serde_json::to_string(&relative).expect("serialize");
         let deserialized: Relative = serde_json::from_str(&json).expect("deserialize");
 
-        let decrypted = deserialized.name.decrypt(&key).expect("decrypt");
-        assert_eq!(decrypted, "Jane Doe");
+        let first_name = deserialized
+            .first_name
+            .as_ref()
+            .expect("first_name")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(first_name, "Jane");
+
+        let last_name = deserialized
+            .last_name
+            .as_ref()
+            .expect("last_name")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(last_name, "Doe");
+
+        let maiden_name = deserialized
+            .maiden_name
+            .as_ref()
+            .expect("maiden_name")
+            .decrypt(&key)
+            .expect("decrypt");
+        assert_eq!(maiden_name, "Smith");
+
         assert_eq!(deserialized.relationship, RelationshipType::Spouse);
     }
 
@@ -837,7 +868,10 @@ mod tests {
         }];
 
         profile.relatives = vec![Relative {
-            name: encrypt_string("Jane", &key).expect("encrypt"),
+            first_name: Some(encrypt_string("Jane", &key).expect("encrypt")),
+            middle_name: None,
+            last_name: Some(encrypt_string("Doe", &key).expect("encrypt")),
+            maiden_name: None,
             relationship: RelationshipType::Spouse,
         }];
 
@@ -913,7 +947,10 @@ mod tests {
             nickname: Some(encrypt_string("JJ", &key).expect("encrypt")),
         }];
         profile.relatives = vec![Relative {
-            name: encrypt_string("Jane", &key).expect("encrypt"),
+            first_name: Some(encrypt_string("Jane", &key).expect("encrypt")),
+            middle_name: None,
+            last_name: Some(encrypt_string("Doe", &key).expect("encrypt")),
+            maiden_name: None,
             relationship: RelationshipType::Spouse,
         }];
 

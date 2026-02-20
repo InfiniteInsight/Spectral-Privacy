@@ -52,7 +52,10 @@ export interface Alias {
  * Relative or family member
  */
 export interface Relative {
-	name: string;
+	first_name?: string;
+	middle_name?: string;
+	last_name?: string;
+	maiden_name?: string;
 	relationship: 'Spouse' | 'Partner' | 'Parent' | 'Child' | 'Sibling' | 'Other';
 }
 

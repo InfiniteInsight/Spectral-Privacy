@@ -67,6 +67,18 @@
 		onUpdate({ relatives });
 	}
 
+	function formatRelativeDisplay(relative: Relative): string {
+		const parts = [relative.first_name, relative.middle_name, relative.last_name]
+			.filter(Boolean)
+			.join(' ');
+		if (relative.maiden_name) {
+			return parts
+				? `${parts} (maiden: ${relative.maiden_name})`
+				: `(maiden: ${relative.maiden_name})`;
+		}
+		return parts || 'Unnamed';
+	}
+
 	export function validate(): boolean {
 		// All fields optional - always valid
 		return true;
@@ -125,7 +137,7 @@
 				{#each relatives as relative, i (i)}
 					<div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
 						<div class="text-sm">
-							<div class="font-medium">{relative.name}</div>
+							<div class="font-medium">{formatRelativeDisplay(relative)}</div>
 							<div class="text-gray-600">{relative.relationship}</div>
 						</div>
 						<div class="flex gap-2">

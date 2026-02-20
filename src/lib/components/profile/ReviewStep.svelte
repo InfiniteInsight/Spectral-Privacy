@@ -17,6 +17,19 @@
 		return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 	}
 
+	// Format relative name
+	function formatRelativeName(relative: any): string {
+		const parts = [relative.first_name, relative.middle_name, relative.last_name]
+			.filter(Boolean)
+			.join(' ');
+		if (relative.maiden_name) {
+			return parts
+				? `${parts} (maiden: ${relative.maiden_name})`
+				: `(maiden: ${relative.maiden_name})`;
+		}
+		return parts || 'Unnamed';
+	}
+
 	// Get full name
 	const fullName = $derived(() => {
 		const parts = [data.first_name, data.middle_name, data.last_name].filter(Boolean);
@@ -174,7 +187,7 @@
 					<dt class="text-gray-500">Family Members</dt>
 					<dd class="text-gray-900">
 						{#each data.relatives as relative}
-							<div>{relative.name} ({relative.relationship})</div>
+							<div>{formatRelativeName(relative)} ({relative.relationship})</div>
 						{/each}
 					</dd>
 				</div>

@@ -12,21 +12,40 @@
 
 	let formData = $state<Relative>(
 		initialRelative || {
-			name: '',
+			first_name: '',
+			middle_name: '',
+			last_name: '',
+			maiden_name: '',
 			relationship: 'Other'
 		}
 	);
 
 	function handleSave() {
-		if (!formData.name.trim()) {
+		// At least one name field must be filled
+		if (
+			!formData.first_name?.trim() &&
+			!formData.middle_name?.trim() &&
+			!formData.last_name?.trim() &&
+			!formData.maiden_name?.trim()
+		) {
 			return;
 		}
 
 		onSave({
-			name: formData.name.trim(),
+			first_name: formData.first_name?.trim() || undefined,
+			middle_name: formData.middle_name?.trim() || undefined,
+			last_name: formData.last_name?.trim() || undefined,
+			maiden_name: formData.maiden_name?.trim() || undefined,
 			relationship: formData.relationship
 		});
 	}
+
+	const isValid = $derived(
+		formData.first_name?.trim() ||
+			formData.middle_name?.trim() ||
+			formData.last_name?.trim() ||
+			formData.maiden_name?.trim()
+	);
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
@@ -41,24 +60,62 @@
 	role="dialog"
 	aria-modal="true"
 	aria-labelledby="modal-title"
+	tabindex="0"
 >
 	<div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
 		<h2 id="modal-title" class="text-xl font-semibold mb-4">
 			{initialRelative ? 'Edit' : 'Add'} Relative
 		</h2>
 
+		<p class="text-sm text-gray-600 mb-4">
+			Fill in at least one name field. Include maiden name if applicable (for tracking relatives who
+			changed their last name).
+		</p>
+
 		<div class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium mb-1" for="name">
-					Name <span class="text-red-500">*</span>
+				<label class="block text-sm font-medium mb-1" for="first_name"> First Name </label>
+				<input
+					id="first_name"
+					type="text"
+					bind:value={formData.first_name}
+					class="w-full px-3 py-2 border rounded-md"
+					placeholder="Jane"
+				/>
+			</div>
+
+			<div>
+				<label class="block text-sm font-medium mb-1" for="middle_name"> Middle Name </label>
+				<input
+					id="middle_name"
+					type="text"
+					bind:value={formData.middle_name}
+					class="w-full px-3 py-2 border rounded-md"
+					placeholder="Marie"
+				/>
+			</div>
+
+			<div>
+				<label class="block text-sm font-medium mb-1" for="last_name"> Last Name </label>
+				<input
+					id="last_name"
+					type="text"
+					bind:value={formData.last_name}
+					class="w-full px-3 py-2 border rounded-md"
+					placeholder="Doe"
+				/>
+			</div>
+
+			<div>
+				<label class="block text-sm font-medium mb-1" for="maiden_name">
+					Maiden Name (if applicable)
 				</label>
 				<input
-					id="name"
+					id="maiden_name"
 					type="text"
-					bind:value={formData.name}
+					bind:value={formData.maiden_name}
 					class="w-full px-3 py-2 border rounded-md"
-					placeholder="Jane Doe"
-					required
+					placeholder="Smith"
 				/>
 			</div>
 
@@ -89,7 +146,7 @@
 			<button
 				onclick={handleSave}
 				class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-				disabled={!formData.name.trim()}
+				disabled={!isValid}
 			>
 				Save
 			</button>
