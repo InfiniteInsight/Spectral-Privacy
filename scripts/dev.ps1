@@ -2,8 +2,8 @@
 $ErrorActionPreference = "Stop"
 
 # Color output functions
-function Write-Success { Write-Host "✓ $args" -ForegroundColor Green }
-function Write-Warning { Write-Host "$args" -ForegroundColor Yellow }
+function Write-Success { Write-Host "[OK] $args" -ForegroundColor Green }
+function Write-Warning { Write-Host "[WARN] $args" -ForegroundColor Yellow }
 
 # Function to check if port is in use
 function Test-Port {
