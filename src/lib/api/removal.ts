@@ -57,5 +57,22 @@ export const removalAPI = {
 			vaultId,
 			scanJobId
 		});
+	},
+
+	/**
+	 * Get removal job history for a vault
+	 */
+	async getJobHistory(vaultId: string): Promise<RemovalJobSummary[]> {
+		return await invoke<RemovalJobSummary[]>('get_removal_job_history', { vaultId });
 	}
 };
+
+export interface RemovalJobSummary {
+	scan_job_id: string;
+	submitted_at: string;
+	total: number;
+	submitted_count: number;
+	completed_count: number;
+	failed_count: number;
+	pending_count: number;
+}

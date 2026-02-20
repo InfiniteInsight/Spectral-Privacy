@@ -118,6 +118,18 @@ pub struct BrokerMetadata {
 
     /// Date when this definition was last verified (YYYY-MM-DD)
     pub last_verified: NaiveDate,
+
+    /// Scan priority tier for automated scanning
+    #[serde(default)]
+    pub scan_priority: ScanPriority,
+
+    /// Geographic regions where this broker is relevant
+    #[serde(default = "default_region_relevance")]
+    pub region_relevance: Vec<String>,
+}
+
+fn default_region_relevance() -> Vec<String> {
+    vec!["Global".to_string()]
 }
 
 /// Categories of data brokers.
@@ -140,6 +152,21 @@ pub enum BrokerCategory {
     SocialMedia,
     /// Other/uncategorized
     Other,
+}
+
+/// Scan priority tiers for automated scanning.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "PascalCase")]
+pub enum ScanPriority {
+    /// High-priority brokers scanned automatically (top ~10 brokers)
+    AutoScanTier1,
+    /// Medium-priority brokers scanned automatically (next ~20 brokers)
+    AutoScanTier2,
+    /// Only scan when explicitly requested
+    #[default]
+    OnRequest,
+    /// Never auto-scan, manual only
+    ManualOnly,
 }
 
 impl BrokerCategory {
@@ -343,7 +370,7 @@ impl SearchMethod {
 }
 
 /// CSS selectors for web form elements.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FormSelectors {
     /// Selector for listing URL input
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -361,7 +388,12 @@ pub struct FormSelectors {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_name_input: Option<String>,
 
+    /// Selector for full name input (single field combining first and last name)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full_name_input: Option<String>,
+
     /// Selector for submit button
+    #[serde(default)]
     pub submit_button: String,
 
     /// Selector for CAPTCHA iframe or container
@@ -371,6 +403,10 @@ pub struct FormSelectors {
     /// Selector for success confirmation message
     #[serde(skip_serializing_if = "Option::is_none")]
     pub success_indicator: Option<String>,
+
+    /// Selector for error message indicator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_indicator: Option<String>,
 }
 
 /// Methods for removal/opt-out from a broker.
@@ -416,6 +452,25 @@ pub enum RemovalMethod {
         instructions: String,
     },
 
+    /// Browser-automated form for JS-heavy opt-out flows
+    #[serde(rename = "browser-form")]
+    BrowserForm {
+        /// URL of the opt-out form
+        url: String,
+        /// Form field mappings
+        #[serde(default)]
+        fields: HashMap<String, String>,
+        /// CSS selectors for form elements
+        #[serde(default)]
+        form_selectors: FormSelectors,
+        /// Confirmation method
+        #[serde(default)]
+        confirmation: ConfirmationType,
+        /// Additional notes or instructions
+        #[serde(default)]
+        notes: String,
+    },
+
     /// Manual process with instructions
     Manual {
         /// Instructions for manual removal
@@ -444,6 +499,7 @@ impl RemovalMethod {
                 phone,
                 instructions,
             } => Self::validate_phone(broker_id, phone, instructions),
+            Self::BrowserForm { url, .. } => Self::validate_browser_form(broker_id, url),
             Self::Manual { instructions } => Self::validate_manual(broker_id, instructions),
         }
     }
@@ -528,6 +584,16 @@ impl RemovalMethod {
         Ok(())
     }
 
+    fn validate_browser_form(broker_id: &BrokerId, url: &str) -> Result<()> {
+        if url.is_empty() {
+            return Err(BrokerError::ValidationError {
+                broker_id: broker_id.to_string(),
+                reason: "BrowserForm removal requires URL".to_string(),
+            });
+        }
+        Ok(())
+    }
+
     fn validate_manual(broker_id: &BrokerId, instructions: &str) -> Result<()> {
         if instructions.is_empty() {
             return Err(BrokerError::ValidationError {
@@ -540,12 +606,13 @@ impl RemovalMethod {
 }
 
 /// How removal confirmation is handled.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum ConfirmationType {
     /// Requires email verification via link
     EmailVerification,
     /// Automatic confirmation (no follow-up needed)
+    #[default]
     Automatic,
     /// Manual verification required (check back later)
     Manual,
@@ -611,9 +678,11 @@ mod tests {
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
         let method = RemovalMethod::WebForm {
             url: "https://example.com/optout".to_string(),
@@ -632,9 +701,11 @@ mod tests {
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
         let method = RemovalMethod::WebForm {
             url: String::new(),
@@ -677,9 +748,11 @@ mod tests {
             email_input: Some("input[name='email']".to_string()),
             first_name_input: None,
             last_name_input: None,
+            full_name_input: None,
             submit_button: "button[type='submit']".to_string(),
             captcha_frame: None,
             success_indicator: Some(".success".to_string()),
+            error_indicator: None,
         };
 
         let definition = BrokerDefinition {
@@ -693,6 +766,8 @@ mod tests {
                 typical_removal_days: 7,
                 recheck_interval_days: 30,
                 last_verified: NaiveDate::from_ymd_opt(2025, 5, 1).expect("valid date"),
+                scan_priority: ScanPriority::OnRequest,
+                region_relevance: vec!["Global".to_string()],
             },
             search: SearchMethod::UrlTemplate {
                 template: "https://test.com/{first}-{last}".to_string(),
@@ -764,5 +839,98 @@ mod tests {
             .expect("should have result selectors");
         assert_eq!(selectors.results_container, ".results");
         assert_eq!(selectors.result_item, ".result-card");
+    }
+
+    #[test]
+    fn test_scan_priority_defaults_to_on_request() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition without scan_priority");
+        assert_eq!(def.broker.scan_priority, ScanPriority::OnRequest);
+    }
+
+    #[test]
+    fn test_region_relevance_defaults_to_global() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition without region_relevance");
+        assert_eq!(def.broker.region_relevance, vec!["Global".to_string()]);
+    }
+
+    #[test]
+    fn test_scan_priority_can_be_set() {
+        let toml = r#"
+            [broker]
+            id = "test-broker"
+            name = "Test Broker"
+            url = "https://example.com"
+            domain = "example.com"
+            category = "people-search"
+            difficulty = "Easy"
+            typical_removal_days = 7
+            recheck_interval_days = 30
+            last_verified = "2025-01-01"
+            scan_priority = "AutoScanTier1"
+            region_relevance = ["US", "Global"]
+
+            [search]
+            method = "url-template"
+            template = "https://example.com/{first}-{last}"
+            requires_fields = ["first_name", "last_name"]
+
+            [removal]
+            method = "manual"
+            instructions = "Manual removal"
+        "#;
+
+        let def: BrokerDefinition =
+            toml::from_str(toml).expect("should parse broker definition with scan_priority");
+        assert_eq!(def.broker.scan_priority, ScanPriority::AutoScanTier1);
+        assert_eq!(
+            def.broker.region_relevance,
+            vec!["US".to_string(), "Global".to_string()]
+        );
     }
 }

@@ -1,5 +1,6 @@
 //! Application state management.
 
+use spectral_broker::{BrokerDefinition, BrokerLoader, BrokerRegistry};
 use spectral_vault::Vault;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -14,6 +15,17 @@ pub struct AppState {
     /// Currently unlocked vaults: vault_id -> Vault
     /// RwLock allows concurrent reads (status checks)
     pub unlocked_vaults: RwLock<HashMap<String, Arc<Vault>>>,
+
+    /// Shared browser engine for browser-form removal submissions.
+    ///
+    /// Lazily initialized on first use. Wrapped in `Option` so it can be
+    /// initialized after construction without requiring Chromium at startup.
+    /// Wrapped in `Arc` so it can be cloned into background worker tasks.
+    pub browser_engine: Arc<tokio::sync::Mutex<Option<spectral_browser::BrowserEngine>>>,
+
+    /// Broker registry loaded from broker-definitions/ directory.
+    /// Cached on startup for fast access across all commands.
+    pub broker_registry: Arc<BrokerRegistry>,
 }
 
 #[allow(dead_code)] // Used by vault commands in later tasks
@@ -21,6 +33,7 @@ impl AppState {
     /// Create new application state with XDG-compliant paths.
     ///
     /// Creates vaults directory if it doesn't exist.
+    /// Loads broker definitions from broker-definitions/ directory.
     pub fn new() -> Self {
         let dirs = directories::ProjectDirs::from("com", "spectral", "spectral")
             .expect("failed to determine project directories");
@@ -32,10 +45,50 @@ impl AppState {
 
         tracing::info!("Vaults directory: {}", vaults_dir.display());
 
+        // Load broker definitions
+        let broker_registry = Self::load_broker_registry();
+
         Self {
             vaults_dir,
             unlocked_vaults: RwLock::new(HashMap::new()),
+            browser_engine: Arc::new(tokio::sync::Mutex::new(None)),
+            broker_registry: Arc::new(broker_registry),
         }
+    }
+
+    /// Load broker registry from broker-definitions/ directory.
+    ///
+    /// Falls back to empty registry if loading fails.
+    fn load_broker_registry() -> BrokerRegistry {
+        match BrokerLoader::with_default_dir() {
+            Ok(loader) => match BrokerRegistry::load_from(&loader) {
+                Ok(registry) => {
+                    tracing::info!("Loaded broker definitions successfully");
+                    registry
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to load broker definitions: {}", e);
+                    BrokerRegistry::new()
+                }
+            },
+            Err(e) => {
+                tracing::warn!("Failed to find broker-definitions directory: {}", e);
+                BrokerRegistry::new()
+            }
+        }
+    }
+
+    /// Get all broker definitions.
+    pub fn broker_definitions(&self) -> Vec<BrokerDefinition> {
+        self.broker_registry.get_all()
+    }
+
+    /// Get a specific broker definition by ID.
+    pub fn get_broker_definition(&self, broker_id: &str) -> Option<BrokerDefinition> {
+        use spectral_core::BrokerId;
+
+        let broker_id = BrokerId::new(broker_id).ok()?;
+        self.broker_registry.get(&broker_id).ok()
     }
 
     /// Get the directory path for a specific vault.

@@ -10,7 +10,6 @@ pub mod removal_worker;
 pub mod state;
 pub mod types;
 
-#[cfg(debug_assertions)]
 use tauri::Manager;
 use tracing::info;
 
@@ -60,10 +59,39 @@ pub fn run() {
                     window.open_devtools();
                 }
             }
-            #[cfg(not(debug_assertions))]
-            {
-                let _ = app;
+
+            // Set up system tray if supported
+            if spectral_scheduler::tray::is_tray_supported() {
+                use spectral_scheduler::tray;
+                use tauri::menu::{MenuBuilder, MenuItemBuilder};
+                use tauri::tray::TrayIconBuilder;
+
+                let open_item = MenuItemBuilder::with_id("open", "Open Spectral").build(app)?;
+                let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+
+                let menu = MenuBuilder::new(app)
+                    .items(&[&open_item, &quit_item])
+                    .build()?;
+
+                TrayIconBuilder::new()
+                    .menu(&menu)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        tray::MENU_OPEN => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        tray::MENU_QUIT => {
+                            app.exit(0);
+                        }
+                        _ => {}
+                    })
+                    .build(app)?;
+            } else {
+                info!("Tray not supported on this platform — running without tray icon");
             }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -74,12 +102,16 @@ pub fn run() {
             commands::vault::vault_lock,
             commands::vault::vault_status,
             commands::vault::list_vaults,
+            commands::vault::rename_vault,
+            commands::vault::change_vault_password,
+            commands::vault::delete_vault,
             commands::profile::profile_create,
             commands::profile::profile_get,
             commands::profile::profile_update,
             commands::profile::profile_list,
             commands::profile::get_profile_completeness,
             commands::removal::submit_removal,
+            commands::removal::mark_attempt_verified,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
             commands::scan::get_findings,
@@ -90,6 +122,31 @@ pub fn run() {
             commands::scan::get_failed_queue,
             commands::scan::retry_removal,
             commands::scan::get_removal_attempts_by_scan_job,
+            commands::scan::get_removal_job_history,
+            commands::scan::get_privacy_score,
+            commands::scan::get_dashboard_summary,
+            commands::scan::get_removal_evidence,
+            commands::scan::send_removal_email,
+            commands::settings::test_smtp_connection,
+            commands::settings::test_imap_connection,
+            commands::scheduler::get_scheduled_jobs,
+            commands::scheduler::update_scheduled_job,
+            commands::scheduler::run_job_now,
+            commands::brokers::list_brokers,
+            commands::brokers::get_broker_detail,
+            commands::discovery::start_discovery_scan,
+            commands::discovery::get_discovery_findings,
+            commands::discovery::mark_finding_remediated,
+            commands::privacy::get_privacy_settings,
+            commands::privacy::set_privacy_level,
+            commands::privacy::set_custom_feature_flags,
+            commands::privacy::get_llm_provider_settings,
+            commands::privacy::set_llm_primary_provider,
+            commands::privacy::set_llm_task_provider,
+            commands::privacy::set_llm_api_key,
+            commands::privacy::test_llm_provider,
+            commands::llm::draft_email,
+            commands::llm::fill_form,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

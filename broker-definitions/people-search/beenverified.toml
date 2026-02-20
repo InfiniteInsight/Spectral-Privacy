@@ -11,6 +11,8 @@ difficulty = "Medium"
 typical_removal_days = 7
 recheck_interval_days = 30
 last_verified = "2025-05-01"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US", "Global"]
 
 [search]
 method = "web-form"
@@ -36,7 +38,7 @@ no_results_indicator = ".no-results-found"
 captcha_required = "iframe[src*='recaptcha']"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.beenverified.com/app/optout/search"
 confirmation = "email-verification"
 notes = "Requires finding your listing URL first, then email verification. May take 5-7 business days."

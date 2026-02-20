@@ -216,3 +216,103 @@ pub async fn list_vaults(state: State<'_, AppState>) -> Result<Vec<VaultInfo>, C
     info!("Found {} vaults", vaults.len());
     Ok(vaults)
 }
+
+/// Rename a vault by updating its display name in metadata.
+///
+/// Reads `metadata.json` from the vault directory, updates `display_name`,
+/// and writes it back.
+#[tauri::command]
+pub async fn rename_vault(
+    state: State<'_, AppState>,
+    vault_id: String,
+    new_name: String,
+) -> Result<(), CommandError> {
+    info!("Renaming vault: {vault_id}");
+    let new_name = new_name.trim().to_string();
+    if new_name.is_empty() {
+        return Err(CommandError::new(
+            "INVALID_NAME",
+            "Display name cannot be empty",
+        ));
+    }
+
+    if !state.vault_exists(&vault_id) {
+        return Err(CommandError::new(
+            "VAULT_NOT_FOUND",
+            format!("Vault '{}' does not exist", vault_id),
+        ));
+    }
+
+    let metadata_path = state.vault_metadata_path(&vault_id);
+    let mut metadata = VaultMetadata::read_from_file(&metadata_path)?;
+    metadata.display_name = new_name.clone();
+    metadata.write_to_file(&metadata_path)?;
+
+    info!("Renamed vault '{}' to '{}'", vault_id, new_name);
+    Ok(())
+}
+
+/// Change the master password of a vault.
+///
+/// The vault must be currently unlocked. This operation is not yet implemented
+/// because `spectral_vault::Vault` does not expose a `change_password` method.
+#[tauri::command]
+pub async fn change_vault_password(
+    state: State<'_, AppState>,
+    vault_id: String,
+    _old_password: String,
+    new_password: String,
+) -> Result<(), CommandError> {
+    if new_password.len() < 8 {
+        return Err(CommandError::new(
+            "INVALID_PASSWORD",
+            "Password must be at least 8 characters",
+        ));
+    }
+
+    if !state.is_vault_unlocked(&vault_id) {
+        return Err(CommandError::new(
+            "VAULT_LOCKED",
+            "Vault must be unlocked to change password",
+        ));
+    }
+
+    // TODO: verify old_password against the current vault key before re-encrypting
+    Err(CommandError::new(
+        "NOT_IMPLEMENTED",
+        "Password change is not yet implemented",
+    ))
+}
+
+/// Delete a vault after verifying the password.
+///
+/// Verifies the password by attempting to unlock the vault, removes it from
+/// the unlocked map, then deletes the vault directory from disk.
+#[tauri::command]
+pub async fn delete_vault(
+    state: State<'_, AppState>,
+    vault_id: String,
+    password: String,
+) -> Result<(), CommandError> {
+    info!("Deleting vault: {vault_id}");
+    if !state.vault_exists(&vault_id) {
+        return Err(CommandError::new(
+            "VAULT_NOT_FOUND",
+            format!("Vault '{}' does not exist", vault_id),
+        ));
+    }
+
+    // Verify password by attempting to unlock
+    let db_path = state.vault_db_path(&vault_id);
+    Vault::unlock(&password, &db_path).await?;
+
+    // Remove from unlocked vaults (Drop impl zeroizes key)
+    state.remove_vault(&vault_id);
+
+    // Delete vault directory
+    let vault_dir = state.vault_dir(&vault_id);
+    tokio::fs::remove_dir_all(&vault_dir).await?;
+
+    info!("Deleted vault: {}", vault_id);
+    Ok(())
+}

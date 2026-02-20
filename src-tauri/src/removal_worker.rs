@@ -3,8 +3,10 @@
 //! Handles async removal submission with retry logic, CAPTCHA detection,
 //! and database state management.
 
+use spectral_broker::definition::RemovalMethod;
 use spectral_broker::removal::{RemovalOutcome, WebFormSubmitter};
 use spectral_broker::BrokerRegistry;
+use spectral_browser::{BrowserActions, BrowserEngine};
 use spectral_core::BrokerId;
 use spectral_db::removal_attempts::{self, RemovalStatus};
 use spectral_db::Database;
@@ -12,7 +14,7 @@ use spectral_vault::UserProfile;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Semaphore;
+use tokio::sync::{Mutex, Semaphore};
 use tracing::{error, info, warn};
 
 /// Result of a removal submission worker task.
@@ -117,12 +119,327 @@ where
     unreachable!("Loop should have returned via Ok or Err")
 }
 
+/// Submit a removal using browser automation for JS-heavy opt-out flows.
+///
+/// Initializes the browser engine on first call, navigates to the form URL,
+/// fills fields based on the BrowserForm configuration, clicks submit, and
+/// captures a screenshot as evidence stored in the database.
+///
+/// # Arguments
+/// * `broker_def` - Broker definition with BrowserForm removal config
+/// * `attempt_id` - ID of the removal attempt (for evidence FK)
+/// * `field_values` - Decrypted field values mapped from the user profile
+/// * `browser_engine_mutex` - Shared lazy-initialized browser engine
+/// * `db` - Database for storing screenshot evidence
+pub async fn submit_via_browser(
+    broker_def: &spectral_broker::definition::BrokerDefinition,
+    attempt_id: &str,
+    field_values: &HashMap<String, String>,
+    browser_engine_mutex: &Mutex<Option<BrowserEngine>>,
+    db: &Database,
+) -> Result<RemovalOutcome, String> {
+    let RemovalMethod::BrowserForm {
+        url,
+        form_selectors,
+        ..
+    } = &broker_def.removal
+    else {
+        return Err("submit_via_browser called with non-BrowserForm removal method".to_string());
+    };
+
+    // Lock the shared browser engine and initialize if needed
+    let mut engine_guard = browser_engine_mutex.lock().await;
+    if engine_guard.is_none() {
+        info!("Initializing browser engine for first browser-form removal");
+        let engine = BrowserEngine::new()
+            .await
+            .map_err(|e| format!("Failed to initialize browser engine: {}", e))?;
+        *engine_guard = Some(engine);
+    }
+    let engine = engine_guard.as_ref().expect("engine initialized above");
+
+    info!(
+        "submit_via_browser: navigating to {} for attempt {}",
+        url, attempt_id
+    );
+
+    // Navigate to the opt-out form
+    engine
+        .navigate(url)
+        .await
+        .map_err(|e| format!("Navigation failed: {}", e))?;
+
+    // Fill listing URL field if selector and value present
+    if let (Some(selector), Some(value)) = (
+        &form_selectors.listing_url_input,
+        field_values.get("listing_url"),
+    ) {
+        engine
+            .fill_field(selector, value)
+            .await
+            .map_err(|e| format!("Failed to fill listing_url field: {}", e))?;
+    }
+
+    // Fill email field
+    if let (Some(selector), Some(value)) = (&form_selectors.email_input, field_values.get("email"))
+    {
+        engine
+            .fill_field(selector, value)
+            .await
+            .map_err(|e| format!("Failed to fill email field: {}", e))?;
+    }
+
+    // Fill first name field
+    if let (Some(selector), Some(value)) = (
+        &form_selectors.first_name_input,
+        field_values.get("first_name"),
+    ) {
+        engine
+            .fill_field(selector, value)
+            .await
+            .map_err(|e| format!("Failed to fill first_name field: {}", e))?;
+    }
+
+    // Fill last name field
+    if let (Some(selector), Some(value)) = (
+        &form_selectors.last_name_input,
+        field_values.get("last_name"),
+    ) {
+        engine
+            .fill_field(selector, value)
+            .await
+            .map_err(|e| format!("Failed to fill last_name field: {}", e))?;
+    }
+
+    // Fill full name field (if separate from first/last)
+    if let (Some(selector), Some(first), Some(last)) = (
+        &form_selectors.full_name_input,
+        field_values.get("first_name"),
+        field_values.get("last_name"),
+    ) {
+        let full_name = format!("{} {}", first, last);
+        engine
+            .fill_field(selector, &full_name)
+            .await
+            .map_err(|e| format!("Failed to fill full_name field: {}", e))?;
+    }
+
+    // Check for CAPTCHA before submitting
+    if let Some(captcha_selector) = &form_selectors.captcha_frame {
+        // If CAPTCHA element is present, we cannot proceed automatically
+        if engine
+            .wait_for_selector(captcha_selector, 1000)
+            .await
+            .is_ok()
+        {
+            warn!(
+                "CAPTCHA detected on browser-form for attempt {}",
+                attempt_id
+            );
+            let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+                warn!(
+                    "Screenshot capture failed for attempt {}: {}",
+                    attempt_id, e
+                );
+                vec![]
+            });
+            store_screenshot_evidence(db, attempt_id, screenshot).await?;
+            return Ok(RemovalOutcome::RequiresCaptcha {
+                captcha_url: url.clone(),
+            });
+        }
+    }
+
+    // Click the submit button
+    if !form_selectors.submit_button.is_empty() {
+        engine
+            .click(&form_selectors.submit_button)
+            .await
+            .map_err(|e| format!("Failed to click submit button: {}", e))?;
+    }
+
+    // Wait briefly for page response and check for success/error indicators
+    tokio::time::sleep(Duration::from_millis(2000)).await;
+
+    // Check for error indicator first
+    if let Some(error_selector) = &form_selectors.error_indicator {
+        if engine.wait_for_selector(error_selector, 500).await.is_ok() {
+            let error_text = engine
+                .extract_text(error_selector)
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+                warn!(
+                    "Screenshot capture failed for attempt {}: {}",
+                    attempt_id, e
+                );
+                vec![]
+            });
+            store_screenshot_evidence(db, attempt_id, screenshot).await?;
+            return Ok(RemovalOutcome::Failed {
+                reason: format!("Form error: {}", error_text),
+                error_details: None,
+            });
+        }
+    }
+
+    // Take screenshot as evidence
+    let screenshot = engine.screenshot().await.unwrap_or_else(|e| {
+        warn!(
+            "Screenshot capture failed for attempt {}: {}",
+            attempt_id, e
+        );
+        vec![]
+    });
+    store_screenshot_evidence(db, attempt_id, screenshot).await?;
+
+    info!(
+        "submit_via_browser: form submitted successfully for attempt {}",
+        attempt_id
+    );
+
+    Ok(RemovalOutcome::Submitted)
+}
+
+/// Store screenshot evidence for a removal attempt.
+async fn store_screenshot_evidence(
+    db: &Database,
+    attempt_id: &str,
+    screenshot_bytes: Vec<u8>,
+) -> Result<(), String> {
+    let evidence_id = uuid::Uuid::new_v4().to_string();
+    let captured_at = chrono::Utc::now().to_rfc3339();
+
+    sqlx::query(
+        "INSERT INTO removal_evidence (id, attempt_id, screenshot_bytes, captured_at) VALUES (?, ?, ?, ?)"
+    )
+    .bind(&evidence_id)
+    .bind(attempt_id)
+    .bind(&screenshot_bytes)
+    .bind(&captured_at)
+    .execute(db.pool())
+    .await
+    .map_err(|e| format!("Failed to store screenshot evidence: {}", e))?;
+
+    info!(
+        "Stored screenshot evidence {} for attempt {}",
+        evidence_id, attempt_id
+    );
+
+    Ok(())
+}
+
+/// Submit a removal request via email.
+///
+/// Renders the email template with profile data, then either:
+/// - Sends via SMTP if config is available
+/// - Logs the mailto: URL for manual sending (stored in error_message field)
+///
+/// Logs the attempt to the `email_removals` table.
+///
+/// # Arguments
+/// * `broker_def` - Broker definition with Email removal config
+/// * `attempt_id` - ID of the removal attempt
+/// * `field_values` - Decrypted field values from profile
+/// * `smtp_config` - Optional SMTP configuration for sending
+/// * `db` - Database for logging
+pub async fn submit_via_email(
+    broker_def: &spectral_broker::definition::BrokerDefinition,
+    attempt_id: &str,
+    field_values: &HashMap<String, String>,
+    smtp_config: Option<&spectral_mail::SmtpConfig>,
+    db: &Database,
+) -> Result<RemovalOutcome, String> {
+    let RemovalMethod::Email {
+        email: to_email,
+        body: body_template,
+        ..
+    } = &broker_def.removal
+    else {
+        return Err("submit_via_email called with non-Email removal method".to_string());
+    };
+
+    // Extract user email from field_values
+    let user_email = field_values
+        .get("email")
+        .ok_or("Missing required field: email")?;
+
+    info!(
+        "submit_via_email: rendering template for attempt {}",
+        attempt_id
+    );
+
+    // Render email template
+    let email_template = spectral_mail::templates::render_template(
+        body_template,
+        user_email,
+        to_email,
+        field_values,
+    );
+
+    // Generate body hash for logging (never store the actual body)
+    let body_hash = spectral_mail::sender::body_hash(&email_template.body);
+
+    // Determine send method
+    let send_method = if smtp_config.is_some() {
+        "smtp"
+    } else {
+        "mailto"
+    };
+
+    // Send via SMTP or log as ready for manual sending
+    if let Some(config) = smtp_config {
+        info!(
+            "submit_via_email: sending via SMTP for attempt {}",
+            attempt_id
+        );
+        spectral_mail::sender::send_smtp(&email_template, user_email, config)
+            .await
+            .map_err(|e| format!("SMTP send failed: {}", e))?;
+    } else {
+        info!(
+            "submit_via_email: email ready for manual sending for attempt {}",
+            attempt_id
+        );
+        // Note: When SMTP is not configured, the email details are logged to
+        // the email_removals table. The frontend (Task 16) will provide a UI
+        // to re-generate and send the email via mailto: URL.
+        // For now, we mark this as submitted since the email is logged and ready.
+    }
+
+    // Log to email_removals table
+    let email_removal_id = uuid::Uuid::new_v4().to_string();
+    let sent_at = chrono::Utc::now().to_rfc3339();
+
+    sqlx::query(
+        "INSERT INTO email_removals (id, attempt_id, broker_id, sent_at, method, recipient, subject, body_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&email_removal_id)
+    .bind(attempt_id)
+    .bind(broker_def.broker.id.to_string())
+    .bind(&sent_at)
+    .bind(send_method)
+    .bind(to_email)
+    .bind(&email_template.subject)
+    .bind(&body_hash)
+    .execute(db.pool())
+    .await
+    .map_err(|e| format!("Failed to log email removal: {}", e))?;
+
+    info!(
+        "Logged email removal {} for attempt {}",
+        email_removal_id, attempt_id
+    );
+
+    Ok(RemovalOutcome::Submitted)
+}
+
 /// Submit a removal request for a single attempt.
 ///
 /// Worker task that:
 /// 1. Loads removal attempt, finding, and profile data
 /// 2. Maps fields for form submission
-/// 3. Calls WebFormSubmitter with retry logic
+/// 3. Routes to browser or HTTP form submission based on broker removal method
 /// 4. Updates database based on outcome
 /// 5. Returns result for event emission
 ///
@@ -132,12 +449,14 @@ where
 /// * `removal_attempt_id` - ID of removal attempt to process
 /// * `broker_registry` - Registry for broker definitions
 /// * `semaphore` - Concurrency limiter (max 3 concurrent)
+/// * `browser_engine` - Shared lazy-initialized browser engine for browser-form removals
 pub async fn submit_removal_task(
     db: Arc<Database>,
     vault: Arc<spectral_vault::Vault>,
     removal_attempt_id: String,
     broker_registry: Arc<BrokerRegistry>,
     semaphore: Arc<Semaphore>,
+    browser_engine: Arc<Mutex<Option<BrowserEngine>>>,
 ) -> Result<WorkerResult, String> {
     // Acquire semaphore permit (wait if 3 tasks active)
     let _permit = semaphore
@@ -187,22 +506,69 @@ pub async fn submit_removal_task(
         .get(&broker_id)
         .map_err(|e| format!("Failed to get broker definition: {}", e))?;
 
-    // Create WebFormSubmitter (creates its own browser engine)
-    let submitter = WebFormSubmitter::new()
-        .await
-        .map_err(|e| format!("Failed to create submitter: {}", e))?;
-
-    // Submit with retry logic
-    let outcome = retry_with_backoff(
-        || async {
-            submitter
-                .submit(&broker_def, field_values.clone())
+    // Route submission based on broker removal method
+    let outcome = match &broker_def.removal {
+        RemovalMethod::BrowserForm { .. } => {
+            info!(
+                "Routing removal attempt {} via browser-form",
+                removal_attempt_id
+            );
+            retry_with_backoff(
+                || async {
+                    submit_via_browser(
+                        &broker_def,
+                        &removal_attempt_id,
+                        &field_values,
+                        &browser_engine,
+                        &db,
+                    )
+                    .await
+                },
+                3,
+            )
+            .await?
+        }
+        RemovalMethod::Email { .. } => {
+            info!("Routing removal attempt {} via email", removal_attempt_id);
+            // Note: SMTP config is not available yet (added in Task 15)
+            // For now, we pass None which will store a mailto: URL
+            retry_with_backoff(
+                || async {
+                    submit_via_email(
+                        &broker_def,
+                        &removal_attempt_id,
+                        &field_values,
+                        None, // SMTP config added in Task 15
+                        &db,
+                    )
+                    .await
+                },
+                3,
+            )
+            .await?
+        }
+        _ => {
+            info!(
+                "Routing removal attempt {} via HTTP form",
+                removal_attempt_id
+            );
+            // Create WebFormSubmitter (creates its own browser engine)
+            let submitter = WebFormSubmitter::new()
                 .await
-                .map_err(|e| format!("Submission failed: {}", e))
-        },
-        3, // 3 attempts
-    )
-    .await?;
+                .map_err(|e| format!("Failed to create submitter: {}", e))?;
+
+            retry_with_backoff(
+                || async {
+                    submitter
+                        .submit(&broker_def, field_values.clone())
+                        .await
+                        .map_err(|e| format!("Submission failed: {}", e))
+                },
+                3,
+            )
+            .await?
+        }
+    };
 
     // Update database based on outcome
     match &outcome {

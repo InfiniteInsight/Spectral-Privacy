@@ -11,6 +11,8 @@ difficulty = "Hard"
 typical_removal_days = 14
 recheck_interval_days = 30
 last_verified = "2026-02-13"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
 
 [search]
 method = "url-template"
@@ -31,7 +33,7 @@ no_results_indicator = ".no-matches, .no-results-found"
 captcha_required = "iframe[title*='recaptcha' i], .g-recaptcha"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.mylife.com/privacy-policy"
 confirmation = "manual"
 notes = "MyLife removal is complex. Requires account creation or emailing privacy@mylife.com with specific information. May require government ID verification. Removal can take 7-14 business days. Known to resist removal requests."

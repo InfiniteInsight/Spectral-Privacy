@@ -120,6 +120,8 @@ mod tests {
                 typical_removal_days: 7,
                 recheck_interval_days: 30,
                 last_verified: NaiveDate::from_ymd_opt(2025, 1, 1).expect("valid test date"),
+                scan_priority: spectral_broker::ScanPriority::OnRequest,
+                region_relevance: vec!["Global".to_string()],
             },
             search: SearchMethod::UrlTemplate {
                 template: "https://example.com/{first}-{last}".to_string(),
@@ -223,6 +225,8 @@ mod tests {
                 typical_removal_days: 7,
                 recheck_interval_days: 30,
                 last_verified: NaiveDate::from_ymd_opt(2025, 1, 1).expect("valid test date"),
+                scan_priority: spectral_broker::ScanPriority::OnRequest,
+                region_relevance: vec!["Global".to_string()],
             },
             search: SearchMethod::Manual {
                 url: "https://example.com/search".to_string(),

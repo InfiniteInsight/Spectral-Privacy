@@ -1,0 +1,35 @@
+[package]
+name = "spectral-privacy"
+description = "Centralized privacy controls and settings management"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Internal dependencies
+spectral-core = { path = "../spectral-core" }
+spectral-db = { path = "../spectral-db" }
+spectral-llm = { path = "../spectral-llm" }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+async-trait = "0.1"
+
+# Database
+sqlx = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

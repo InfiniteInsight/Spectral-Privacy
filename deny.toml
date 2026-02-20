@@ -47,6 +47,7 @@ allow = [
   "ISC",
   "Zlib",
   "CC0-1.0",
+  "0BSD",  # BSD Zero Clause License - used by quoted_printable (lettre dependency)
   "CDLA-Permissive-2.0",  # Community Data License - used by webpki-roots
   "Unicode-3.0",
   "Unlicense",
@@ -71,6 +72,11 @@ license-files = []
 
 [[licenses.clarify]]
 name = "spectral-auth"
+expression = "AGPL-3.0-only"
+license-files = []
+
+[[licenses.clarify]]
+name = "spectral-mail"
 expression = "AGPL-3.0-only"
 license-files = []
 

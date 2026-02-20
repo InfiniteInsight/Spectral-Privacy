@@ -11,6 +11,8 @@ difficulty = "Easy"
 typical_removal_days = 3
 recheck_interval_days = 30
 last_verified = "2025-05-01"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US", "Global"]
 
 [search]
 method = "url-template"
@@ -30,7 +32,7 @@ no_results_indicator = ".no-results-message"
 captcha_required = "iframe[title*='recaptcha' i]"
 
 [removal]
-method = "web-form"
+method = "browser-form"
 url = "https://www.spokeo.com/optout"
 confirmation = "email-verification"
 notes = "Requires email verification. Link expires after 72 hours. Re-check after 3-5 business days."

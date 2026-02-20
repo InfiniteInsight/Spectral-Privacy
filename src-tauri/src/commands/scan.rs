@@ -1,14 +1,29 @@
 use crate::removal_worker::submit_removal_task;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_broker::BrokerRegistry;
+use spectral_broker::{BrokerRegistry, ScanPriority};
 use spectral_browser::BrowserEngine;
 use spectral_core::types::ProfileId;
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use std::sync::Arc;
 use tauri::{Emitter, State};
 use tokio::sync::Semaphore;
+use tracing::info;
 use uuid::Uuid;
+
+/// Scan tier for filtering brokers by priority
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ScanTier {
+    /// Top ~10 brokers (AutoScanTier1)
+    Tier1,
+    /// Top ~30 brokers (AutoScanTier1 + AutoScanTier2)
+    Tier2,
+    /// All brokers except ManualOnly
+    All,
+    /// Custom broker selection (use broker_ids parameter)
+    Custom,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StartScanRequest {
@@ -130,7 +145,9 @@ pub async fn start_scan(
     state: State<'_, AppState>,
     vault_id: String,
     profile_id: String,
-    broker_filter: Option<String>,
+    _broker_filter: Option<String>, // Deprecated: use tier parameter instead
+    tier: Option<ScanTier>,
+    broker_ids: Option<Vec<String>>,
 ) -> Result<ScanJobResponse, String> {
     // Get the unlocked vault
     let vault = state
@@ -156,12 +173,6 @@ pub async fn start_scan(
         .database()
         .map_err(|e| format!("Failed to get vault database: {}", e))?;
 
-    // Parse broker filter
-    let filter = match broker_filter.as_deref() {
-        Some("all") | None => BrokerFilter::All,
-        Some(cat) => BrokerFilter::Category(cat.to_string()),
-    };
-
     // Create orchestrator for this scan
     // TODO: These should be cached/shared across scans
     // Note: We can't clone EncryptedPool (it contains Zeroizing secrets),
@@ -186,10 +197,71 @@ pub async fn start_scan(
     let database = Database::from_encrypted_pool(encrypted_pool);
     let db = Arc::new(database);
 
-    let orchestrator =
-        ScanOrchestrator::new(broker_registry, browser_engine, db).with_max_concurrent_scans(4);
+    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db)
+        .with_max_concurrent_scans(4);
 
-    // Start the scan
+    // Filter brokers based on tier or custom IDs
+    let all_brokers = broker_registry.get_all();
+
+    let selected_brokers: Vec<_> = match (&tier, &broker_ids) {
+        (_, Some(ids)) => {
+            // Custom broker selection takes precedence
+            all_brokers
+                .iter()
+                .filter(|b| ids.contains(&b.broker.id.to_string()))
+                .cloned()
+                .collect()
+        }
+        (Some(ScanTier::Tier1), _) => {
+            // Only Tier 1 brokers
+            all_brokers
+                .iter()
+                .filter(|b| b.broker.scan_priority == ScanPriority::AutoScanTier1)
+                .cloned()
+                .collect()
+        }
+        (Some(ScanTier::Tier2), _) => {
+            // Tier 1 and Tier 2 brokers
+            all_brokers
+                .iter()
+                .filter(|b| {
+                    matches!(
+                        b.broker.scan_priority,
+                        ScanPriority::AutoScanTier1 | ScanPriority::AutoScanTier2
+                    )
+                })
+                .cloned()
+                .collect()
+        }
+        _ => {
+            // All brokers except ManualOnly (default)
+            all_brokers
+                .iter()
+                .filter(|b| b.broker.scan_priority != ScanPriority::ManualOnly)
+                .cloned()
+                .collect()
+        }
+    };
+
+    // If tier or broker_ids filtering was applied but resulted in empty list, return error
+    if (tier.is_some() || broker_ids.is_some()) && selected_brokers.is_empty() {
+        return Err("No brokers matched the specified tier or IDs".to_string());
+    }
+
+    // Convert selected brokers to IDs for filtering
+    let broker_ids_filter: Vec<String> = selected_brokers
+        .iter()
+        .map(|b| b.broker.id.to_string())
+        .collect();
+
+    // Create appropriate filter based on selected brokers
+    let filter = if broker_ids_filter.is_empty() {
+        BrokerFilter::All
+    } else {
+        BrokerFilter::Specific(broker_ids_filter)
+    };
+
+    // Start the scan with tier-based filter
     let job_id = orchestrator
         .start_scan(&profile, filter, vault_key)
         .await
@@ -384,6 +456,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
     // Create shared resources
     let broker_registry = Arc::new(BrokerRegistry::new());
     let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
+    let browser_engine = state.browser_engine.clone();
 
     // Generate job_id
     let job_id = Uuid::new_v4().to_string();
@@ -398,6 +471,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
         let vault_clone = Arc::clone(&vault);
         let broker_registry_clone = broker_registry.clone();
         let semaphore_clone = semaphore.clone();
+        let browser_engine_clone = browser_engine.clone();
         let job_id_clone = job_id.clone();
         let app_handle = app.clone();
         let attempt_id_clone = attempt_id.clone();
@@ -419,6 +493,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
                 attempt_id_clone.clone(),
                 broker_registry_clone,
                 semaphore_clone,
+                browser_engine_clone,
             )
             .await;
 
@@ -552,6 +627,30 @@ pub async fn get_removal_attempts_by_scan_job(
         .map_err(|e| format!("Failed to query removal attempts: {}", e))
 }
 
+/// Get job history: removal attempts grouped by scan job, newest first.
+///
+/// Returns one summary per scan job that has at least one removal attempt.
+#[tauri::command]
+pub async fn get_removal_job_history(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<spectral_db::removal_attempts::RemovalJobSummary>, String> {
+    // Get unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    // Get database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    // Get job history
+    spectral_db::removal_attempts::get_job_history(db.pool())
+        .await
+        .map_err(|e| format!("Failed to get job history: {}", e))
+}
+
 /// Retry a failed removal attempt.
 ///
 /// Resets the removal attempt to Pending status and spawns a new worker task
@@ -608,6 +707,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
     let broker_registry = Arc::new(BrokerRegistry::new());
     let semaphore = Arc::new(Semaphore::new(3)); // Max 3 concurrent
     let vault_clone = Arc::clone(&vault);
+    let browser_engine = state.browser_engine.clone();
 
     // Spawn background worker task
     let attempt_id_clone = removal_attempt_id.clone();
@@ -627,6 +727,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
             attempt_id_clone.clone(),
             broker_registry,
             semaphore,
+            browser_engine,
         )
         .await;
 
@@ -679,7 +780,374 @@ pub async fn retry_removal<R: tauri::Runtime>(
     Ok(())
 }
 
+/// Activity event for the dashboard feed.
+#[derive(Debug, serde::Serialize)]
+pub struct ActivityEvent {
+    pub id: String,
+    pub event_type: String,
+    pub timestamp: String,
+    pub description: String,
+}
+
+/// Removal attempt counts broken down by status.
+#[derive(Debug, serde::Serialize)]
+pub struct RemovalCounts {
+    pub submitted: i64,
+    pub pending: i64,
+    pub failed: i64,
+}
+
+/// Aggregated dashboard summary for the home page.
+#[derive(Debug, serde::Serialize)]
+pub struct DashboardSummary {
+    pub privacy_score: Option<u8>,
+    pub brokers_scanned: i64,
+    pub brokers_total: i64,
+    pub last_scan_at: Option<String>,
+    pub active_removals: RemovalCounts,
+    pub recent_events: Vec<ActivityEvent>,
+}
+
+/// Return a dashboard summary for the given vault.
+///
+/// Aggregates:
+/// - Privacy score (if any findings or removals exist)
+/// - Count of distinct brokers with at least one finding
+/// - Timestamp of the most recent scan job
+/// - Removal attempt counts by status
+/// - Up to 10 recent activity events (last 5 scans + last 5 removals)
+///
+/// All queries are pool-scoped; no vault_id WHERE clause is needed.
+#[tauri::command]
+pub async fn get_dashboard_summary(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<DashboardSummary, String> {
+    info!("get_dashboard_summary: vault_id={}", vault_id);
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let pool = db.pool();
+
+    // Count distinct brokers with at least one finding.
+    let brokers_scanned: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT broker_id) FROM findings")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to count brokers scanned: {}", e))?;
+
+    // Timestamp of the most recently started scan job.
+    let last_scan_at: Option<String> = sqlx::query_scalar("SELECT MAX(started_at) FROM scan_jobs")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to get last scan timestamp: {}", e))?;
+
+    // Removal counts by status.
+    let submitted: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+
+    let pending: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Pending'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count pending removals: {}", e))?;
+
+    let failed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+
+    // Compute score only when there is something to base it on.
+    let has_data = brokers_scanned > 0 || submitted > 0 || failed > 0;
+    let privacy_score = if has_data {
+        // Unresolved = confirmed findings with no removal yet.
+        let unresolved: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Failed to count confirmed findings: {}", e))?;
+
+        Some(calculate_privacy_score(
+            unresolved as u32,
+            submitted as u32,
+            failed as u32,
+            0,
+        ))
+    } else {
+        None
+    };
+
+    // Last 5 scan jobs as activity events.
+    let scan_rows: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT id, started_at, status FROM scan_jobs ORDER BY started_at DESC LIMIT 5",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Failed to fetch recent scan jobs: {}", e))?;
+
+    let mut events: Vec<ActivityEvent> = scan_rows
+        .into_iter()
+        .map(|(id, started_at, status)| ActivityEvent {
+            id: id.clone(),
+            event_type: "scan".to_string(),
+            timestamp: started_at,
+            description: format!("Scan {} ({})", &id[..8.min(id.len())], status),
+        })
+        .collect();
+
+    // Last 5 removal attempts as activity events.
+    let removal_rows: Vec<(String, String, String, String)> = sqlx::query_as(
+        "SELECT id, broker_id, created_at, status FROM removal_attempts ORDER BY created_at DESC LIMIT 5",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Failed to fetch recent removal attempts: {}", e))?;
+
+    for (id, broker_id, created_at, status) in removal_rows {
+        events.push(ActivityEvent {
+            id: id.clone(),
+            event_type: "removal".to_string(),
+            timestamp: created_at,
+            description: format!(
+                "Removal {} for {} ({})",
+                &id[..8.min(id.len())],
+                broker_id,
+                status
+            ),
+        });
+    }
+
+    // Sort all events by timestamp descending, keep top 10.
+    events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    events.truncate(10);
+
+    Ok(DashboardSummary {
+        privacy_score,
+        brokers_scanned,
+        brokers_total: 0, // Placeholder — populated in Task 21 (broker explorer)
+        last_scan_at,
+        active_removals: RemovalCounts {
+            submitted,
+            pending,
+            failed,
+        },
+        recent_events: events,
+    })
+}
+
+/// Calculate a privacy score from 0–100 based on finding and removal counts.
+///
+/// Penalties:
+/// - Each unresolved people-search finding: -8 points
+/// - Each failed removal attempt: -3 points
+/// - Each reappeared listing: -5 points
+///
+/// Bonuses:
+/// - Each confirmed submitted removal: +2 points
+///
+/// The result is clamped to [0, 100].
+pub(crate) fn calculate_privacy_score(
+    unresolved_people_search: u32,
+    confirmed_removals: u32,
+    failed_removals: u32,
+    reappeared: u32,
+) -> u8 {
+    let penalty = (unresolved_people_search * 8) + (failed_removals * 3) + (reappeared * 5); // nosemgrep: llm-prompt-injection-risk
+    let bonus = confirmed_removals * 2;
+    let raw = 100i32 - penalty as i32 + bonus as i32; // nosemgrep: llm-prompt-injection-risk
+    raw.clamp(0, 100) as u8
+}
+
+/// Map a privacy score to a human-readable descriptor.
+pub(crate) fn score_descriptor(score: u8) -> &'static str {
+    match score {
+        0..=39 => "At Risk",
+        40..=69 => "Improving",
+        70..=89 => "Good",
+        _ => "Well Protected",
+    }
+}
+
+/// Result returned by `get_privacy_score`.
+#[derive(Debug, serde::Serialize)]
+pub struct PrivacyScoreResult {
+    pub score: u8,
+    pub descriptor: String,
+    pub unresolved_count: i64,
+    pub confirmed_count: i64,
+    pub failed_count: i64,
+}
+
+/// Return the current privacy score for the given vault.
+///
+/// The score is derived from:
+/// - Unresolved findings (verification_status = 'Confirmed' but not yet removed)
+/// - Submitted removal attempts (status = 'Submitted')
+/// - Failed removal attempts (status = 'Failed')
+///
+/// Note: `removal_attempts` has no `vault_id` column.  The vault's pool is
+/// already vault-scoped, so all queries run against that vault's database
+/// without an extra WHERE clause on vault identity.
+#[tauri::command]
+pub async fn get_privacy_score(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<PrivacyScoreResult, String> {
+    info!("get_privacy_score: vault_id={}", vault_id);
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let pool = db.pool();
+
+    // Count all confirmed findings. The penalty applies to all Confirmed findings
+    // until the listing is verified removed (a future feature).
+    // verification_status = 'Confirmed' means the user has verified this is them.
+    let unresolved: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count unresolved findings: {}", e))?;
+
+    // Count submitted removal attempts via JOIN (removal_attempts has no vault_id).
+    let confirmed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+
+    // Count failed removal attempts.
+    let failed: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+
+    let score = calculate_privacy_score(
+        unresolved as u32,
+        confirmed as u32,
+        failed as u32,
+        0, // reappeared — tracked in Phase 6 Task 19
+    );
+
+    Ok(PrivacyScoreResult {
+        score,
+        descriptor: score_descriptor(score).to_string(),
+        unresolved_count: unresolved,
+        confirmed_count: confirmed,
+        failed_count: failed,
+    })
+}
+
+/// Evidence record captured during browser-form removal submissions.
+#[derive(Debug, serde::Serialize)]
+pub struct RemovalEvidence {
+    pub id: String,
+    pub attempt_id: String,
+    pub screenshot_bytes: Vec<u8>,
+    pub captured_at: String,
+}
+
+/// Get screenshot evidence for a removal attempt.
+///
+/// Returns the evidence row associated with the given removal attempt ID,
+/// or `None` if no evidence has been captured yet (e.g. HTTP-form removals).
+#[tauri::command]
+pub async fn get_removal_evidence(
+    state: State<'_, AppState>,
+    vault_id: String,
+    attempt_id: String,
+) -> Result<Option<RemovalEvidence>, String> {
+    info!(
+        "get_removal_evidence: vault_id={}, attempt_id={}",
+        vault_id, attempt_id
+    );
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    use sqlx::Row;
+    let row = sqlx::query(
+        "SELECT id, attempt_id, screenshot_bytes, captured_at FROM removal_evidence WHERE attempt_id = ? ORDER BY captured_at DESC LIMIT 1"
+    )
+    .bind(&attempt_id)
+    .fetch_optional(db.pool())
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(row.map(|r| RemovalEvidence {
+        id: r.get("id"),
+        attempt_id: r.get("attempt_id"),
+        screenshot_bytes: r.get("screenshot_bytes"),
+        captured_at: r.get("captured_at"),
+    }))
+}
+
+/// Re-trigger email send for a pending email attempt.
+///
+/// This command is a stub for Task 16 (Email Verification Manual Tab).
+/// It will load the removal attempt, broker definition, and profile data,
+/// then regenerate and send the email.
+#[tauri::command]
+pub async fn send_removal_email<R: tauri::Runtime>(
+    state: State<'_, AppState>,
+    _app: tauri::AppHandle<R>,
+    vault_id: String,
+    attempt_id: String,
+) -> Result<(), String> {
+    info!(
+        "send_removal_email: vault_id={}, attempt_id={}",
+        vault_id, attempt_id
+    );
+
+    // Get unlocked vault
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Verify the attempt exists
+    let _attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Removal attempt not found")?;
+
+    // Full implementation requires:
+    // 1. Loading broker definition
+    // 2. Loading profile and decrypting fields
+    // 3. Rendering email template
+    // 4. Opening mailto: URL via app handle
+    // This will be implemented in Task 16.
+
+    Err("Email retry not yet implemented - see Task 16".to_string())
+}
+
 #[cfg(test)]
-mod tests {
-    // Tests will be added when we implement the actual logic
+mod score_tests {
+    use super::calculate_privacy_score;
+
+    #[test]
+    fn test_score_starts_at_100() {
+        let score = calculate_privacy_score(0, 0, 0, 0);
+        assert_eq!(score, 100);
+    }
+
+    #[test]
+    fn test_score_penalises_people_search_findings() {
+        // 1 unresolved people-search finding = -8 points
+        let score = calculate_privacy_score(1, 0, 0, 0);
+        assert_eq!(score, 92);
+    }
+
+    #[test]
+    fn test_score_clamped_to_zero() {
+        let score = calculate_privacy_score(20, 0, 0, 0);
+        assert_eq!(score, 0);
+    }
 }
