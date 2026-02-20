@@ -184,6 +184,27 @@ npm run tauri build
 
 ## Development
 
+### Running the Dev Server
+
+**IMPORTANT**: Always use the dev script to start the development server. It automatically finds an available port and synchronizes it between the frontend (Vite) and backend (Tauri):
+
+```bash
+npm run tauri:dev
+```
+
+**Do NOT use**:
+- `cargo tauri dev` (won't sync ports)
+- `npm run dev` (only starts frontend)
+
+The dev script:
+1. Finds an available port starting from 5737
+2. Updates Tauri config to use that port
+3. Exports PORT env var for Vite
+4. Starts the Tauri app with synchronized ports
+5. Restores original config on exit
+
+If you see "Port X is in use", the script will automatically try the next port.
+
 ### Project Structure
 
 ```
@@ -219,4 +240,3 @@ See [docs/testing/privacy-llm-manual-tests.md](docs/testing/privacy-llm-manual-t
 ## License
 
 TBD
-

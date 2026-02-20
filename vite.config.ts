@@ -12,7 +12,7 @@ export default defineConfig({
 	clearScreen: false,
 	server: {
 		port,
-		strictPort: true, // Fail if port is taken instead of auto-incrementing
+		strictPort: false, // Allow auto-increment (dev.sh will sync the port)
 		host: host || false,
 		hmr: host
 			? {
