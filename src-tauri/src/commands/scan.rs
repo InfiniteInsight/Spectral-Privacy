@@ -179,7 +179,7 @@ pub async fn start_scan(
     // but Pool<Sqlite> itself is Arc-based and can be cloned.
     // For now, we create a temporary EncryptedPool from the existing pool.
     // In production, the orchestrator should be a singleton in AppState.
-    let broker_registry = Arc::new(BrokerRegistry::new());
+    let broker_registry = state.broker_registry.clone();
     let browser_engine = Arc::new(
         BrowserEngine::new()
             .await
