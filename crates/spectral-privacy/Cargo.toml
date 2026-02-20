@@ -1,5 +1,6 @@
 [package]
 name = "spectral-privacy"
+description = "Centralized privacy controls and settings management"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
