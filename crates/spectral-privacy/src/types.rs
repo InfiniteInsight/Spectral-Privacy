@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Privacy level presets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PrivacyLevel {
     /// No automation, no LLM, manual only
     Paranoid,
@@ -72,7 +73,8 @@ impl Default for FeatureFlags {
 }
 
 /// Features that can be permission-checked
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Feature {
     /// Local LLM usage
     LocalLlm,
@@ -125,7 +127,7 @@ mod tests {
     fn test_privacy_level_serialization() {
         let level = PrivacyLevel::Balanced;
         let json = serde_json::to_string(&level).expect("Failed to serialize PrivacyLevel");
-        assert_eq!(json, r#""Balanced""#);
+        assert_eq!(json, r#""balanced""#);
 
         let deserialized: PrivacyLevel =
             serde_json::from_str(&json).expect("Failed to deserialize PrivacyLevel");
@@ -154,5 +156,41 @@ mod tests {
         assert!(flags.allow_local_llm);
         assert!(flags.allow_cloud_llm);
         assert!(flags.allow_browser_automation);
+    }
+
+    #[test]
+    fn test_custom_feature_flags_default() {
+        let flags = FeatureFlags::from_privacy_level(PrivacyLevel::Custom);
+        let default_flags = FeatureFlags::default();
+        assert_eq!(flags, default_flags);
+        // Custom should default to Balanced
+        assert!(flags.allow_local_llm);
+        assert!(flags.allow_cloud_llm);
+        assert!(flags.allow_browser_automation);
+    }
+
+    #[test]
+    fn test_permission_result_is_allowed() {
+        let allowed = PermissionResult::Allowed;
+        assert!(allowed.is_allowed());
+
+        let denied = PermissionResult::Denied {
+            reason: "Test denial".to_string(),
+        };
+        assert!(!denied.is_allowed());
+    }
+
+    #[test]
+    fn test_permission_result_reason() {
+        let allowed = PermissionResult::Allowed;
+        assert_eq!(allowed.reason(), None);
+
+        let denied = PermissionResult::Denied {
+            reason: "Privacy level prohibits this feature".to_string(),
+        };
+        assert_eq!(
+            denied.reason(),
+            Some("Privacy level prohibits this feature")
+        );
     }
 }
