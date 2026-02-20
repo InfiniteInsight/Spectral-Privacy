@@ -90,7 +90,8 @@ mod tests {
                 "removal_attempts",
                 "removal_evidence",
                 "scan_jobs",
-                "scheduled_jobs"
+                "scheduled_jobs",
+                "settings"
             ]
         );
     }
@@ -110,7 +111,7 @@ mod tests {
         run_migrations(pool.pool()).await.expect("run migrations");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 9); // Nine migrations applied
+        assert_eq!(version, 10); // Ten migrations applied
     }
 
     #[tokio::test]
@@ -130,6 +131,6 @@ mod tests {
             .expect("second migration run should be idempotent");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 9);
+        assert_eq!(version, 10);
     }
 }
