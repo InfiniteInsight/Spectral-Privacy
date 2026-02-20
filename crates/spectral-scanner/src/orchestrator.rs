@@ -242,12 +242,13 @@ impl ScanOrchestrator {
     ///
     /// Creates a `broker_scan` record, fetches the page with retries,
     /// parses results, and stores findings in the database.
+    #[allow(clippy::too_many_lines)]
     async fn scan_single_broker(
         &self,
         scan_job_id: String,
         broker_def: BrokerDefinition,
         profile_id: String,
-        _vault_key: [u8; 32],
+        vault_key: [u8; 32],
     ) -> Result<BrokerScanResult> {
         let broker_id = broker_def.broker.id.clone();
 
@@ -268,11 +269,45 @@ impl ScanOrchestrator {
         )
         .await?;
 
-        // Build search URL (simplified - in real impl, use profile data)
-        let search_url = format!(
-            "{}/search?name=test",
-            broker_def.broker.url.trim_end_matches('/')
-        );
+        // Build search URL from profile data and broker template
+        let search_url = match self
+            .build_search_url(&broker_def, &profile_id, &vault_key)
+            .await
+        {
+            Ok(url) => url,
+            Err(ScanError::MissingRequiredField(field)) => {
+                // Profile missing required field - mark as skipped
+                spectral_db::broker_scans::update_status(
+                    self.db.pool(),
+                    &broker_scan.id,
+                    "Failed",
+                    Some(format!("Profile missing required field: {field}")),
+                )
+                .await?;
+
+                return Ok(BrokerScanResult {
+                    broker_id,
+                    findings_count: 0,
+                    error: Some(format!("Missing required field: {field}")),
+                });
+            }
+            Err(e) => {
+                // Other error building URL
+                spectral_db::broker_scans::update_status(
+                    self.db.pool(),
+                    &broker_scan.id,
+                    "Failed",
+                    Some(format!("Failed to build search URL: {e}")),
+                )
+                .await?;
+
+                return Ok(BrokerScanResult {
+                    broker_id,
+                    findings_count: 0,
+                    error: Some(format!("URL building failed: {e}")),
+                });
+            }
+        };
 
         // Fetch page with retry logic
         let html = match self.fetch_with_retry(&search_url, &broker_id).await {
@@ -415,6 +450,253 @@ impl ScanOrchestrator {
     /// Looks for common CAPTCHA indicators like reCAPTCHA iframes or CAPTCHA divs.
     fn detect_captcha(html: &str) -> bool {
         html.contains("recaptcha") || html.contains("g-recaptcha") || html.contains("captcha")
+    }
+
+    /// Build search URL from broker definition and profile data.
+    ///
+    /// Loads the profile from database, decrypts required fields,
+    /// and substitutes them into the URL template.
+    #[allow(clippy::too_many_lines)]
+    async fn build_search_url(
+        &self,
+        broker_def: &BrokerDefinition,
+        profile_id: &str,
+        vault_key: &[u8; 32],
+    ) -> Result<String> {
+        use spectral_broker::SearchMethod;
+        use spectral_core::PiiField;
+
+        match &broker_def.search {
+            SearchMethod::UrlTemplate {
+                template,
+                requires_fields,
+                ..
+            } => {
+                // Load profile from database
+                let profile_id_typed = spectral_core::ProfileId::new(profile_id.to_string())
+                    .map_err(|e| ScanError::ProfileDataError {
+                        broker_id: broker_def.broker.id.clone(),
+                        reason: format!("Invalid profile ID: {e}"),
+                    })?;
+                let profile = UserProfile::load(&self.db, &profile_id_typed, vault_key)
+                    .await
+                    .map_err(|e| ScanError::ProfileDataError {
+                        broker_id: broker_def.broker.id.clone(),
+                        reason: format!("Failed to load profile: {e}"),
+                    })?;
+
+                let mut url = template.clone();
+
+                // Substitute each required field
+                for field in requires_fields {
+                    let (placeholder, value) = match field {
+                        PiiField::FirstName => {
+                            let val = profile
+                                .first_name
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("first_name".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt first_name: {e}"
+                                    ))
+                                })?;
+                            ("{first_name}", val)
+                        }
+                        PiiField::MiddleName => {
+                            let val = profile
+                                .middle_name
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("middle_name".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt middle_name: {e}"
+                                    ))
+                                })?;
+                            ("{middle_name}", val)
+                        }
+                        PiiField::LastName => {
+                            let val = profile
+                                .last_name
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("last_name".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt last_name: {e}"
+                                    ))
+                                })?;
+                            ("{last_name}", val)
+                        }
+                        PiiField::Address => {
+                            let val = profile
+                                .address
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("address".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt address: {e}"
+                                    ))
+                                })?;
+                            ("{address}", val)
+                        }
+                        PiiField::City => {
+                            let val = profile
+                                .city
+                                .as_ref()
+                                .ok_or_else(|| ScanError::MissingRequiredField("city".to_string()))?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt city: {e}"
+                                    ))
+                                })?;
+                            ("{city}", val)
+                        }
+                        PiiField::State => {
+                            let val = profile
+                                .state
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("state".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt state: {e}"
+                                    ))
+                                })?;
+                            ("{state}", val)
+                        }
+                        PiiField::ZipCode => {
+                            let val = profile
+                                .zip_code
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("zip_code".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt zip_code: {e}"
+                                    ))
+                                })?;
+                            ("{zip_code}", val)
+                        }
+                        PiiField::Email => {
+                            // Use first email from email_addresses array or fall back to deprecated email field
+                            let val = if profile.email_addresses.is_empty() {
+                                #[allow(deprecated)]
+                                profile
+                                    .email
+                                    .as_ref()
+                                    .ok_or_else(|| {
+                                        ScanError::MissingRequiredField("email".to_string())
+                                    })?
+                                    .decrypt(vault_key)
+                                    .map_err(|e| {
+                                        ScanError::DecryptionFailed(format!(
+                                            "Failed to decrypt email: {e}"
+                                        ))
+                                    })?
+                            } else {
+                                profile
+                                    .email_addresses
+                                    .first()
+                                    .ok_or_else(|| {
+                                        ScanError::MissingRequiredField("email".to_string())
+                                    })?
+                                    .email
+                                    .decrypt(vault_key)
+                                    .map_err(|e| {
+                                        ScanError::DecryptionFailed(format!(
+                                            "Failed to decrypt email: {e}"
+                                        ))
+                                    })?
+                            };
+                            ("{email}", val)
+                        }
+                        PiiField::Phone => {
+                            // Use first phone from phone_numbers array or fall back to deprecated phone field
+                            let val = if profile.phone_numbers.is_empty() {
+                                #[allow(deprecated)]
+                                profile
+                                    .phone
+                                    .as_ref()
+                                    .ok_or_else(|| {
+                                        ScanError::MissingRequiredField("phone".to_string())
+                                    })?
+                                    .decrypt(vault_key)
+                                    .map_err(|e| {
+                                        ScanError::DecryptionFailed(format!(
+                                            "Failed to decrypt phone: {e}"
+                                        ))
+                                    })?
+                            } else {
+                                profile
+                                    .phone_numbers
+                                    .first()
+                                    .ok_or_else(|| {
+                                        ScanError::MissingRequiredField("phone".to_string())
+                                    })?
+                                    .number
+                                    .decrypt(vault_key)
+                                    .map_err(|e| {
+                                        ScanError::DecryptionFailed(format!(
+                                            "Failed to decrypt phone: {e}"
+                                        ))
+                                    })?
+                            };
+                            ("{phone}", val)
+                        }
+                        PiiField::DateOfBirth => {
+                            let val = profile
+                                .date_of_birth
+                                .as_ref()
+                                .ok_or_else(|| {
+                                    ScanError::MissingRequiredField("date_of_birth".to_string())
+                                })?
+                                .decrypt(vault_key)
+                                .map_err(|e| {
+                                    ScanError::DecryptionFailed(format!(
+                                        "Failed to decrypt date_of_birth: {e}"
+                                    ))
+                                })?;
+                            ("{date_of_birth}", val)
+                        }
+                        _ => {
+                            // Unsupported field - skip for now
+                            tracing::warn!("Unsupported PII field: {:?}", field);
+                            continue;
+                        }
+                    };
+
+                    // URL encode the value and substitute
+                    let encoded = urlencoding::encode(&value);
+                    url = url.replace(placeholder, &encoded);
+                }
+
+                Ok(url)
+            }
+            SearchMethod::WebForm { url, .. } => {
+                // For now, just return the form URL - form submission not yet implemented
+                Ok(url.clone())
+            }
+            SearchMethod::Manual { url, .. } => {
+                // Manual search - return the URL for user to visit
+                Ok(url.clone())
+            }
+        }
     }
 
     /// Parse HTML and store findings in database.

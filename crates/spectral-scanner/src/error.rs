@@ -45,6 +45,14 @@ pub enum ScanError {
     #[error("profile missing required fields: {0:?}")]
     MissingRequiredFields(Vec<String>),
 
+    /// Profile missing a single required field
+    #[error("profile missing required field: {0}")]
+    MissingRequiredField(String),
+
+    /// Failed to decrypt profile field
+    #[error("decryption failed: {0}")]
+    DecryptionFailed(String),
+
     /// No result selectors configured
     #[error("no result selectors configured for broker {0}")]
     NoResultSelectors(BrokerId),
