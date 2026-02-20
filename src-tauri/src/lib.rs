@@ -138,6 +138,14 @@ pub fn run() {
             commands::discovery::start_discovery_scan,
             commands::discovery::get_discovery_findings,
             commands::discovery::mark_finding_remediated,
+            commands::privacy::get_privacy_settings,
+            commands::privacy::set_privacy_level,
+            commands::privacy::set_custom_feature_flags,
+            commands::privacy::get_llm_provider_settings,
+            commands::privacy::set_llm_primary_provider,
+            commands::privacy::set_llm_task_provider,
+            commands::privacy::set_llm_api_key,
+            commands::privacy::test_llm_provider,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
