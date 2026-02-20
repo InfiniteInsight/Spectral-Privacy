@@ -146,6 +146,7 @@ pub fn run() {
             commands::privacy::set_llm_task_provider,
             commands::privacy::set_llm_api_key,
             commands::privacy::test_llm_provider,
+            commands::llm::draft_email,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

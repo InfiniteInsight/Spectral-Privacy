@@ -2,6 +2,7 @@
 
 pub mod brokers;
 pub mod discovery;
+pub mod llm;
 pub mod privacy;
 pub mod profile;
 pub mod removal;

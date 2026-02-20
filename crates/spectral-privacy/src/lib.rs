@@ -58,3 +58,6 @@ pub use llm_settings::{
     set_primary_provider, set_provider_preference, LlmProvider, TaskType,
 };
 pub use types::{Feature, FeatureFlags, PermissionResult, PrivacyLevel};
+
+// Re-export commonly used LLM types for convenience
+pub use spectral_llm::{CompletionRequest, CompletionResponse};
