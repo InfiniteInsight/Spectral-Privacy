@@ -110,6 +110,8 @@ impl OllamaProvider {
                 None
             },
             usage: None, // Ollama doesn't provide token counts in simple API
+            provider_id: None,
+            pii_filtered: None,
         }
     }
 }

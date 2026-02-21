@@ -97,6 +97,8 @@ impl AnthropicProvider {
                 input_tokens: u.input_tokens,
                 output_tokens: u.output_tokens,
             }),
+            provider_id: None,
+            pii_filtered: None,
         }
     }
 }

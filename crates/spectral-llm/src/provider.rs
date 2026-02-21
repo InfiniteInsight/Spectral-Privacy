@@ -189,6 +189,14 @@ pub struct CompletionResponse {
 
     /// Usage statistics
     pub usage: Option<Usage>,
+
+    /// Provider ID that generated this response (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<String>,
+
+    /// Whether PII filtering was applied (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pii_filtered: Option<bool>,
 }
 
 /// Token usage statistics.

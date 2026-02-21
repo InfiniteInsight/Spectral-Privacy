@@ -113,6 +113,8 @@ impl GeminiProvider {
                 input_tokens: u.prompt_token_count,
                 output_tokens: u.candidates_token_count,
             }),
+            provider_id: None,
+            pii_filtered: None,
         })
     }
 }

@@ -162,8 +162,10 @@ pub async fn draft_email(
         subject,
         body,
         metadata: Some(EmailDraftMetadata {
-            provider: "stub".to_string(), // TODO: Get actual provider from router
-            pii_filtered: false,          // TODO: Get actual filtering status
+            provider: response
+                .provider_id
+                .unwrap_or_else(|| "unknown".to_string()),
+            pii_filtered: response.pii_filtered.unwrap_or(false),
         }),
     })
 }
@@ -313,8 +315,10 @@ pub async fn fill_form(
     Ok(FormFillingResponse {
         values,
         metadata: Some(FormFillingMetadata {
-            provider: "stub".to_string(), // TODO: Get actual provider from router
-            pii_filtered: false,          // TODO: Get actual filtering status
+            provider: response
+                .provider_id
+                .unwrap_or_else(|| "unknown".to_string()),
+            pii_filtered: response.pii_filtered.unwrap_or(false),
             fields_filled,
         }),
     })

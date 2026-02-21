@@ -70,10 +70,15 @@ impl PrivacyAwareLlmRouter {
         };
 
         // 5. Make request
-        let response = provider
+        let mut response = provider
             .complete(filtered_request)
             .await
             .map_err(|e| crate::error::PrivacyError::LlmRequest(e.to_string()))?;
+
+        // Track provider and filtering status in response metadata
+        let was_filtered = token_map.is_some();
+        response.provider_id = Some(format!("{provider_type:?}"));
+        response.pii_filtered = Some(was_filtered);
 
         // 6. Detokenize PII in response if filtering was applied
         let final_response = if let Some(token_map) = token_map {

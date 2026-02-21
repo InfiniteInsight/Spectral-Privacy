@@ -262,6 +262,8 @@ mod tests {
                 model: self.id.clone(),
                 stop_reason: Some("end_turn".to_string()),
                 usage: None,
+                provider_id: None,
+                pii_filtered: None,
             })
         }
 

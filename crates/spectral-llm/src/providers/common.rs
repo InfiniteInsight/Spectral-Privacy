@@ -92,6 +92,8 @@ pub fn create_stub_response(
             input_tokens: 50,
             output_tokens: 100,
         }),
+        provider_id: None,
+        pii_filtered: None,
     }
 }
 
