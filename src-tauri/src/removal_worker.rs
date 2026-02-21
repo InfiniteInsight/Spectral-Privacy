@@ -136,7 +136,7 @@ pub async fn submit_via_browser(
     broker_def: &spectral_broker::definition::BrokerDefinition,
     attempt_id: &str,
     field_values: &HashMap<String, String>,
-    browser_engine_mutex: &Mutex<Option<BrowserEngine>>,
+    browser_engine_mutex: &Mutex<Option<Arc<BrowserEngine>>>,
     db: &Database,
 ) -> Result<RemovalOutcome, String> {
     let RemovalMethod::BrowserForm {
@@ -152,12 +152,17 @@ pub async fn submit_via_browser(
     let mut engine_guard = browser_engine_mutex.lock().await;
     if engine_guard.is_none() {
         info!("Initializing browser engine for first browser-form removal");
-        let engine = BrowserEngine::new()
-            .await
-            .map_err(|e| format!("Failed to initialize browser engine: {}", e))?;
+        let engine = Arc::new(
+            BrowserEngine::new()
+                .await
+                .map_err(|e| format!("Failed to initialize browser engine: {}", e))?,
+        );
         *engine_guard = Some(engine);
     }
-    let engine = engine_guard.as_ref().expect("engine initialized above");
+    let engine = engine_guard
+        .as_ref()
+        .expect("engine initialized above")
+        .as_ref();
 
     info!(
         "submit_via_browser: navigating to {} for attempt {}",
@@ -457,7 +462,7 @@ pub async fn submit_removal_task(
     removal_attempt_id: String,
     broker_registry: Arc<BrokerRegistry>,
     semaphore: Arc<Semaphore>,
-    browser_engine: Arc<Mutex<Option<BrowserEngine>>>,
+    browser_engine: Arc<Mutex<Option<Arc<BrowserEngine>>>>,
 ) -> Result<WorkerResult, String> {
     // Acquire semaphore permit (wait if 3 tasks active)
     let _permit = semaphore

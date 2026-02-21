@@ -21,7 +21,7 @@ pub struct AppState {
     /// Lazily initialized on first use. Wrapped in `Option` so it can be
     /// initialized after construction without requiring Chromium at startup.
     /// Wrapped in `Arc` so it can be cloned into background worker tasks.
-    pub browser_engine: Arc<tokio::sync::Mutex<Option<spectral_browser::BrowserEngine>>>,
+    pub browser_engine: Arc<tokio::sync::Mutex<Option<Arc<spectral_browser::BrowserEngine>>>>,
 
     /// Broker registry loaded from broker-definitions/ directory.
     /// Cached on startup for fast access across all commands.
@@ -150,6 +150,30 @@ impl AppState {
             .expect("RwLock poisoned: another thread panicked while holding the lock")
             .get(vault_id)
             .cloned()
+    }
+
+    /// Get or initialize the shared browser engine.
+    ///
+    /// Returns a cached browser engine instance, creating it on first call.
+    /// This avoids creating a new Chromium instance for every scan.
+    ///
+    /// # Errors
+    /// Returns error if browser engine initialization fails.
+    pub async fn get_or_init_browser_engine(
+        &self,
+    ) -> Result<Arc<spectral_browser::BrowserEngine>, Box<dyn std::error::Error>> {
+        let mut guard = self.browser_engine.lock().await;
+
+        // If already initialized, clone Arc and return
+        if let Some(engine) = guard.as_ref() {
+            return Ok(Arc::clone(engine));
+        }
+
+        // Initialize new browser engine
+        let engine = Arc::new(spectral_browser::BrowserEngine::new().await?);
+        *guard = Some(Arc::clone(&engine));
+
+        Ok(engine)
     }
 }
 

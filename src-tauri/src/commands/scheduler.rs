@@ -2,7 +2,6 @@
 
 use crate::error::CommandError;
 use crate::state::AppState;
-use spectral_browser::BrowserEngine;
 use spectral_db::{Database, EncryptedPool};
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use spectral_scheduler::{next_run_timestamp, JobType, ScheduledJob};
@@ -149,13 +148,13 @@ pub async fn run_job_now(
                 CommandError::new("DATABASE_ERROR", format!("Failed to load profile: {}", e))
             })?;
 
-            // Create browser engine
-            let browser_engine = Arc::new(BrowserEngine::new().await.map_err(|e| {
+            // Get or initialize cached browser engine
+            let browser_engine = state.get_or_init_browser_engine().await.map_err(|e| {
                 CommandError::new(
                     "BROWSER_ERROR",
-                    format!("Failed to create browser engine: {}", e),
+                    format!("Failed to get browser engine: {}", e),
                 )
-            })?);
+            })?;
 
             // Create orchestrator
             let pool = db.pool().clone();
