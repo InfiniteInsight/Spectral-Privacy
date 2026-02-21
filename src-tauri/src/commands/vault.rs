@@ -260,9 +260,11 @@ pub async fn rename_vault(
 pub async fn change_vault_password(
     state: State<'_, AppState>,
     vault_id: String,
-    _old_password: String,
+    old_password: String,
     new_password: String,
 ) -> Result<(), CommandError> {
+    info!("Changing password for vault: {vault_id}");
+
     if new_password.len() < 8 {
         return Err(CommandError::new(
             "INVALID_PASSWORD",
@@ -277,11 +279,128 @@ pub async fn change_vault_password(
         ));
     }
 
-    // TODO: verify old_password against the current vault key before re-encrypting
-    Err(CommandError::new(
-        "NOT_IMPLEMENTED",
-        "Password change is not yet implemented",
-    ))
+    // Get the vault before locking it
+    let vault = state.get_vault(&vault_id).ok_or_else(|| {
+        CommandError::new("VAULT_NOT_FOUND", format!("Vault '{}' not found", vault_id))
+    })?;
+
+    // Get database path
+    let db_path = state.vault_db_path(&vault_id);
+    let salt_path = db_path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("salt");
+
+    // Read current salt
+    let current_salt = tokio::fs::read(&salt_path)
+        .await
+        .map_err(|e| CommandError::new("FILE_ERROR", format!("Failed to read salt file: {}", e)))?;
+
+    // Verify old password by deriving key and comparing to current vault key
+    use spectral_vault::kdf;
+    let old_key = kdf::derive_key(&old_password, &current_salt).map_err(|e| {
+        CommandError::new(
+            "KEY_DERIVATION_ERROR",
+            format!("Failed to derive key from old password: {}", e),
+        )
+    })?;
+
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {}", e)))?;
+
+    if old_key.as_ref() != vault_key.as_ref() {
+        return Err(CommandError::new(
+            "INVALID_PASSWORD",
+            "Old password is incorrect",
+        ));
+    }
+
+    // Lock the vault temporarily
+    state.remove_vault(&vault_id);
+    drop(vault); // Explicitly drop to release the Arc
+
+    // Generate new salt and derive new key
+    let new_salt = kdf::generate_salt();
+    let new_key = kdf::derive_key(&new_password, &new_salt).map_err(|e| {
+        CommandError::new(
+            "KEY_DERIVATION_ERROR",
+            format!("Failed to derive new key: {}", e),
+        )
+    })?;
+
+    // Connect to database with old key to perform rekey
+    let old_key_hex = format!("\"x'{}'\"", hex::encode(old_key.as_ref()));
+    let new_key_hex = format!("\"x'{}'\"", hex::encode(new_key.as_ref()));
+
+    let db_path_str = db_path
+        .to_str()
+        .ok_or_else(|| CommandError::new("FILE_ERROR", "Invalid database path: not valid UTF-8"))?;
+
+    use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+    use std::str::FromStr;
+
+    let connect_options = SqliteConnectOptions::from_str(db_path_str)
+        .map_err(|e| {
+            CommandError::new(
+                "DATABASE_ERROR",
+                format!("Invalid connection string: {}", e),
+            )
+        })?
+        .pragma("key", old_key_hex)
+        .pragma("cipher_page_size", "4096")
+        .pragma("kdf_iter", "256000")
+        .pragma("cipher_hmac_algorithm", "HMAC_SHA512")
+        .pragma("cipher_kdf_algorithm", "PBKDF2_HMAC_SHA512");
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(connect_options)
+        .await
+        .map_err(|e| {
+            CommandError::new(
+                "DATABASE_ERROR",
+                format!("Failed to connect to database: {}", e),
+            )
+        })?;
+
+    // Re-encrypt database with new key
+    sqlx::query(&format!("PRAGMA rekey = {}", new_key_hex))
+        .execute(&pool)
+        .await
+        .map_err(|e| {
+            CommandError::new(
+                "DATABASE_ERROR",
+                format!("Failed to re-encrypt database: {}", e),
+            )
+        })?;
+
+    // Close the pool
+    pool.close().await;
+
+    // Write new salt to file
+    tokio::fs::write(&salt_path, new_salt).await.map_err(|e| {
+        CommandError::new("FILE_ERROR", format!("Failed to write salt file: {}", e))
+    })?;
+
+    // Unlock vault with new password (this will verify the rekey worked)
+    let new_vault = Vault::unlock(&new_password, &db_path).await.map_err(|e| {
+        // Try to restore old state if unlock fails
+        warn!("Failed to unlock vault with new password: {}", e);
+        CommandError::new(
+            "VAULT_ERROR",
+            format!(
+                "Password change failed - could not unlock with new password: {}",
+                e
+            ),
+        )
+    })?;
+
+    // Add the re-unlocked vault back to state
+    state.insert_vault(vault_id.clone(), Arc::new(new_vault));
+
+    info!("Password changed successfully for vault: {vault_id}");
+    Ok(())
 }
 
 /// Delete a vault after verifying the password.
