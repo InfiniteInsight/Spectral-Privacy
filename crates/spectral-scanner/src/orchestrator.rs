@@ -362,7 +362,7 @@ impl ScanOrchestrator {
             }
         };
 
-        // Parse results (simplified - would use ResultParser with selectors)
+        // Parse results using ResultParser with broker-specific selectors
         let findings_count = self
             .parse_and_store_findings(&html, &broker_scan.id, &broker_id, &profile_id)
             .await?;
