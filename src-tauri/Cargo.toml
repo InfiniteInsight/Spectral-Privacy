@@ -37,6 +37,7 @@ spectral-browser = { path = "../crates/spectral-browser" }
 spectral-mail = { path = "../crates/spectral-mail" }
 spectral-scheduler = { path = "../crates/spectral-scheduler" }
 spectral-discovery = { path = "../crates/spectral-discovery" }
+spectral-llm = { path = "../crates/spectral-llm" }
 spectral-privacy = { path = "../crates/spectral-privacy" }
 # spectral-auth = { path = "../crates/spectral-auth" }
 directories.workspace = true

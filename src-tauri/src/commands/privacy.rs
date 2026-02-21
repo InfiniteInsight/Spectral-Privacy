@@ -3,6 +3,10 @@
 use crate::error::CommandError;
 use crate::state::AppState;
 use serde::Serialize;
+use spectral_llm::{
+    AnthropicProvider, CompletionRequest, GeminiProvider, LmStudioProvider, OllamaProvider,
+    OpenAiProvider,
+};
 use spectral_privacy::{FeatureFlags, LlmProvider, PrivacyEngine, PrivacyLevel, TaskType};
 use sqlx::SqlitePool;
 use tauri::State;
@@ -331,33 +335,154 @@ pub async fn test_llm_provider(
 
     let pool = get_vault_pool(&state, &vault_id)?;
 
-    // For local providers (Ollama, LM Studio), just check if they're running
-    // For cloud providers, verify API key is set
+    // Create a minimal test request
+    let test_request = CompletionRequest::new("test").with_max_tokens(5);
+
+    // Test the provider by attempting to create it and make a request
     match provider {
-        LlmProvider::Ollama | LlmProvider::LmStudio => {
-            // TODO: Actually test the connection by attempting to create the provider
-            // For now, return a stub success message
-            Ok(format!("{:?} provider test not yet implemented", provider))
-        }
-        LlmProvider::OpenAi | LlmProvider::Gemini | LlmProvider::Claude => {
-            // Check if API key is configured
-            let has_key = spectral_privacy::get_api_key(&pool, provider)
+        LlmProvider::Ollama => {
+            // Try to create Ollama provider
+            let ollama = OllamaProvider::new().map_err(|e| {
+                CommandError::new(
+                    "PROVIDER_ERROR",
+                    format!("Failed to create Ollama provider: {}", e),
+                )
+            })?;
+
+            // Test connection by making a minimal request
+            spectral_llm::LlmProvider::complete(&ollama, test_request)
                 .await
                 .map_err(|e| {
-                    CommandError::new("PRIVACY_ERROR", format!("Failed to check API key: {}", e))
+                    CommandError::new(
+                        "CONNECTION_ERROR",
+                        format!("Ollama connection test failed: {}", e),
+                    )
+                })?;
+
+            Ok("Ollama provider is reachable and responding".to_string())
+        }
+        LlmProvider::LmStudio => {
+            // Try to create LM Studio provider
+            let lm_studio = LmStudioProvider::new().map_err(|e| {
+                CommandError::new(
+                    "PROVIDER_ERROR",
+                    format!("Failed to create LM Studio provider: {}", e),
+                )
+            })?;
+
+            // Test connection by making a minimal request
+            spectral_llm::LlmProvider::complete(&lm_studio, test_request)
+                .await
+                .map_err(|e| {
+                    CommandError::new(
+                        "CONNECTION_ERROR",
+                        format!("LM Studio connection test failed: {}", e),
+                    )
+                })?;
+
+            Ok("LM Studio provider is reachable and responding".to_string())
+        }
+        LlmProvider::OpenAi => {
+            // Get API key from database
+            let api_key = spectral_privacy::get_api_key(&pool, provider)
+                .await
+                .map_err(|e| {
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
                 })?
-                .is_some();
+                .ok_or_else(|| {
+                    CommandError::new(
+                        "API_KEY_MISSING",
+                        "No API key configured for OpenAI. Use 'spectral privacy llm set-key openai <key>' to configure.".to_string(),
+                    )
+                })?;
 
-            if !has_key {
-                return Err(CommandError::new(
-                    "API_KEY_MISSING",
-                    format!("No API key configured for {:?}", provider),
-                ));
-            }
+            // Try to create OpenAI provider
+            let openai = OpenAiProvider::new(api_key).map_err(|e| {
+                CommandError::new(
+                    "PROVIDER_ERROR",
+                    format!("Failed to create OpenAI provider: {}", e),
+                )
+            })?;
 
-            // TODO: Actually test the connection by making a simple API request
-            // For now, return a stub success message
-            Ok(format!("{:?} provider test not yet implemented", provider))
+            // Test connection by making a minimal request
+            spectral_llm::LlmProvider::complete(&openai, test_request)
+                .await
+                .map_err(|e| {
+                    CommandError::new(
+                        "CONNECTION_ERROR",
+                        format!("OpenAI connection test failed: {}", e),
+                    )
+                })?;
+
+            Ok("OpenAI provider is reachable and responding".to_string())
+        }
+        LlmProvider::Gemini => {
+            // Get API key from database
+            let api_key = spectral_privacy::get_api_key(&pool, provider)
+                .await
+                .map_err(|e| {
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
+                })?
+                .ok_or_else(|| {
+                    CommandError::new(
+                        "API_KEY_MISSING",
+                        "No API key configured for Gemini. Use 'spectral privacy llm set-key gemini <key>' to configure.".to_string(),
+                    )
+                })?;
+
+            // Try to create Gemini provider
+            let gemini = GeminiProvider::new(api_key).map_err(|e| {
+                CommandError::new(
+                    "PROVIDER_ERROR",
+                    format!("Failed to create Gemini provider: {}", e),
+                )
+            })?;
+
+            // Test connection by making a minimal request
+            spectral_llm::LlmProvider::complete(&gemini, test_request)
+                .await
+                .map_err(|e| {
+                    CommandError::new(
+                        "CONNECTION_ERROR",
+                        format!("Gemini connection test failed: {}", e),
+                    )
+                })?;
+
+            Ok("Gemini provider is reachable and responding".to_string())
+        }
+        LlmProvider::Claude => {
+            // Get API key from database
+            let api_key = spectral_privacy::get_api_key(&pool, provider)
+                .await
+                .map_err(|e| {
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
+                })?
+                .ok_or_else(|| {
+                    CommandError::new(
+                        "API_KEY_MISSING",
+                        "No API key configured for Claude. Use 'spectral privacy llm set-key claude <key>' to configure.".to_string(),
+                    )
+                })?;
+
+            // Try to create Claude provider
+            let claude = AnthropicProvider::new(api_key).map_err(|e| {
+                CommandError::new(
+                    "PROVIDER_ERROR",
+                    format!("Failed to create Claude provider: {}", e),
+                )
+            })?;
+
+            // Test connection by making a minimal request
+            spectral_llm::LlmProvider::complete(&claude, test_request)
+                .await
+                .map_err(|e| {
+                    CommandError::new(
+                        "CONNECTION_ERROR",
+                        format!("Claude connection test failed: {}", e),
+                    )
+                })?;
+
+            Ok("Claude provider is reachable and responding".to_string())
         }
     }
 }
