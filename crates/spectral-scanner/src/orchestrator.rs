@@ -452,6 +452,312 @@ impl ScanOrchestrator {
         html.contains("recaptcha") || html.contains("g-recaptcha") || html.contains("captcha")
     }
 
+    /// Extract a PII field value from a profile.
+    ///
+    /// Returns (placeholder, `decrypted_value`) for the given field.
+    /// Handles all PII field types including arrays (email, phone, etc).
+    #[allow(clippy::too_many_lines)]
+    fn extract_pii_field_value(
+        field: spectral_core::PiiField,
+        profile: &UserProfile,
+        vault_key: &[u8; 32],
+    ) -> Result<(&'static str, String)> {
+        use spectral_core::PiiField;
+
+        match field {
+            PiiField::FirstName => {
+                let val = profile
+                    .first_name
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("first_name".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt first_name: {e}"))
+                    })?;
+                Ok(("{first_name}", val))
+            }
+            PiiField::MiddleName => {
+                let val = profile
+                    .middle_name
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("middle_name".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt middle_name: {e}"))
+                    })?;
+                Ok(("{middle_name}", val))
+            }
+            PiiField::LastName => {
+                let val = profile
+                    .last_name
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("last_name".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt last_name: {e}"))
+                    })?;
+                Ok(("{last_name}", val))
+            }
+            PiiField::Address => {
+                let val = profile
+                    .address
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("address".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt address: {e}"))
+                    })?;
+                Ok(("{address}", val))
+            }
+            PiiField::City => {
+                let val = profile
+                    .city
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("city".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt city: {e}"))
+                    })?;
+                Ok(("{city}", val))
+            }
+            PiiField::State => {
+                let val = profile
+                    .state
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("state".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt state: {e}"))
+                    })?;
+                Ok(("{state}", val))
+            }
+            PiiField::ZipCode => {
+                let val = profile
+                    .zip_code
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("zip_code".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt zip_code: {e}"))
+                    })?;
+                Ok(("{zip_code}", val))
+            }
+            PiiField::Email => {
+                // Use first email from email_addresses array or fall back to deprecated email field
+                let val = if profile.email_addresses.is_empty() {
+                    #[allow(deprecated)]
+                    profile
+                        .email
+                        .as_ref()
+                        .ok_or_else(|| ScanError::MissingRequiredField("email".to_string()))?
+                        .decrypt(vault_key)
+                        .map_err(|e| {
+                            ScanError::DecryptionFailed(format!("Failed to decrypt email: {e}"))
+                        })?
+                } else {
+                    profile
+                        .email_addresses
+                        .first()
+                        .ok_or_else(|| ScanError::MissingRequiredField("email".to_string()))?
+                        .email
+                        .decrypt(vault_key)
+                        .map_err(|e| {
+                            ScanError::DecryptionFailed(format!("Failed to decrypt email: {e}"))
+                        })?
+                };
+                Ok(("{email}", val))
+            }
+            PiiField::Phone => {
+                // Use first phone from phone_numbers array or fall back to deprecated phone field
+                let val = if profile.phone_numbers.is_empty() {
+                    #[allow(deprecated)]
+                    profile
+                        .phone
+                        .as_ref()
+                        .ok_or_else(|| ScanError::MissingRequiredField("phone".to_string()))?
+                        .decrypt(vault_key)
+                        .map_err(|e| {
+                            ScanError::DecryptionFailed(format!("Failed to decrypt phone: {e}"))
+                        })?
+                } else {
+                    profile
+                        .phone_numbers
+                        .first()
+                        .ok_or_else(|| ScanError::MissingRequiredField("phone".to_string()))?
+                        .number
+                        .decrypt(vault_key)
+                        .map_err(|e| {
+                            ScanError::DecryptionFailed(format!("Failed to decrypt phone: {e}"))
+                        })?
+                };
+                Ok(("{phone}", val))
+            }
+            PiiField::DateOfBirth => {
+                let val = profile
+                    .date_of_birth
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("date_of_birth".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt date_of_birth: {e}"))
+                    })?;
+                Ok(("{date_of_birth}", val))
+            }
+            PiiField::FullName => {
+                let val = profile
+                    .full_name
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("full_name".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt full_name: {e}"))
+                    })?;
+                Ok(("{full_name}", val))
+            }
+            PiiField::Country => {
+                let val = profile
+                    .country
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("country".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt country: {e}"))
+                    })?;
+                Ok(("{country}", val))
+            }
+            PiiField::Ssn => {
+                let val = profile
+                    .ssn
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("ssn".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt ssn: {e}"))
+                    })?;
+                Ok(("{ssn}", val))
+            }
+            PiiField::Employer => {
+                let val = profile
+                    .employer
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("employer".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt employer: {e}"))
+                    })?;
+                Ok(("{employer}", val))
+            }
+            PiiField::JobTitle => {
+                let val = profile
+                    .job_title
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("job_title".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt job_title: {e}"))
+                    })?;
+                Ok(("{job_title}", val))
+            }
+            PiiField::Education => {
+                let val = profile
+                    .education
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("education".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt education: {e}"))
+                    })?;
+                Ok(("{education}", val))
+            }
+            PiiField::SocialMedia => {
+                // Use first social media username from the vector
+                let val = profile
+                    .social_media
+                    .as_ref()
+                    .ok_or_else(|| ScanError::MissingRequiredField("social_media".to_string()))?
+                    .decrypt(vault_key)
+                    .map_err(|e| {
+                        ScanError::DecryptionFailed(format!("Failed to decrypt social_media: {e}"))
+                    })?
+                    .first()
+                    .ok_or_else(|| {
+                        ScanError::MissingRequiredField(
+                            "social_media (no usernames provided)".to_string(),
+                        )
+                    })?
+                    .clone();
+                Ok(("{social_media}", val))
+            }
+            PiiField::Relatives => {
+                // Use first relative's full name
+                let relative = profile
+                    .relatives
+                    .first()
+                    .ok_or_else(|| ScanError::MissingRequiredField("relatives".to_string()))?;
+
+                let first_name = relative
+                    .first_name
+                    .as_ref()
+                    .and_then(|f| f.decrypt(vault_key).ok())
+                    .unwrap_or_default();
+
+                let last_name = relative
+                    .last_name
+                    .as_ref()
+                    .and_then(|f| f.decrypt(vault_key).ok())
+                    .unwrap_or_default();
+
+                let val = format!("{first_name} {last_name}").trim().to_string();
+                if val.is_empty() {
+                    return Err(ScanError::MissingRequiredField(
+                        "relatives (no name data)".to_string(),
+                    ));
+                }
+                Ok(("{relatives}", val))
+            }
+            PiiField::PreviousAddress => {
+                // Use first previous address, formatted as full address
+                let prev_addr = profile.previous_addresses_v2.first().ok_or_else(|| {
+                    ScanError::MissingRequiredField("previous_address".to_string())
+                })?;
+
+                let address = prev_addr.address_line1.decrypt(vault_key).map_err(|e| {
+                    ScanError::DecryptionFailed(format!(
+                        "Failed to decrypt previous address line 1: {e}"
+                    ))
+                })?;
+
+                let city = prev_addr.city.decrypt(vault_key).map_err(|e| {
+                    ScanError::DecryptionFailed(format!(
+                        "Failed to decrypt previous address city: {e}"
+                    ))
+                })?;
+
+                let state = prev_addr.state.decrypt(vault_key).map_err(|e| {
+                    ScanError::DecryptionFailed(format!(
+                        "Failed to decrypt previous address state: {e}"
+                    ))
+                })?;
+
+                let zip = prev_addr.zip_code.decrypt(vault_key).map_err(|e| {
+                    ScanError::DecryptionFailed(format!(
+                        "Failed to decrypt previous address zip: {e}"
+                    ))
+                })?;
+
+                let val = format!("{address}, {city}, {state} {zip}");
+                Ok(("{previous_address}", val))
+            }
+            PiiField::Age | PiiField::IpAddress | PiiField::Photo | PiiField::Other => {
+                // These fields are not stored in UserProfile or cannot be derived
+                tracing::warn!("Unsupported PII field (not stored in profile): {:?}", field);
+                Err(ScanError::MissingRequiredField(format!(
+                    "{field:?} is not supported"
+                )))
+            }
+        }
+    }
+
     /// Build search URL from broker definition and profile data.
     ///
     /// Loads the profile from database, decrypts required fields,
@@ -464,7 +770,6 @@ impl ScanOrchestrator {
         vault_key: &[u8; 32],
     ) -> Result<String> {
         use spectral_broker::SearchMethod;
-        use spectral_core::PiiField;
 
         match &broker_def.search {
             SearchMethod::UrlTemplate {
@@ -489,371 +794,12 @@ impl ScanOrchestrator {
 
                 // Substitute each required field
                 for field in requires_fields {
-                    let (placeholder, value) = match field {
-                        PiiField::FirstName => {
-                            let val = profile
-                                .first_name
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("first_name".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt first_name: {e}"
-                                    ))
-                                })?;
-                            ("{first_name}", val)
-                        }
-                        PiiField::MiddleName => {
-                            let val = profile
-                                .middle_name
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("middle_name".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt middle_name: {e}"
-                                    ))
-                                })?;
-                            ("{middle_name}", val)
-                        }
-                        PiiField::LastName => {
-                            let val = profile
-                                .last_name
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("last_name".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt last_name: {e}"
-                                    ))
-                                })?;
-                            ("{last_name}", val)
-                        }
-                        PiiField::Address => {
-                            let val = profile
-                                .address
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("address".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt address: {e}"
-                                    ))
-                                })?;
-                            ("{address}", val)
-                        }
-                        PiiField::City => {
-                            let val = profile
-                                .city
-                                .as_ref()
-                                .ok_or_else(|| ScanError::MissingRequiredField("city".to_string()))?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt city: {e}"
-                                    ))
-                                })?;
-                            ("{city}", val)
-                        }
-                        PiiField::State => {
-                            let val = profile
-                                .state
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("state".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt state: {e}"
-                                    ))
-                                })?;
-                            ("{state}", val)
-                        }
-                        PiiField::ZipCode => {
-                            let val = profile
-                                .zip_code
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("zip_code".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt zip_code: {e}"
-                                    ))
-                                })?;
-                            ("{zip_code}", val)
-                        }
-                        PiiField::Email => {
-                            // Use first email from email_addresses array or fall back to deprecated email field
-                            let val = if profile.email_addresses.is_empty() {
-                                #[allow(deprecated)]
-                                profile
-                                    .email
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        ScanError::MissingRequiredField("email".to_string())
-                                    })?
-                                    .decrypt(vault_key)
-                                    .map_err(|e| {
-                                        ScanError::DecryptionFailed(format!(
-                                            "Failed to decrypt email: {e}"
-                                        ))
-                                    })?
-                            } else {
-                                profile
-                                    .email_addresses
-                                    .first()
-                                    .ok_or_else(|| {
-                                        ScanError::MissingRequiredField("email".to_string())
-                                    })?
-                                    .email
-                                    .decrypt(vault_key)
-                                    .map_err(|e| {
-                                        ScanError::DecryptionFailed(format!(
-                                            "Failed to decrypt email: {e}"
-                                        ))
-                                    })?
-                            };
-                            ("{email}", val)
-                        }
-                        PiiField::Phone => {
-                            // Use first phone from phone_numbers array or fall back to deprecated phone field
-                            let val = if profile.phone_numbers.is_empty() {
-                                #[allow(deprecated)]
-                                profile
-                                    .phone
-                                    .as_ref()
-                                    .ok_or_else(|| {
-                                        ScanError::MissingRequiredField("phone".to_string())
-                                    })?
-                                    .decrypt(vault_key)
-                                    .map_err(|e| {
-                                        ScanError::DecryptionFailed(format!(
-                                            "Failed to decrypt phone: {e}"
-                                        ))
-                                    })?
-                            } else {
-                                profile
-                                    .phone_numbers
-                                    .first()
-                                    .ok_or_else(|| {
-                                        ScanError::MissingRequiredField("phone".to_string())
-                                    })?
-                                    .number
-                                    .decrypt(vault_key)
-                                    .map_err(|e| {
-                                        ScanError::DecryptionFailed(format!(
-                                            "Failed to decrypt phone: {e}"
-                                        ))
-                                    })?
-                            };
-                            ("{phone}", val)
-                        }
-                        PiiField::DateOfBirth => {
-                            let val = profile
-                                .date_of_birth
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("date_of_birth".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt date_of_birth: {e}"
-                                    ))
-                                })?;
-                            ("{date_of_birth}", val)
-                        }
-                        PiiField::FullName => {
-                            let val = profile
-                                .full_name
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("full_name".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt full_name: {e}"
-                                    ))
-                                })?;
-                            ("{full_name}", val)
-                        }
-                        PiiField::Country => {
-                            let val = profile
-                                .country
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("country".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt country: {e}"
-                                    ))
-                                })?;
-                            ("{country}", val)
-                        }
-                        PiiField::Ssn => {
-                            let val = profile
-                                .ssn
-                                .as_ref()
-                                .ok_or_else(|| ScanError::MissingRequiredField("ssn".to_string()))?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt ssn: {e}"
-                                    ))
-                                })?;
-                            ("{ssn}", val)
-                        }
-                        PiiField::Employer => {
-                            let val = profile
-                                .employer
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("employer".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt employer: {e}"
-                                    ))
-                                })?;
-                            ("{employer}", val)
-                        }
-                        PiiField::JobTitle => {
-                            let val = profile
-                                .job_title
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("job_title".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt job_title: {e}"
-                                    ))
-                                })?;
-                            ("{job_title}", val)
-                        }
-                        PiiField::Education => {
-                            let val = profile
-                                .education
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("education".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt education: {e}"
-                                    ))
-                                })?;
-                            ("{education}", val)
-                        }
-                        PiiField::SocialMedia => {
-                            // Use first social media username from the vector
-                            let val = profile
-                                .social_media
-                                .as_ref()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField("social_media".to_string())
-                                })?
-                                .decrypt(vault_key)
-                                .map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt social_media: {e}"
-                                    ))
-                                })?
-                                .first()
-                                .ok_or_else(|| {
-                                    ScanError::MissingRequiredField(
-                                        "social_media (no usernames provided)".to_string(),
-                                    )
-                                })?
-                                .clone();
-                            ("{social_media}", val)
-                        }
-                        PiiField::Relatives => {
-                            // Use first relative's full name
-                            let relative = profile.relatives.first().ok_or_else(|| {
-                                ScanError::MissingRequiredField("relatives".to_string())
-                            })?;
-
-                            let first_name = relative
-                                .first_name
-                                .as_ref()
-                                .and_then(|f| f.decrypt(vault_key).ok())
-                                .unwrap_or_default();
-
-                            let last_name = relative
-                                .last_name
-                                .as_ref()
-                                .and_then(|f| f.decrypt(vault_key).ok())
-                                .unwrap_or_default();
-
-                            let val = format!("{first_name} {last_name}").trim().to_string();
-                            if val.is_empty() {
-                                return Err(ScanError::MissingRequiredField(
-                                    "relatives (no name data)".to_string(),
-                                ));
-                            }
-                            ("{relatives}", val)
-                        }
-                        PiiField::PreviousAddress => {
-                            // Use first previous address, formatted as full address
-                            let prev_addr =
-                                profile.previous_addresses_v2.first().ok_or_else(|| {
-                                    ScanError::MissingRequiredField("previous_address".to_string())
-                                })?;
-
-                            let address =
-                                prev_addr.address_line1.decrypt(vault_key).map_err(|e| {
-                                    ScanError::DecryptionFailed(format!(
-                                        "Failed to decrypt previous address line 1: {e}"
-                                    ))
-                                })?;
-
-                            let city = prev_addr.city.decrypt(vault_key).map_err(|e| {
-                                ScanError::DecryptionFailed(format!(
-                                    "Failed to decrypt previous address city: {e}"
-                                ))
-                            })?;
-
-                            let state = prev_addr.state.decrypt(vault_key).map_err(|e| {
-                                ScanError::DecryptionFailed(format!(
-                                    "Failed to decrypt previous address state: {e}"
-                                ))
-                            })?;
-
-                            let zip = prev_addr.zip_code.decrypt(vault_key).map_err(|e| {
-                                ScanError::DecryptionFailed(format!(
-                                    "Failed to decrypt previous address zip: {e}"
-                                ))
-                            })?;
-
-                            let val = format!("{address}, {city}, {state} {zip}");
-                            ("{previous_address}", val)
-                        }
-                        PiiField::Age | PiiField::IpAddress | PiiField::Photo | PiiField::Other => {
-                            // These fields are not stored in UserProfile or cannot be derived
-                            tracing::warn!(
-                                "Unsupported PII field (not stored in profile): {:?}",
-                                field
-                            );
-                            continue;
-                        }
+                    // Extract field value using helper function
+                    let Ok((placeholder, value)) =
+                        Self::extract_pii_field_value(*field, &profile, vault_key)
+                    else {
+                        // Skip unsupported fields
+                        continue;
                     };
 
                     // URL encode the value and substitute

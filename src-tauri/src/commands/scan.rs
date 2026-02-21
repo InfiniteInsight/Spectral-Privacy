@@ -1093,6 +1093,118 @@ pub async fn get_removal_evidence(
     }))
 }
 
+/// Decrypt all profile fields into a HashMap for template rendering.
+fn decrypt_profile_fields(
+    profile: &spectral_vault::UserProfile,
+    vault_key: &[u8; 32],
+) -> HashMap<String, String> {
+    let mut fields = HashMap::new();
+
+    // Macro to simplify field decryption
+    macro_rules! decrypt_field {
+        ($field:expr, $key:expr) => {
+            if let Some(ref field) = $field {
+                if let Ok(value) = field.decrypt(vault_key) {
+                    fields.insert($key.to_string(), value);
+                }
+            }
+        };
+    }
+
+    // Decrypt simple fields
+    decrypt_field!(profile.full_name, "full_name");
+    decrypt_field!(profile.first_name, "first_name");
+    decrypt_field!(profile.middle_name, "middle_name");
+    decrypt_field!(profile.last_name, "last_name");
+    decrypt_field!(profile.address, "address");
+    decrypt_field!(profile.city, "city");
+    decrypt_field!(profile.state, "state");
+    decrypt_field!(profile.zip_code, "zip_code");
+    decrypt_field!(profile.date_of_birth, "date_of_birth");
+
+    // Decrypt email from email_addresses array
+    if let Some(email_addr) = profile.email_addresses.first() {
+        if let Ok(value) = email_addr.email.decrypt(vault_key) {
+            fields.insert("email".to_string(), value);
+        }
+    }
+
+    // Decrypt phone from phone_numbers array
+    if let Some(phone_num) = profile.phone_numbers.first() {
+        if let Ok(value) = phone_num.number.decrypt(vault_key) {
+            fields.insert("phone".to_string(), value);
+        }
+    }
+
+    fields
+}
+
+/// Removal email context loaded from database.
+struct RemovalEmailContext {
+    email_address: String,
+    subject_template: String,
+    body_template: String,
+    profile: spectral_vault::UserProfile,
+}
+
+/// Load and validate removal context (attempt, finding, broker, profile).
+async fn load_removal_context(
+    state: &tauri::State<'_, AppState>,
+    vault: &Arc<spectral_vault::Vault>,
+    attempt_id: &str,
+) -> Result<RemovalEmailContext, String> {
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Get the removal attempt
+    let attempt = spectral_db::removal_attempts::get_by_id(db.pool(), attempt_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Removal attempt not found")?;
+
+    // Get the finding to retrieve profile_id
+    let finding = spectral_db::findings::get_by_id(db.pool(), &attempt.finding_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Finding not found")?;
+
+    // Convert broker_id and get broker definition
+    let broker_id = BrokerId::new(&attempt.broker_id).map_err(|e| e.to_string())?;
+    let broker = state
+        .broker_registry
+        .get(&broker_id)
+        .map_err(|e| e.to_string())?;
+
+    // Verify this is an email-based removal and extract email info
+    let (email_address, subject_template, body_template) = match &broker.removal {
+        RemovalMethod::Email {
+            email,
+            subject,
+            body,
+            ..
+        } => (email.clone(), subject.clone(), body.clone()),
+        _ => {
+            return Err(format!(
+                "Broker {} does not support email removal",
+                broker.name()
+            ));
+        }
+    };
+
+    // Convert profile_id and load profile
+    let profile_id = ProfileId::new(&finding.profile_id).map_err(|e| e.to_string())?;
+    let profile = vault
+        .load_profile(&profile_id)
+        .await
+        .map_err(|e| format!("Failed to load profile: {}", e))?;
+
+    Ok(RemovalEmailContext {
+        email_address,
+        subject_template,
+        body_template,
+        profile,
+    })
+}
+
 /// Re-trigger email send for a pending email attempt.
 ///
 /// This command is a stub for Task 16 (Email Verification Manual Tab).
@@ -1112,129 +1224,26 @@ pub async fn send_removal_email<R: tauri::Runtime>(
 
     // Get unlocked vault
     let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
-    let db = vault.database().map_err(|e| e.to_string())?;
-
-    // Get the removal attempt
-    let attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Removal attempt not found")?;
-
-    // Get the finding to retrieve profile_id
-    let finding = spectral_db::findings::get_by_id(db.pool(), &attempt.finding_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Finding not found")?;
-
-    // Convert broker_id from String to BrokerId
-    let broker_id = BrokerId::new(&attempt.broker_id).map_err(|e| e.to_string())?;
-
-    // Get the broker definition
-    let broker = state
-        .broker_registry
-        .get(&broker_id)
-        .map_err(|e| e.to_string())?;
-
-    // Verify this is an email-based removal
-    let (email_address, subject_template, body_template) = match &broker.removal {
-        RemovalMethod::Email {
-            email,
-            subject,
-            body,
-            ..
-        } => (email.clone(), subject.clone(), body.clone()),
-        _ => {
-            return Err(format!(
-                "Broker {} does not support email removal",
-                broker.name()
-            ));
-        }
-    };
 
     // Get vault encryption key for profile decryption
     let vault_key = vault
         .encryption_key()
         .map_err(|e| format!("Failed to get vault key: {}", e))?;
 
-    // Convert profile_id from String to ProfileId
-    let profile_id = ProfileId::new(&finding.profile_id).map_err(|e| e.to_string())?;
+    // Load all removal context (attempt, finding, broker, profile)
+    let context = load_removal_context(&state, &vault, &attempt_id).await?;
 
-    // Load the profile
-    let profile = vault
-        .load_profile(&profile_id)
-        .await
-        .map_err(|e| format!("Failed to load profile: {}", e))?;
-
-    // Manually decrypt profile fields into a HashMap
-    let mut fields = HashMap::new();
-
-    // Decrypt each optional field if present
-    if let Some(ref field) = profile.full_name {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("full_name".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.first_name {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("first_name".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.middle_name {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("middle_name".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.last_name {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("last_name".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.address {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("address".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.city {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("city".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.state {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("state".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.zip_code {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("zip_code".to_string(), value);
-        }
-    }
-    if let Some(ref field) = profile.date_of_birth {
-        if let Ok(value) = field.decrypt(vault_key) {
-            fields.insert("date_of_birth".to_string(), value);
-        }
-    }
-    // Add email from email_addresses if available
-    if let Some(email_addr) = profile.email_addresses.first() {
-        if let Ok(value) = email_addr.email.decrypt(vault_key) {
-            fields.insert("email".to_string(), value);
-        }
-    }
-    // Add phone from phone_numbers if available
-    if let Some(phone_num) = profile.phone_numbers.first() {
-        if let Ok(value) = phone_num.number.decrypt(vault_key) {
-            fields.insert("phone".to_string(), value);
-        }
-    }
+    // Decrypt profile fields for template rendering
+    let fields = decrypt_profile_fields(&context.profile, vault_key);
 
     // Render email subject and body templates
-    let rendered_subject = render_email_template(&subject_template, &fields);
-    let rendered_body = render_email_template(&body_template, &fields);
+    let rendered_subject = render_email_template(&context.subject_template, &fields);
+    let rendered_body = render_email_template(&context.body_template, &fields);
 
     // Construct mailto: URL
     let mailto_url = format!(
         "mailto:{}?subject={}&body={}",
-        urlencoding::encode(&email_address),
+        urlencoding::encode(&context.email_address),
         urlencoding::encode(&rendered_subject),
         urlencoding::encode(&rendered_body)
     );
@@ -1247,7 +1256,7 @@ pub async fn send_removal_email<R: tauri::Runtime>(
 
     info!(
         "Opened mailto: for attempt {} to {}",
-        attempt_id, email_address
+        attempt_id, context.email_address
     );
 
     Ok(())
