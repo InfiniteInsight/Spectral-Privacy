@@ -1,12 +1,14 @@
 use crate::removal_worker::submit_removal_task;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_broker::{BrokerRegistry, ScanPriority};
+use spectral_broker::{BrokerRegistry, RemovalMethod, ScanPriority};
 use spectral_browser::BrowserEngine;
-use spectral_core::types::ProfileId;
+use spectral_core::types::{BrokerId, ProfileId};
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{Emitter, State};
+use tauri_plugin_shell::ShellExt;
 use tokio::sync::Semaphore;
 use tracing::info;
 use uuid::Uuid;
@@ -1112,20 +1114,155 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
     let db = vault.database().map_err(|e| e.to_string())?;
 
-    // Verify the attempt exists
-    let _attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
+    // Get the removal attempt
+    let attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or("Removal attempt not found")?;
 
-    // Full implementation requires:
-    // 1. Loading broker definition
-    // 2. Loading profile and decrypting fields
-    // 3. Rendering email template
-    // 4. Opening mailto: URL via app handle
-    // This will be implemented in Task 16.
+    // Get the finding to retrieve profile_id
+    let finding = spectral_db::findings::get_by_id(db.pool(), &attempt.finding_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Finding not found")?;
 
-    Err("Email retry not yet implemented - see Task 16".to_string())
+    // Convert broker_id from String to BrokerId
+    let broker_id = BrokerId::new(&attempt.broker_id).map_err(|e| e.to_string())?;
+
+    // Get the broker definition
+    let broker = state
+        .broker_registry
+        .get(&broker_id)
+        .map_err(|e| e.to_string())?;
+
+    // Verify this is an email-based removal
+    let (email_address, subject_template, body_template) = match &broker.removal {
+        RemovalMethod::Email {
+            email,
+            subject,
+            body,
+            ..
+        } => (email.clone(), subject.clone(), body.clone()),
+        _ => {
+            return Err(format!(
+                "Broker {} does not support email removal",
+                broker.name()
+            ));
+        }
+    };
+
+    // Get vault encryption key for profile decryption
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+
+    // Convert profile_id from String to ProfileId
+    let profile_id = ProfileId::new(&finding.profile_id).map_err(|e| e.to_string())?;
+
+    // Load the profile
+    let profile = vault
+        .load_profile(&profile_id)
+        .await
+        .map_err(|e| format!("Failed to load profile: {}", e))?;
+
+    // Manually decrypt profile fields into a HashMap
+    let mut fields = HashMap::new();
+
+    // Decrypt each optional field if present
+    if let Some(ref field) = profile.full_name {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("full_name".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.first_name {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("first_name".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.middle_name {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("middle_name".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.last_name {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("last_name".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.address {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("address".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.city {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("city".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.state {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("state".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.zip_code {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("zip_code".to_string(), value);
+        }
+    }
+    if let Some(ref field) = profile.date_of_birth {
+        if let Ok(value) = field.decrypt(vault_key) {
+            fields.insert("date_of_birth".to_string(), value);
+        }
+    }
+    // Add email from email_addresses if available
+    if let Some(email_addr) = profile.email_addresses.first() {
+        if let Ok(value) = email_addr.email.decrypt(vault_key) {
+            fields.insert("email".to_string(), value);
+        }
+    }
+    // Add phone from phone_numbers if available
+    if let Some(phone_num) = profile.phone_numbers.first() {
+        if let Ok(value) = phone_num.number.decrypt(vault_key) {
+            fields.insert("phone".to_string(), value);
+        }
+    }
+
+    // Render email subject and body templates
+    let rendered_subject = render_email_template(&subject_template, &fields);
+    let rendered_body = render_email_template(&body_template, &fields);
+
+    // Construct mailto: URL
+    let mailto_url = format!(
+        "mailto:{}?subject={}&body={}",
+        urlencoding::encode(&email_address),
+        urlencoding::encode(&rendered_subject),
+        urlencoding::encode(&rendered_body)
+    );
+
+    // Open mailto: URL in default email client
+    #[allow(deprecated)]
+    _app.shell()
+        .open(&mailto_url, None)
+        .map_err(|e| format!("Failed to open email client: {}", e))?;
+
+    info!(
+        "Opened mailto: for attempt {} to {}",
+        attempt_id, email_address
+    );
+
+    Ok(())
+}
+
+/// Render an email template by replacing `{{field_name}}` placeholders with profile values.
+fn render_email_template(
+    template: &str,
+    fields: &std::collections::HashMap<String, String>,
+) -> String {
+    let mut rendered = template.to_string();
+    for (key, value) in fields {
+        rendered = rendered.replace(&format!("{{{{{key}}}}}"), value);
+    }
+    rendered
 }
 
 #[cfg(test)]
