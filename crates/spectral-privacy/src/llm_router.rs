@@ -8,7 +8,9 @@
 
 use crate::engine::PrivacyEngine;
 use crate::error::Result;
-use crate::llm_settings::{get_primary_provider, get_provider_preference, LlmProvider, TaskType};
+use crate::llm_settings::{
+    get_api_key, get_primary_provider, get_provider_preference, LlmProvider, TaskType,
+};
 use crate::types::Feature;
 use spectral_llm::{
     AnthropicProvider, CompletionRequest, CompletionResponse, FilterStrategy, GeminiProvider,
@@ -56,7 +58,7 @@ impl PrivacyAwareLlmRouter {
         self.check_permissions(&provider_type).await?;
 
         // 3. Create provider instance
-        let provider = self.create_provider(provider_type)?;
+        let provider = self.create_provider(provider_type).await?;
 
         // 4. Apply PII filtering for cloud providers
         let (filtered_request, token_map) = if provider_type.is_local() {
@@ -120,8 +122,16 @@ impl PrivacyAwareLlmRouter {
     }
 
     /// Create a provider instance.
-    #[allow(clippy::unused_self)] // Will use self for API key retrieval in Phase 5
-    fn create_provider(&self, provider_type: LlmProvider) -> Result<Arc<dyn LlmProviderTrait>> {
+    ///
+    /// # Errors
+    /// Returns error if:
+    /// - API key retrieval fails
+    /// - API key is not configured for cloud providers
+    /// - Provider initialization fails
+    async fn create_provider(
+        &self,
+        provider_type: LlmProvider,
+    ) -> Result<Arc<dyn LlmProviderTrait>> {
         match provider_type {
             LlmProvider::Ollama => {
                 let provider = OllamaProvider::new().map_err(|e| {
@@ -140,8 +150,12 @@ impl PrivacyAwareLlmRouter {
                 Ok(Arc::new(provider))
             }
             LlmProvider::OpenAi => {
-                // TODO: Get API key from settings using self.pool
-                let api_key = "stub-key".to_string(); // pragma: allowlist secret
+                let api_key = get_api_key(&self.pool, LlmProvider::OpenAi).await?;
+                let api_key = api_key.ok_or_else(|| {
+                    crate::error::PrivacyError::LlmRequest(
+                        "OpenAI API key not configured. Use 'spectral privacy llm set-key openai <key>' to configure.".to_string()
+                    )
+                })?;
                 let provider = OpenAiProvider::new(api_key).map_err(|e| {
                     crate::error::PrivacyError::LlmRequest(format!(
                         "Failed to create OpenAI provider: {e}"
@@ -150,8 +164,12 @@ impl PrivacyAwareLlmRouter {
                 Ok(Arc::new(provider))
             }
             LlmProvider::Gemini => {
-                // TODO: Get API key from settings using self.pool
-                let api_key = "stub-key".to_string(); // pragma: allowlist secret
+                let api_key = get_api_key(&self.pool, LlmProvider::Gemini).await?;
+                let api_key = api_key.ok_or_else(|| {
+                    crate::error::PrivacyError::LlmRequest(
+                        "Gemini API key not configured. Use 'spectral privacy llm set-key gemini <key>' to configure.".to_string()
+                    )
+                })?;
                 let provider = GeminiProvider::new(api_key).map_err(|e| {
                     crate::error::PrivacyError::LlmRequest(format!(
                         "Failed to create Gemini provider: {e}"
@@ -160,8 +178,12 @@ impl PrivacyAwareLlmRouter {
                 Ok(Arc::new(provider))
             }
             LlmProvider::Claude => {
-                // TODO: Get API key from settings using self.pool
-                let api_key = "stub-key".to_string(); // pragma: allowlist secret
+                let api_key = get_api_key(&self.pool, LlmProvider::Claude).await?;
+                let api_key = api_key.ok_or_else(|| {
+                    crate::error::PrivacyError::LlmRequest(
+                        "Claude API key not configured. Use 'spectral privacy llm set-key claude <key>' to configure.".to_string()
+                    )
+                })?;
                 let provider = AnthropicProvider::new(api_key).map_err(|e| {
                     crate::error::PrivacyError::LlmRequest(format!(
                         "Failed to create Claude provider: {e}"
