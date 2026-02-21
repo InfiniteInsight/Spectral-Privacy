@@ -106,29 +106,40 @@ impl LlmProvider for AnthropicProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let api_request = self.to_api_request(&request);
 
-        // Stub implementation - would make actual API call here
-        // For now, return a mock response
-        let _response = self
+        // Make actual API call to Anthropic
+        let response = self
             .client
             .post(format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
-            .json(&api_request);
+            .json(&api_request)
+            .send()
+            .await?;
 
-        // Mock response for stub
-        Ok(CompletionResponse {
-            content: format!(
-                "[Stub] Anthropic Claude would respond to: {}",
-                request.messages.last().map_or("", |m| &m.content)
-            ),
-            model: self.model.clone(),
-            stop_reason: Some("end_turn".to_string()),
-            usage: Some(Usage {
-                input_tokens: 50,
-                output_tokens: 100,
-            }),
-        })
+        // Check for HTTP errors
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::ApiError {
+                provider: "anthropic".to_string(),
+                status: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        // Parse the JSON response
+        let api_response: AnthropicResponse =
+            response.json().await.map_err(|e| LlmError::ParseError {
+                provider: "anthropic".to_string(),
+                message: format!("Failed to parse response: {e}"),
+            })?;
+
+        // Convert to internal format
+        Ok(Self::convert_api_response(api_response))
     }
 
     async fn stream(&self, request: CompletionRequest) -> Result<CompletionStream> {
@@ -220,7 +231,6 @@ struct AnthropicUsage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::StreamExt;
 
     #[test]
     fn test_provider_creation() {
@@ -247,34 +257,6 @@ mod tests {
         assert!(caps.supports_tool_use);
         assert!(caps.supports_structured_output);
         assert_eq!(caps.cost_tier, 2);
-    }
-
-    #[tokio::test]
-    async fn test_complete_stub() {
-        let provider = AnthropicProvider::new("test-key").expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let response = provider.complete(request).await.expect("complete request");
-
-        assert!(response.content.contains("Stub"));
-        assert_eq!(response.model, "claude-3-5-sonnet-20241022");
-        assert!(response.usage.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_stream_stub() {
-        let provider = AnthropicProvider::new("test-key").expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let mut stream = provider.stream(request).await.expect("create stream");
-
-        let mut chunks = Vec::new();
-        while let Some(chunk) = stream.next().await {
-            chunks.push(chunk.expect("valid chunk"));
-        }
-
-        assert!(!chunks.is_empty());
-        assert!(chunks.last().expect("final chunk").is_final);
     }
 
     #[test]

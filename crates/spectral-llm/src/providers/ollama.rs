@@ -125,23 +125,37 @@ impl LlmProvider for OllamaProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let api_request = self.to_api_request(&request);
 
-        // Stub implementation - would make actual API call here
-        let _response = self
+        // Make actual API call to Ollama
+        let response = self
             .client
             .post(format!("{}/api/generate", self.base_url))
-            .json(&api_request);
+            .json(&api_request)
+            .send()
+            .await?;
 
-        // Mock response for stub
-        Ok(CompletionResponse {
-            content: format!(
-                "[Stub] Ollama {} would respond to: {}",
-                self.model,
-                request.messages.last().map_or("", |m| &m.content)
-            ),
-            model: self.model.clone(),
-            stop_reason: Some("stop".to_string()),
-            usage: None,
-        })
+        // Check for HTTP errors
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::ApiError {
+                provider: "ollama".to_string(),
+                status: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        // Parse the JSON response
+        let api_response: OllamaResponse =
+            response.json().await.map_err(|e| LlmError::ParseError {
+                provider: "ollama".to_string(),
+                message: format!("Failed to parse response: {e}"),
+            })?;
+
+        // Convert to internal format
+        Ok(Self::convert_api_response(api_response))
     }
 
     async fn stream(&self, request: CompletionRequest) -> Result<CompletionStream> {
@@ -218,7 +232,6 @@ struct OllamaResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::StreamExt;
 
     #[test]
     fn test_provider_creation() {
@@ -251,34 +264,6 @@ mod tests {
         assert!(!caps.supports_vision);
         assert!(!caps.supports_tool_use);
         assert_eq!(caps.cost_tier, 0); // Local is free
-    }
-
-    #[tokio::test]
-    async fn test_complete_stub() {
-        let provider = OllamaProvider::new().expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let response = provider.complete(request).await.expect("complete request");
-
-        assert!(response.content.contains("Stub"));
-        assert!(response.content.contains("llama3.1:8b"));
-        assert_eq!(response.model, "llama3.1:8b");
-    }
-
-    #[tokio::test]
-    async fn test_stream_stub() {
-        let provider = OllamaProvider::new().expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let mut stream = provider.stream(request).await.expect("create stream");
-
-        let mut chunks = Vec::new();
-        while let Some(chunk) = stream.next().await {
-            chunks.push(chunk.expect("valid chunk"));
-        }
-
-        assert!(!chunks.is_empty());
-        assert!(chunks.last().expect("final chunk").is_final);
     }
 
     #[test]

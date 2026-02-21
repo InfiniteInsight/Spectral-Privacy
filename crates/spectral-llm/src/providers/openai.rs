@@ -1,8 +1,8 @@
 //! `OpenAI` API provider implementation.
 
 use super::common::{
-    build_http_client, convert_role_standard, create_stub_response, streaming_not_implemented,
-    StandardMessage, StandardUsage,
+    build_http_client, convert_role_standard, streaming_not_implemented, StandardMessage,
+    StandardUsage,
 };
 use crate::error::{LlmError, Result};
 use crate::provider::{
@@ -107,16 +107,39 @@ impl LlmProvider for OpenAiProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let api_request = self.to_api_request(&request);
 
-        // Stub implementation - would make actual API call here
-        let _response = self
+        // Make actual API call to OpenAI
+        let response = self
             .client
             .post(format!("{}/chat/completions", self.base_url))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
-            .json(&api_request);
+            .json(&api_request)
+            .send()
+            .await?;
 
-        // Mock response for stub
-        Ok(create_stub_response("OpenAI", &self.model, &request))
+        // Check for HTTP errors
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(LlmError::ApiError {
+                provider: "openai".to_string(),
+                status: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        // Parse the JSON response
+        let api_response: OpenAiResponse =
+            response.json().await.map_err(|e| LlmError::ParseError {
+                provider: "openai".to_string(),
+                message: format!("Failed to parse response: {e}"),
+            })?;
+
+        // Convert to internal format
+        Self::convert_api_response(api_response)
     }
 
     async fn stream(&self, _request: CompletionRequest) -> Result<CompletionStream> {
@@ -199,31 +222,6 @@ mod tests {
         assert!(caps.supports_tool_use);
         assert!(caps.supports_structured_output);
         assert_eq!(caps.cost_tier, 3);
-    }
-
-    #[tokio::test]
-    async fn test_complete_stub() {
-        let provider = OpenAiProvider::new("test-key").expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let response = provider.complete(request).await.expect("complete request");
-
-        assert!(response.content.contains("Stub"));
-        assert!(response.content.contains("gpt-4o"));
-        assert_eq!(response.model, "gpt-4o");
-        assert!(response.usage.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_stream_not_implemented() {
-        let provider = OpenAiProvider::new("test-key").expect("create provider");
-        let request = CompletionRequest::new("Hello");
-
-        let result = provider.stream(request).await;
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert!(e.to_string().contains("not yet implemented"));
-        }
     }
 
     #[test]
