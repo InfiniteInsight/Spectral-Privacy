@@ -37,6 +37,8 @@ pub struct StartScanRequest {
 pub struct ScanJobResponse {
     pub id: String,
     pub status: String,
+    pub completed_brokers: u32,
+    pub total_brokers: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -199,7 +201,7 @@ pub async fn start_scan(
     let database = Database::from_encrypted_pool(encrypted_pool);
     let db = Arc::new(database);
 
-    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db)
+    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db.clone())
         .with_max_concurrent_scans(4);
 
     // Filter brokers based on tier or custom IDs
@@ -269,9 +271,20 @@ pub async fn start_scan(
         .await
         .map_err(|e| format!("Failed to start scan: {}", e))?;
 
+    // Query the job to get complete information including total_brokers
+    let job = sqlx::query_as::<_, (String, String, i64, i64)>(
+        "SELECT id, status, completed_brokers, total_brokers FROM scan_jobs WHERE id = ?",
+    )
+    .bind(&job_id)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|e| format!("Failed to get scan status: {}", e))?;
+
     Ok(ScanJobResponse {
-        id: job_id,
-        status: "InProgress".to_string(),
+        id: job.0,
+        status: job.1,
+        completed_brokers: job.2 as u32,
+        total_brokers: job.3 as u32,
     })
 }
 
@@ -291,17 +304,20 @@ pub async fn get_scan_status(
         .database()
         .map_err(|e| format!("Failed to get vault database: {}", e))?;
 
-    // Query the scan job status
-    let job =
-        sqlx::query_as::<_, (String, String)>("SELECT id, status FROM scan_jobs WHERE id = ?")
-            .bind(scan_job_id)
-            .fetch_one(db.pool())
-            .await
-            .map_err(|e| format!("Failed to get scan status: {}", e))?;
+    // Query with all required fields for progress tracking
+    let job = sqlx::query_as::<_, (String, String, i64, i64)>(
+        "SELECT id, status, completed_brokers, total_brokers FROM scan_jobs WHERE id = ?",
+    )
+    .bind(scan_job_id)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|e| format!("Failed to get scan status: {}", e))?;
 
     Ok(ScanJobResponse {
         id: job.0,
         status: job.1,
+        completed_brokers: job.2 as u32,
+        total_brokers: job.3 as u32,
     })
 }
 

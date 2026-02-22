@@ -149,7 +149,27 @@ impl ScanOrchestrator {
     }
 
     /// Mark a scan job as completed.
+    ///
+    /// Verifies that the `completed_brokers` count matches expectations.
     async fn complete_scan_job(&self, job_id: &str, completed_brokers: u32) -> Result<()> {
+        // Check current count for verification
+        let current_count: i64 =
+            sqlx::query_scalar("SELECT completed_brokers FROM scan_jobs WHERE id = ?")
+                .bind(job_id)
+                .fetch_one(self.db.pool())
+                .await?;
+
+        // Log warning if mismatch detected
+        if current_count != i64::from(completed_brokers) {
+            tracing::warn!(
+                "Scan job {} completed_brokers mismatch: expected {}, got {}",
+                job_id,
+                completed_brokers,
+                current_count
+            );
+        }
+
+        // Update to completed status (keep SET as safety net)
         sqlx::query(
             "UPDATE scan_jobs SET status = 'Completed', completed_at = ?, completed_brokers = ? WHERE id = ?"
         )
@@ -172,6 +192,19 @@ impl ScanOrchestrator {
         .bind(job_id)
         .execute(self.db.pool())
         .await?;
+
+        Ok(())
+    }
+
+    /// Increment the completed brokers counter for a scan job.
+    ///
+    /// Called each time a broker scan completes (success or failure)
+    /// to provide real-time progress updates to the frontend.
+    async fn increment_scan_progress(&self, job_id: &str) -> Result<()> {
+        sqlx::query("UPDATE scan_jobs SET completed_brokers = completed_brokers + 1 WHERE id = ?")
+            .bind(job_id)
+            .execute(self.db.pool())
+            .await?;
 
         Ok(())
     }
@@ -216,9 +249,19 @@ impl ScanOrchestrator {
             while futures.len() >= self.max_concurrent_scans {
                 if let Some(result) = futures.next().await {
                     match result {
-                        Ok(broker_result) => results.push(broker_result),
+                        Ok(broker_result) => {
+                            results.push(broker_result);
+                            // Increment progress counter
+                            if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                                tracing::warn!("Failed to increment scan progress: {}", e);
+                            }
+                        }
                         Err(e) => {
                             tracing::error!("Scan failed: {}", e);
+                            // Increment even on error (failure counts as completion)
+                            if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                                tracing::warn!("Failed to increment scan progress: {}", e);
+                            }
                         }
                     }
                 }
@@ -228,9 +271,19 @@ impl ScanOrchestrator {
         // Collect remaining results
         while let Some(result) = futures.next().await {
             match result {
-                Ok(broker_result) => results.push(broker_result),
+                Ok(broker_result) => {
+                    results.push(broker_result);
+                    // Increment progress counter
+                    if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                        tracing::warn!("Failed to increment scan progress: {}", e);
+                    }
+                }
                 Err(e) => {
                     tracing::error!("Scan failed: {}", e);
+                    // Increment even on error (failure counts as completion)
+                    if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                        tracing::warn!("Failed to increment scan progress: {}", e);
+                    }
                 }
             }
         }
@@ -991,5 +1044,81 @@ mod tests {
         assert_eq!(json["phone_numbers"], serde_json::json!(["555-1234"]));
         assert_eq!(json["relatives"], serde_json::json!(["Jane Doe"]));
         assert_eq!(json["emails"], serde_json::json!(["john@example.com"]));
+    }
+
+    #[tokio::test]
+    async fn test_increment_scan_progress() {
+        // Setup test database
+        let key = vec![0u8; 32];
+        let db = spectral_db::Database::new(":memory:", key)
+            .await
+            .expect("create db");
+        db.run_migrations().await.expect("run migrations");
+
+        // Create test profile
+        let dummy_data = [0u8; 32];
+        let dummy_nonce = [0u8; 12];
+        sqlx::query(
+            "INSERT INTO profiles (id, data, nonce, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind("profile-1")
+        .bind(&dummy_data[..])
+        .bind(&dummy_nonce[..])
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind(chrono::Utc::now().to_rfc3339())
+        .execute(db.pool())
+        .await
+        .expect("insert profile");
+
+        // Create scan job with 0 completed
+        let scan_job_id = "test-job-123";
+        sqlx::query(
+            "INSERT INTO scan_jobs (id, profile_id, started_at, status, total_brokers, completed_brokers) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(scan_job_id)
+        .bind("profile-1")
+        .bind(chrono::Utc::now().to_rfc3339())
+        .bind("InProgress")
+        .bind(5)
+        .bind(0)
+        .execute(db.pool())
+        .await
+        .expect("create scan job");
+
+        // Create minimal orchestrator (we only need db access for this test)
+        let broker_registry = Arc::new(spectral_broker::BrokerRegistry::new());
+        let browser_engine = Arc::new(
+            spectral_browser::BrowserEngine::new()
+                .await
+                .expect("create browser engine"),
+        );
+        let db_arc = Arc::new(db);
+        let orchestrator = ScanOrchestrator::new(broker_registry, browser_engine, db_arc.clone());
+
+        // Test: Increment once
+        orchestrator
+            .increment_scan_progress(scan_job_id)
+            .await
+            .expect("increment progress");
+
+        let count: i64 = sqlx::query_scalar("SELECT completed_brokers FROM scan_jobs WHERE id = ?")
+            .bind(scan_job_id)
+            .fetch_one(db_arc.pool())
+            .await
+            .expect("fetch count");
+        assert_eq!(count, 1, "Count should be 1 after first increment");
+
+        // Test: Increment again
+        orchestrator
+            .increment_scan_progress(scan_job_id)
+            .await
+            .expect("increment progress");
+
+        let count: i64 = sqlx::query_scalar("SELECT completed_brokers FROM scan_jobs WHERE id = ?")
+            .bind(scan_job_id)
+            .fetch_one(db_arc.pool())
+            .await
+            .expect("fetch count");
+        assert_eq!(count, 2, "Count should be 2 after second increment");
     }
 }
