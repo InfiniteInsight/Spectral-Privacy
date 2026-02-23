@@ -76,6 +76,9 @@
 					<p class="text-gray-600">
 						{#if isComplete}
 							Found results from {status.completed_brokers} of {status.total_brokers} brokers
+						{:else if status.current_broker_name}
+							Checking {status.current_broker_name}, {status.completed_brokers} of {status.total_brokers}
+							brokers
 						{:else}
 							Checking {status.completed_brokers} of {status.total_brokers} brokers
 						{/if}

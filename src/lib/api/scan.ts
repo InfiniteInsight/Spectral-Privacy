@@ -5,6 +5,7 @@ export interface ScanJobStatus {
 	status: 'InProgress' | 'Completed' | 'Failed' | 'Cancelled';
 	completed_brokers: number;
 	total_brokers: number;
+	current_broker_name?: string;
 	error_message?: string;
 }
 

@@ -200,11 +200,14 @@ impl ScanOrchestrator {
     ///
     /// Called each time a broker scan completes (success or failure)
     /// to provide real-time progress updates to the frontend.
-    async fn increment_scan_progress(&self, job_id: &str) -> Result<()> {
-        sqlx::query("UPDATE scan_jobs SET completed_brokers = completed_brokers + 1 WHERE id = ?")
-            .bind(job_id)
-            .execute(self.db.pool())
-            .await?;
+    async fn increment_scan_progress(&self, job_id: &str, broker_name: &str) -> Result<()> {
+        sqlx::query(
+            "UPDATE scan_jobs SET completed_brokers = completed_brokers + 1, current_broker_name = ? WHERE id = ?"
+        )
+        .bind(broker_name)
+        .bind(job_id)
+        .execute(self.db.pool())
+        .await?;
 
         Ok(())
     }
@@ -250,16 +253,29 @@ impl ScanOrchestrator {
                 if let Some(result) = futures.next().await {
                     match result {
                         Ok(broker_result) => {
+                            // Get broker display name
+                            let broker_name = self
+                                .broker_registry
+                                .get(&broker_result.broker_id)
+                                .ok()
+                                .map_or("Unknown".to_string(), |b| b.broker.name.clone());
+
                             results.push(broker_result);
                             // Increment progress counter
-                            if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                            if let Err(e) = self
+                                .increment_scan_progress(&scan_job_id, &broker_name)
+                                .await
+                            {
                                 tracing::warn!("Failed to increment scan progress: {}", e);
                             }
                         }
                         Err(e) => {
                             tracing::error!("Scan failed: {}", e);
                             // Increment even on error (failure counts as completion)
-                            if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                            // Use "Unknown" since we don't have broker info from error
+                            if let Err(e) =
+                                self.increment_scan_progress(&scan_job_id, "Unknown").await
+                            {
                                 tracing::warn!("Failed to increment scan progress: {}", e);
                             }
                         }
@@ -272,16 +288,27 @@ impl ScanOrchestrator {
         while let Some(result) = futures.next().await {
             match result {
                 Ok(broker_result) => {
+                    // Get broker display name
+                    let broker_name = self
+                        .broker_registry
+                        .get(&broker_result.broker_id)
+                        .ok()
+                        .map_or("Unknown".to_string(), |b| b.broker.name.clone());
+
                     results.push(broker_result);
                     // Increment progress counter
-                    if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                    if let Err(e) = self
+                        .increment_scan_progress(&scan_job_id, &broker_name)
+                        .await
+                    {
                         tracing::warn!("Failed to increment scan progress: {}", e);
                     }
                 }
                 Err(e) => {
                     tracing::error!("Scan failed: {}", e);
                     // Increment even on error (failure counts as completion)
-                    if let Err(e) = self.increment_scan_progress(&scan_job_id).await {
+                    // Use "Unknown" since we don't have broker info from error
+                    if let Err(e) = self.increment_scan_progress(&scan_job_id, "Unknown").await {
                         tracing::warn!("Failed to increment scan progress: {}", e);
                     }
                 }
@@ -1097,7 +1124,7 @@ mod tests {
 
         // Test: Increment once
         orchestrator
-            .increment_scan_progress(scan_job_id)
+            .increment_scan_progress(scan_job_id, "Test Broker 1")
             .await
             .expect("increment progress");
 
@@ -1110,7 +1137,7 @@ mod tests {
 
         // Test: Increment again
         orchestrator
-            .increment_scan_progress(scan_job_id)
+            .increment_scan_progress(scan_job_id, "Test Broker 2")
             .await
             .expect("increment progress");
 
