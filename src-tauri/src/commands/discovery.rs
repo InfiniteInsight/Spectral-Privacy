@@ -17,6 +17,7 @@ pub struct DiscoveryFinding {
     pub risk_level: String,
     pub description: String,
     pub recommended_action: Option<String>,
+    pub pii_type: String,
     pub remediated: bool,
     pub found_at: String,
 }
@@ -72,6 +73,7 @@ async fn insert_pii_finding(
             recommended_action: Some(
                 "Review file and remove sensitive information if no longer needed".to_string(),
             ),
+            pii_type: pii_match.pii_type().to_string(),
         },
     )
     .await
@@ -139,6 +141,19 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
                 continue;
             }
 
+            // Emit progress event for directory
+            let dir_name = dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown");
+            let _ = app.emit(
+                "discovery:progress",
+                serde_json::json!({
+                    "directory": dir_name,
+                    "path": dir.to_string_lossy()
+                }),
+            );
+
             info!("Scanning directory: {:?}", dir);
             let results = spectral_discovery::scan_directory(&dir, &patterns).await;
             let findings = process_scan_results(results, &pool, &vault_id_clone).await;
@@ -194,6 +209,7 @@ pub async fn get_discovery_findings(
             risk_level: f.risk_level,
             description: f.description,
             recommended_action: f.recommended_action,
+            pii_type: f.pii_type,
             remediated: f.remediated,
             found_at: f.found_at,
         })

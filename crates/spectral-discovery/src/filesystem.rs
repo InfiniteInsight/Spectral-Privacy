@@ -113,6 +113,15 @@ impl PiiMatch {
             PiiMatch::Ssn => "critical",
         }
     }
+
+    /// Get PII type identifier for database storage
+    pub fn pii_type(&self) -> &'static str {
+        match self {
+            PiiMatch::Email => "email",
+            PiiMatch::Phone => "phone",
+            PiiMatch::Ssn => "ssn",
+        }
+    }
 }
 
 /// Result of scanning a file
