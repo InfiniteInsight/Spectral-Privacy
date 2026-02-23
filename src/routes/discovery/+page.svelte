@@ -14,21 +14,62 @@
 	let error = $state<string | null>(null);
 	let currentDirectory = $state<string | null>(null);
 
-	// Computed summary counts
-	const criticalCount = $derived(
-		findings.filter((f) => f.risk_level === 'critical' && !f.remediated).length
-	);
-	const mediumCount = $derived(
-		findings.filter((f) => f.risk_level === 'medium' && !f.remediated).length
-	);
-	const informationalCount = $derived(
-		findings.filter((f) => f.risk_level === 'informational' && !f.remediated).length
+	// Filter state
+	let piiTypeFilter = $state<Set<string>>(new Set());
+	let riskLevelFilter = $state<Set<string>>(new Set());
+
+	// Filtered findings based on active filters
+	const filteredFindings = $derived(
+		findings.filter((f) => {
+			// Never show remediated findings
+			if (f.remediated) return false;
+
+			// PII type filter (OR logic within group)
+			const piiMatch = piiTypeFilter.size === 0 || (f.pii_type && piiTypeFilter.has(f.pii_type));
+
+			// Risk level filter (OR logic within group)
+			const riskMatch = riskLevelFilter.size === 0 || riskLevelFilter.has(f.risk_level);
+
+			// Must match ALL filter groups (AND logic between groups)
+			return piiMatch && riskMatch;
+		})
 	);
 
-	// Group findings by source
-	const filesystemFindings = $derived(findings.filter((f) => f.source === 'filesystem'));
-	const browserFindings = $derived(findings.filter((f) => f.source === 'browser'));
-	const emailFindings = $derived(findings.filter((f) => f.source === 'email'));
+	// Computed summary counts from filtered findings
+	const criticalCount = $derived(
+		filteredFindings.filter((f) => f.risk_level === 'critical').length
+	);
+	const mediumCount = $derived(filteredFindings.filter((f) => f.risk_level === 'medium').length);
+	const informationalCount = $derived(
+		filteredFindings.filter((f) => f.risk_level === 'informational').length
+	);
+
+	// Group filtered findings by source
+	const filesystemFindings = $derived(filteredFindings.filter((f) => f.source === 'filesystem'));
+	const browserFindings = $derived(filteredFindings.filter((f) => f.source === 'browser'));
+	const emailFindings = $derived(filteredFindings.filter((f) => f.source === 'email'));
+
+	// Toggle PII type filter
+	function togglePiiType(type: string) {
+		const newFilter = new Set(piiTypeFilter);
+		if (newFilter.has(type)) {
+			newFilter.delete(type);
+		} else {
+			newFilter.add(type);
+		}
+		piiTypeFilter = newFilter;
+	}
+
+	// Toggle risk level filter
+	function toggleRiskLevel(level: string) {
+		const newFilter = new Set(riskLevelFilter);
+		if (newFilter.has(level)) {
+			newFilter.delete(level);
+		} else {
+			newFilter.add(level);
+		}
+		riskLevelFilter = newFilter;
+	}
 
 	// Load findings when vault changes
 	async function loadFindings() {
@@ -125,6 +166,13 @@
 			return isoDate;
 		}
 	}
+
+	function chipClass(isSelected: boolean): string {
+		if (isSelected) {
+			return 'px-3 py-1 rounded-full text-sm font-medium bg-indigo-600 text-white cursor-pointer hover:bg-indigo-700 transition-colors';
+		}
+		return 'px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700 cursor-pointer hover:bg-gray-300 transition-colors';
+	}
 </script>
 
 <div class="mx-auto max-w-6xl px-4 py-8">
@@ -154,6 +202,59 @@
 		<div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>
 	{/if}
 
+	{#if !loading && findings.length > 0}
+		<!-- Filter Chips -->
+		<div class="mb-6 space-y-3">
+			<!-- PII Type Filters -->
+			<div class="flex items-center gap-2 flex-wrap">
+				<span class="text-sm font-medium text-gray-700">PII Type:</span>
+				<button
+					onclick={() => togglePiiType('email')}
+					class={chipClass(piiTypeFilter.has('email'))}
+				>
+					Email
+				</button>
+				<button
+					onclick={() => togglePiiType('phone')}
+					class={chipClass(piiTypeFilter.has('phone'))}
+				>
+					Phone
+				</button>
+				<button onclick={() => togglePiiType('ssn')} class={chipClass(piiTypeFilter.has('ssn'))}>
+					SSN
+				</button>
+			</div>
+
+			<!-- Risk Level Filters -->
+			<div class="flex items-center gap-2 flex-wrap">
+				<span class="text-sm font-medium text-gray-700">Risk Level:</span>
+				<button
+					onclick={() => toggleRiskLevel('critical')}
+					class={chipClass(riskLevelFilter.has('critical'))}
+				>
+					Critical
+				</button>
+				<button
+					onclick={() => toggleRiskLevel('medium')}
+					class={chipClass(riskLevelFilter.has('medium'))}
+				>
+					Medium
+				</button>
+				<button
+					onclick={() => toggleRiskLevel('informational')}
+					class={chipClass(riskLevelFilter.has('informational'))}
+				>
+					Informational
+				</button>
+			</div>
+
+			<!-- Findings count -->
+			<div class="text-sm text-gray-600">
+				Showing {filteredFindings.length} of {findings.filter((f) => !f.remediated).length} findings
+			</div>
+		</div>
+	{/if}
+
 	{#if loading}
 		<div class="flex justify-center py-12">
 			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -180,6 +281,15 @@
 				<div class="text-sm text-blue-700">Informational</div>
 			</div>
 		</div>
+
+		<!-- Empty state for filtered results -->
+		{#if findings.length > 0 && filteredFindings.length === 0}
+			<div class="rounded-md bg-gray-50 p-8 text-center">
+				<p class="text-gray-600">
+					No findings match the selected filters. Try adjusting your selection.
+				</p>
+			</div>
+		{/if}
 
 		<!-- Filesystem Findings -->
 		{#if filesystemFindings.length > 0}
