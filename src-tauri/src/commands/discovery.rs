@@ -72,6 +72,7 @@ async fn insert_pii_finding(
             recommended_action: Some(
                 "Review file and remove sensitive information if no longer needed".to_string(),
             ),
+            pii_type: pii_match.pii_type().to_string(),
         },
     )
     .await
