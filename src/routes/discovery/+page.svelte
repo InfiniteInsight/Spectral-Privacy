@@ -12,6 +12,7 @@
 	let loading = $state(true);
 	let scanning = $state(false);
 	let error = $state<string | null>(null);
+	let currentDirectory = $state<string | null>(null);
 
 	// Computed summary counts
 	const criticalCount = $derived(
@@ -81,15 +82,22 @@
 	$effect(() => {
 		loadFindings();
 
+		// Listen for scan progress
+		const unlistenProgress = listen('discovery:progress', (event: any) => {
+			currentDirectory = event.payload.directory;
+		});
+
 		// Listen for scan completion
-		const unlisten = listen('discovery:complete', () => {
+		const unlistenComplete = listen('discovery:complete', () => {
 			scanning = false;
+			currentDirectory = null;
 			loadFindings();
 		});
 
-		// Clean up listener on unmount
+		// Clean up listeners on unmount
 		return () => {
-			unlisten.then((fn) => fn());
+			unlistenProgress.then((fn) => fn());
+			unlistenComplete.then((fn) => fn());
 		};
 	});
 
@@ -130,7 +138,11 @@
 			{#if scanning}
 				<span class="flex items-center gap-2">
 					<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-					Scanning...
+					{#if currentDirectory}
+						Scanning {currentDirectory}...
+					{:else}
+						Scanning...
+					{/if}
 				</span>
 			{:else}
 				Run Discovery Scan

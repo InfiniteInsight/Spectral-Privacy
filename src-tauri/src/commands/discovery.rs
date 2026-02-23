@@ -139,6 +139,19 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
                 continue;
             }
 
+            // Emit progress event for directory
+            let dir_name = dir
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown");
+            let _ = app.emit(
+                "discovery:progress",
+                serde_json::json!({
+                    "directory": dir_name,
+                    "path": dir.to_string_lossy()
+                }),
+            );
+
             info!("Scanning directory: {:?}", dir);
             let results = spectral_discovery::scan_directory(&dir, &patterns).await;
             let findings = process_scan_results(results, &pool, &vault_id_clone).await;
