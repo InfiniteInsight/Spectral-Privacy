@@ -6,12 +6,16 @@ ALTER TABLE discovery_findings ADD COLUMN pii_type TEXT;
 
 -- Backfill existing findings by parsing description
 UPDATE discovery_findings
-SET pii_type = CASE
-    WHEN description LIKE 'Email address%' THEN 'email'
-    WHEN description LIKE 'Phone number%' THEN 'phone'
-    WHEN description LIKE 'Social Security Number%' THEN 'ssn'
-    ELSE 'unknown'  -- Handle edge cases
-END;
+SET pii_type = 'email'
+WHERE description LIKE 'Email address%';
+
+UPDATE discovery_findings
+SET pii_type = 'phone'
+WHERE description LIKE 'Phone number%';
+
+UPDATE discovery_findings
+SET pii_type = 'ssn'
+WHERE description LIKE 'Social Security Number%';
 
 -- Make column NOT NULL (safe after backfill)
 -- SQLite doesn't support ADD COLUMN ... NOT NULL directly
@@ -41,4 +45,3 @@ ALTER TABLE discovery_findings_new RENAME TO discovery_findings;
 -- Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_discovery_findings_vault_id ON discovery_findings(vault_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_findings_risk_level ON discovery_findings(risk_level, remediated);
-CREATE INDEX IF NOT EXISTS idx_discovery_findings_pii_type ON discovery_findings(pii_type);
