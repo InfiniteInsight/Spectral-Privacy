@@ -17,6 +17,7 @@ pub struct DiscoveryFinding {
     pub risk_level: String,
     pub description: String,
     pub recommended_action: Option<String>,
+    pub pii_type: String,
     pub remediated: bool,
     pub found_at: String,
 }
@@ -208,6 +209,7 @@ pub async fn get_discovery_findings(
             risk_level: f.risk_level,
             description: f.description,
             recommended_action: f.recommended_action,
+            pii_type: f.pii_type,
             remediated: f.remediated,
             found_at: f.found_at,
         })
