@@ -25,6 +25,7 @@
 		type LlmProviderSettings,
 		type TaskType
 	} from '$lib/api/privacy';
+	import { auditAPI, type AuditLogEntry } from '$lib/api/audit';
 
 	// Tab from query param: ?tab=privacy (default), email, scheduling, audit
 	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'privacy');
@@ -81,6 +82,12 @@
 		claude: ''
 	});
 
+	// Audit log state
+	let auditEntries = $state<AuditLogEntry[]>([]);
+	let loadingAudit = $state(false);
+	let auditError = $state<string | null>(null);
+	let auditFilter = $state<string>('all'); // 'all' or specific event type
+
 	async function handleTestSmtp() {
 		smtpTestResult = 'testing';
 		try {
@@ -121,6 +128,13 @@
 	$effect(() => {
 		if (activeTab === 'llm' && vaultStore.currentVaultId) {
 			loadLlmSettings();
+		}
+	});
+
+	// Load audit log when audit tab becomes active
+	$effect(() => {
+		if (activeTab === 'audit' && vaultStore.currentVaultId) {
+			loadAuditLog();
 		}
 	});
 
@@ -265,6 +279,66 @@
 			llmTestResults[provider] = 'error';
 			llmTestMessages[provider] = err instanceof Error ? err.message : String(err);
 		}
+	}
+
+	async function loadAuditLog() {
+		if (!vaultStore.currentVaultId) return;
+		loadingAudit = true;
+		auditError = null;
+		try {
+			if (auditFilter === 'all') {
+				auditEntries = await auditAPI.getAuditLog(vaultStore.currentVaultId, 100);
+			} else {
+				auditEntries = await auditAPI.getAuditLogByType(
+					vaultStore.currentVaultId,
+					auditFilter,
+					100
+				);
+			}
+		} catch (err) {
+			auditError = err instanceof Error ? err.message : String(err);
+			console.error('Failed to load audit log:', err);
+		} finally {
+			loadingAudit = false;
+		}
+	}
+
+	async function handleClearAuditLog() {
+		if (!vaultStore.currentVaultId) return;
+		if (!confirm('Are you sure you want to clear all audit log entries? This cannot be undone.')) {
+			return;
+		}
+		auditError = null;
+		try {
+			await auditAPI.clearAuditLog(vaultStore.currentVaultId);
+			await loadAuditLog(); // Reload to show empty state
+		} catch (err) {
+			auditError = err instanceof Error ? err.message : String(err);
+			console.error('Failed to clear audit log:', err);
+		}
+	}
+
+	function formatTimestamp(timestamp: string): string {
+		const date = new Date(timestamp);
+		return date.toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit'
+		});
+	}
+
+	function getEventTypeColor(eventType: string): string {
+		if (eventType.includes('Error') || eventType.includes('Failed'))
+			return 'bg-red-100 text-red-700';
+		if (eventType.includes('Started') || eventType.includes('Created'))
+			return 'bg-blue-100 text-blue-700';
+		if (eventType.includes('Completed') || eventType.includes('Success'))
+			return 'bg-green-100 text-green-700';
+		if (eventType.includes('Denied')) return 'bg-orange-100 text-orange-700';
+		return 'bg-gray-100 text-gray-700';
 	}
 </script>
 
@@ -1082,27 +1156,114 @@
 		</section>
 	{:else if activeTab === 'audit'}
 		<section>
-			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Audit Log</h2>
-			<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-				<svg
-					class="mx-auto mb-4 h-12 w-12 text-gray-400"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-lg font-semibold text-gray-800">Privacy Audit Log</h2>
+				<button
+					onclick={handleClearAuditLog}
+					class="rounded-md border border-red-300 bg-white px-3 py-1 text-sm text-red-600 hover:bg-red-50"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-					/>
-				</svg>
-				<h3 class="mb-2 text-lg font-medium text-gray-900">Coming Soon</h3>
-				<p class="text-sm text-gray-600">
-					The audit log will track all privacy-related actions, including scans, removals, and data
-					access events.
-				</p>
+					Clear Log
+				</button>
 			</div>
+
+			<p class="mb-4 text-sm text-gray-600">
+				Track all privacy-related actions, including scans, removals, and data access events.
+			</p>
+
+			{#if auditError}
+				<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+					{auditError}
+				</div>
+			{/if}
+
+			<!-- Filter controls -->
+			<div class="mb-4 flex items-center gap-2">
+				<label for="audit-filter" class="text-sm font-medium text-gray-700">Filter:</label>
+				<select
+					id="audit-filter"
+					bind:value={auditFilter}
+					onchange={() => loadAuditLog()}
+					class="rounded-md border border-gray-300 px-3 py-1 text-sm"
+				>
+					<option value="all">All Events</option>
+					<option value="ScanStarted">Scans Started</option>
+					<option value="FindingCreated">Findings Created</option>
+					<option value="RemovalSubmitted">Removals Submitted</option>
+					<option value="DataAccessed">Data Accessed</option>
+					<option value="VaultUnlocked">Vault Unlocked</option>
+				</select>
+			</div>
+
+			{#if loadingAudit}
+				<div class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+					<div
+						class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary-600"
+					></div>
+					<p class="mt-2 text-sm text-gray-500">Loading audit log...</p>
+				</div>
+			{:else if auditEntries.length === 0}
+				<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+					<svg
+						class="mx-auto mb-4 h-12 w-12 text-gray-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+						/>
+					</svg>
+					<h3 class="mb-2 text-lg font-medium text-gray-900">No Audit Entries</h3>
+					<p class="text-sm text-gray-600">
+						Audit log entries will appear here as you use Spectral.
+					</p>
+				</div>
+			{:else}
+				<div class="space-y-2">
+					{#each auditEntries as entry (entry.id)}
+						<div class="rounded-lg border border-gray-200 bg-white p-4 hover:bg-gray-50">
+							<div class="flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<div class="mb-1 flex items-center gap-2">
+										<span
+											class="rounded-full px-2 py-1 text-xs font-medium {getEventTypeColor(
+												entry.event_type
+											)}"
+										>
+											{entry.event_type}
+										</span>
+										<span class="text-xs text-gray-500">{formatTimestamp(entry.timestamp)}</span>
+									</div>
+									<p class="text-sm text-gray-900">{entry.subject}</p>
+									<div class="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+										<div class="flex items-center gap-1">
+											<span class="font-medium">Destination:</span>
+											<span>{entry.data_destination}</span>
+										</div>
+										<div class="flex items-center gap-1">
+											<span class="font-medium">Outcome:</span>
+											<span
+												class="rounded px-1 {entry.outcome === 'Allowed'
+													? 'bg-green-100 text-green-700'
+													: 'bg-red-100 text-red-700'}">{entry.outcome}</span
+											>
+										</div>
+										{#if entry.pii_fields && entry.pii_fields.length > 0}
+											<div class="flex items-center gap-1">
+												<span class="font-medium">PII Fields:</span>
+												<span>{entry.pii_fields.join(', ')}</span>
+											</div>
+										{/if}
+									</div>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
 		</section>
 	{/if}
 </div>

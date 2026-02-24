@@ -151,6 +151,10 @@ pub fn run() {
             commands::privacy::test_llm_provider,
             commands::llm::draft_email,
             commands::llm::fill_form,
+            commands::audit::get_audit_log,
+            commands::audit::get_audit_log_by_type,
+            commands::audit::create_audit_entry,
+            commands::audit::clear_audit_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

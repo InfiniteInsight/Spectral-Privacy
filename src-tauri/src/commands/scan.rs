@@ -231,7 +231,7 @@ pub async fn start_scan(
     let database = Database::from_encrypted_pool(encrypted_pool);
     let db = Arc::new(database);
 
-    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db)
+    let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db.clone())
         .with_max_concurrent_scans(4);
 
     // Filter brokers based on tier or custom IDs
@@ -300,6 +300,23 @@ pub async fn start_scan(
         .start_scan(&profile, filter, vault_key)
         .await
         .map_err(|e| format!("Failed to start scan: {}", e))?;
+
+    // Log scan start to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "ScanStarted".to_string(),
+        format!(
+            "Started scan job {} for profile {} with {} brokers",
+            job_id,
+            profile_id,
+            selected_brokers.len()
+        ),
+        Some(vec!["name".to_string(), "address".to_string()]),
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
 
     Ok(ScanJobResponse {
         id: job_id,
@@ -392,6 +409,22 @@ pub async fn verify_finding(
     )
     .await
     .map_err(|e| format!("Failed to verify finding: {}", e))?;
+
+    // Log finding verification to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "FindingVerified".to_string(),
+        format!(
+            "User {} finding {}",
+            if is_match { "confirmed" } else { "rejected" },
+            finding_id
+        ),
+        None,
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
 
     Ok(())
 }
