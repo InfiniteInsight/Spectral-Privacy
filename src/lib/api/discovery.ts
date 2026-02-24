@@ -12,6 +12,7 @@ export interface DiscoveryFinding {
 	risk_level: 'critical' | 'medium' | 'informational';
 	description: string;
 	recommended_action: string | null;
+	pii_type?: 'email' | 'phone' | 'ssn';
 	remediated: boolean;
 	found_at: string;
 }

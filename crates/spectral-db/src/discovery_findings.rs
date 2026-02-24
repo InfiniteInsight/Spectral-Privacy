@@ -25,6 +25,8 @@ pub struct DiscoveryFinding {
     pub description: String,
     /// Recommended action to take
     pub recommended_action: Option<String>,
+    /// PII type (email, phone, ssn, address, etc.)
+    pub pii_type: String,
     /// Whether this finding has been remediated
     pub remediated: bool,
     /// ISO 8601 timestamp when found
@@ -48,6 +50,8 @@ pub struct CreateDiscoveryFinding {
     pub description: String,
     /// Recommended action
     pub recommended_action: Option<String>,
+    /// PII type
+    pub pii_type: String,
 }
 
 /// Insert a new discovery finding
@@ -62,8 +66,8 @@ pub async fn insert_discovery_finding(
     let found_at = chrono::Utc::now().to_rfc3339();
 
     sqlx::query(
-        "INSERT INTO discovery_findings (id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, found_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO discovery_findings (id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, found_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&params.vault_id)
@@ -73,6 +77,7 @@ pub async fn insert_discovery_finding(
     .bind(&params.risk_level)
     .bind(&params.description)
     .bind(&params.recommended_action)
+    .bind(&params.pii_type)
     .bind(&found_at)
     .execute(pool)
     .await?;
@@ -86,6 +91,7 @@ pub async fn insert_discovery_finding(
         risk_level: params.risk_level,
         description: params.description,
         recommended_action: params.recommended_action,
+        pii_type: params.pii_type,
         remediated: false,
         found_at,
     })
@@ -100,7 +106,7 @@ pub async fn get_discovery_findings(
     vault_id: &str,
 ) -> Result<Vec<DiscoveryFinding>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, remediated, found_at
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, found_at
          FROM discovery_findings
          WHERE vault_id = ?
          ORDER BY found_at DESC",
@@ -120,6 +126,7 @@ pub async fn get_discovery_findings(
             risk_level: row.get("risk_level"),
             description: row.get("description"),
             recommended_action: row.get("recommended_action"),
+            pii_type: row.get("pii_type"),
             remediated: row.get::<i64, _>("remediated") != 0,
             found_at: row.get("found_at"),
         })

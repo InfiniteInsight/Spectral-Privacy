@@ -443,3 +443,67 @@ async fn test_multiple_scans_isolation() {
     // Finding from scan 2 should NOT have removal_attempt_id (we didn't submit for it)
     assert!(scan2_findings[0].removal_attempt_id.is_none());
 }
+
+#[tokio::test]
+async fn test_get_scan_status_includes_progress_fields() {
+    let (_app, _temp_dir) = create_test_app();
+    let state = _app.state::<AppState>();
+
+    // Create and unlock vault
+    let vault_id = "test-vault-progress";
+    create_test_vault(&state, vault_id).await;
+
+    // Get database
+    let vault = state
+        .unlocked_vaults
+        .read()
+        .unwrap()
+        .get(vault_id)
+        .expect("get vault")
+        .clone();
+    let db = vault.database().expect("get db");
+
+    // Create scan job with progress
+    let scan_job_id = format!("test-scan-{}", Uuid::new_v4());
+    let profile_id = format!("profile-{}", Uuid::new_v4());
+
+    // Create profile first
+    let dummy_data = [0u8; 32];
+    let dummy_nonce = [0u8; 12];
+    sqlx::query(
+        "INSERT INTO profiles (id, data, nonce, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(&profile_id)
+    .bind(&dummy_data[..])
+    .bind(&dummy_nonce[..])
+    .bind(chrono::Utc::now().to_rfc3339())
+    .bind(chrono::Utc::now().to_rfc3339())
+    .execute(db.pool())
+    .await
+    .expect("insert profile");
+
+    // Create scan job
+    sqlx::query(
+        "INSERT INTO scan_jobs (id, profile_id, started_at, status, total_brokers, completed_brokers) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&scan_job_id)
+    .bind(&profile_id)
+    .bind(chrono::Utc::now().to_rfc3339())
+    .bind("InProgress")
+    .bind(10)  // total_brokers
+    .bind(7)   // completed_brokers
+    .execute(db.pool())
+    .await
+    .expect("insert scan job");
+
+    // Call command
+    let result = get_scan_status(state, vault_id.to_string(), scan_job_id.clone())
+        .await
+        .expect("get status");
+
+    // Verify all fields
+    assert_eq!(result.id, scan_job_id);
+    assert_eq!(result.status, "InProgress");
+    assert_eq!(result.completed_brokers, 7);
+    assert_eq!(result.total_brokers, 10);
+}

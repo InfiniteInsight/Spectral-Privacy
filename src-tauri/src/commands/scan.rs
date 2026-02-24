@@ -58,6 +58,9 @@ pub struct StartScanRequest {
 pub struct ScanJobResponse {
     pub id: String,
     pub status: String,
+    pub completed_brokers: u32,
+    pub total_brokers: u32,
+    pub current_broker_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -318,9 +321,21 @@ pub async fn start_scan(
     )
     .await;
 
+    // Query the job to get complete information including total_brokers
+    let job = sqlx::query_as::<_, (String, String, i64, i64, Option<String>)>(
+        "SELECT id, status, completed_brokers, total_brokers, current_broker_name FROM scan_jobs WHERE id = ?",
+    )
+    .bind(&job_id)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|e| format!("Failed to get scan status: {}", e))?;
+
     Ok(ScanJobResponse {
-        id: job_id,
-        status: "InProgress".to_string(),
+        id: job.0,
+        status: job.1,
+        completed_brokers: job.2 as u32,
+        total_brokers: job.3 as u32,
+        current_broker_name: job.4,
     })
 }
 
@@ -338,17 +353,21 @@ pub async fn get_scan_status(
     // Get the vault's database
     let db = get_db(&vault)?;
 
-    // Query the scan job status
-    let job =
-        sqlx::query_as::<_, (String, String)>("SELECT id, status FROM scan_jobs WHERE id = ?")
-            .bind(scan_job_id)
-            .fetch_one(db.pool())
-            .await
-            .map_err(|e| format!("Failed to get scan status: {}", e))?;
+    // Query with all required fields for progress tracking
+    let job = sqlx::query_as::<_, (String, String, i64, i64, Option<String>)>(
+        "SELECT id, status, completed_brokers, total_brokers, current_broker_name FROM scan_jobs WHERE id = ?",
+    )
+    .bind(scan_job_id)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|e| format!("Failed to get scan status: {}", e))?;
 
     Ok(ScanJobResponse {
         id: job.0,
         status: job.1,
+        completed_brokers: job.2 as u32,
+        total_brokers: job.3 as u32,
+        current_broker_name: job.4,
     })
 }
 

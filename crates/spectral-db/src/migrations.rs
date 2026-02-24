@@ -112,7 +112,7 @@ mod tests {
         run_migrations(pool.pool()).await.expect("run migrations");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 11); // Eleven migrations applied
+        assert_eq!(version, 13); // Thirteen migrations applied
     }
 
     #[tokio::test]
@@ -132,6 +132,6 @@ mod tests {
             .expect("second migration run should be idempotent");
 
         let version = get_schema_version(pool.pool()).await.expect("get version");
-        assert_eq!(version, 11);
+        assert_eq!(version, 13);
     }
 }
