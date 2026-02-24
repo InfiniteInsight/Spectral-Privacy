@@ -13,6 +13,16 @@ use tokio::sync::Semaphore;
 use tracing::info;
 use uuid::Uuid;
 
+/// Helper to get vault from state with database access.
+fn get_vault_with_db(
+    state: &AppState,
+    vault_id: &str,
+) -> Result<Arc<spectral_vault::Vault>, String> {
+    state
+        .get_vault(vault_id)
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))
+}
+
 /// Scan tier for filtering brokers by priority
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -1298,17 +1308,13 @@ pub async fn get_possible_matches(
 ) -> Result<Vec<ZeroResultBrokerResponse>, String> {
     use crate::matching_service;
 
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
-
+    let vault = get_vault_with_db(&state, &vault_id)?;
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
-
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
     let vault_key = vault
         .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+        .map_err(|e| format!("Failed to get vault key: {e}"))?;
 
     // Get profile from scan job
     let profile = {
@@ -1317,15 +1323,15 @@ pub async fn get_possible_matches(
                 .bind(&scan_job_id)
                 .fetch_one(db.pool())
                 .await
-                .map_err(|e| format!("Failed to get scan job: {}", e))?;
+                .map_err(|e| format!("Failed to get scan job: {e}"))?;
 
         let profile_id = spectral_core::types::ProfileId::new(&profile_id_str)
-            .map_err(|e| format!("Invalid profile ID: {}", e))?;
+            .map_err(|e| format!("Invalid profile ID: {e}"))?;
 
         vault
             .load_profile(&profile_id)
             .await
-            .map_err(|e| format!("Failed to load profile: {}", e))?
+            .map_err(|e| format!("Failed to load profile: {e}"))?
     };
 
     let matches =
@@ -1364,17 +1370,14 @@ pub async fn accept_possible_match(
     zero_result_broker_id: String,
     matched_finding_id: String,
 ) -> Result<FindingResponse, String> {
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
-
+    let vault = get_vault_with_db(&state, &vault_id)?;
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
     let original = spectral_db::findings::get_by_id(db.pool(), &matched_finding_id)
         .await
-        .map_err(|e| format!("Failed to get finding: {}", e))?
+        .map_err(|e| format!("Failed to get finding: {e}"))?
         .ok_or_else(|| "Finding not found".to_string())?;
 
     // nosemgrep: use-zeroize-for-secrets
@@ -1387,7 +1390,7 @@ pub async fn accept_possible_match(
     .bind(&zero_result_broker_id)
     .fetch_one(db.pool())
     .await
-    .map_err(|e| format!("Failed to get broker scan: {}", e))?;
+    .map_err(|e| format!("Failed to get broker scan: {e}"))?;
 
     let new_finding = spectral_db::findings::create_finding(
         db.pool(),
@@ -1398,7 +1401,7 @@ pub async fn accept_possible_match(
         original.extracted_data.clone(),
     )
     .await
-    .map_err(|e| format!("Failed to create finding: {}", e))?;
+    .map_err(|e| format!("Failed to create finding: {e}"))?;
 
     sqlx::query(
         "UPDATE broker_scans
@@ -1408,7 +1411,7 @@ pub async fn accept_possible_match(
     .bind(&broker_scan_id)
     .execute(db.pool())
     .await
-    .map_err(|e| format!("Failed to update broker scan: {}", e))?;
+    .map_err(|e| format!("Failed to update broker scan: {e}"))?;
 
     Ok(finding_to_response(new_finding))
 }
