@@ -410,6 +410,62 @@ pub async fn verify_finding(
     .await
     .map_err(|e| format!("Failed to verify finding: {}", e))?;
 
+    // If confirmed as a match, generate Google removal URL
+    if is_match {
+        // Get the finding to extract data
+        let finding = spectral_db::findings::get_by_id(db.pool(), &finding_id)
+            .await
+            .map_err(|e| format!("Failed to get finding: {}", e))?;
+
+        if let Some(finding) = finding {
+            // Extract name, address, and phone from finding
+            let name = finding
+                .extracted_data
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown");
+
+            let address = finding
+                .extracted_data
+                .get("addresses")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            let phone = finding
+                .extracted_data
+                .get("phone_numbers")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            // Generate Google removal URL
+            let google_url =
+                spectral_db::google_removal::generate_removal_url(name, address, phone);
+
+            // Create Google removal request
+            let _ = spectral_db::google_removal::create_request(
+                db.pool(),
+                finding_id.clone(),
+                google_url,
+            )
+            .await
+            .map_err(|e| format!("Failed to create Google removal request: {}", e))?;
+
+            // Log to audit log
+            let _ = spectral_db::audit_log::insert_audit_entry(
+                db.pool(),
+                vault_id.clone(),
+                "GoogleRemovalURLGenerated".to_string(),
+                format!("Generated Google removal URL for finding {}", finding_id),
+                None,
+                "LocalOnly".to_string(),
+                "Allowed".to_string(),
+            )
+            .await;
+        }
+    }
+
     // Log finding verification to audit log
     let _ = spectral_db::audit_log::insert_audit_entry(
         db.pool(),
@@ -1424,6 +1480,81 @@ pub async fn dismiss_possible_match(
     _zero_result_broker_id: String,
     _matched_finding_id: String,
 ) -> Result<(), String> {
+    Ok(())
+}
+
+/// Response format for Google removal requests.
+#[derive(Debug, Serialize)]
+pub struct GoogleRemovalRequestResponse {
+    pub id: String,
+    pub finding_id: String,
+    pub status: String,
+    pub google_removal_url: String,
+    pub generated_at: String,
+    pub submitted_at: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+/// Get Google removal request for a finding.
+#[tauri::command]
+pub async fn get_google_removal_request(
+    state: State<'_, AppState>,
+    vault_id: String,
+    finding_id: String,
+) -> Result<Option<GoogleRemovalRequestResponse>, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    let request = spectral_db::google_removal::get_by_finding_id(db.pool(), &finding_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(request.map(|r| GoogleRemovalRequestResponse {
+        id: r.id,
+        finding_id: r.finding_id,
+        status: format!("{:?}", r.status),
+        google_removal_url: r.google_removal_url,
+        generated_at: r.generated_at.to_rfc3339(),
+        submitted_at: r.submitted_at.map(|t| t.to_rfc3339()),
+        completed_at: r.completed_at.map(|t| t.to_rfc3339()),
+    }))
+}
+
+/// Mark Google removal as submitted by user.
+#[tauri::command]
+pub async fn mark_google_removal_submitted(
+    state: State<'_, AppState>,
+    vault_id: String,
+    request_id: String,
+    notes: Option<String>,
+) -> Result<(), String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    spectral_db::google_removal::update_status(
+        db.pool(),
+        &request_id,
+        spectral_db::google_removal::GoogleRemovalStatus::Submitted,
+        notes,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // Audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id,
+        "GoogleRemovalSubmitted".to_string(),
+        format!(
+            "User marked Google removal request {} as submitted",
+            request_id
+        ),
+        None,
+        "ExternalSite:google.com".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
+
     Ok(())
 }
 
