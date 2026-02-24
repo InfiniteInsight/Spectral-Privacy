@@ -605,7 +605,7 @@
 								<div>
 									<span class="text-sm font-medium text-gray-700">IMAP Monitoring</span>
 									<p class="text-xs text-gray-500">
-										Monitor email for broker confirmation messages
+										Scan inbox for marketing emails, broker confirmations, and account discovery
 									</p>
 								</div>
 								<input
@@ -1017,9 +1017,9 @@
 			<div class="rounded-lg border border-gray-200 bg-white p-4">
 				<div class="mb-4 flex items-center justify-between">
 					<div>
-						<h3 class="font-medium text-gray-900">IMAP Verification Monitoring</h3>
+						<h3 class="font-medium text-gray-900">IMAP Email Monitoring</h3>
 						<p class="text-sm text-gray-500">
-							Automatically detect confirmation emails from brokers
+							Scan inbox for marketing emails, broker confirmations, and data exposure
 						</p>
 					</div>
 					<label class="flex cursor-pointer items-center gap-2">
@@ -1115,9 +1115,7 @@
 								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 							/>
 						</svg>
-						<h3 class="font-medium text-blue-900">
-							Setup Instructions for Popular Email Providers
-						</h3>
+						<h3 class="font-medium text-blue-900">Email Setup Guide & What IMAP Does</h3>
 					</div>
 					<svg
 						class="h-5 w-5 text-blue-600 transition-transform {showEmailHelp ? 'rotate-180' : ''}"
@@ -1136,6 +1134,41 @@
 
 				{#if showEmailHelp}
 					<div class="mt-4 space-y-4">
+						<!-- What IMAP Does -->
+						<div class="rounded-lg border border-blue-300 bg-white p-3">
+							<h4 class="mb-2 font-medium text-gray-900">What IMAP Monitoring Does</h4>
+							<div class="space-y-2 text-sm text-gray-700">
+								<p>
+									<strong>IMAP</strong> allows Spectral to scan your inbox and identify companies that
+									have your data:
+								</p>
+								<ul class="ml-4 list-disc space-y-1">
+									<li>
+										<strong>Marketing & Promotional Emails:</strong> Identifies companies sending you
+										marketing emails and automatically submits opt-out/deletion requests
+									</li>
+									<li>
+										<strong>Broker Confirmations:</strong> Detects confirmation emails when data brokers
+										respond to removal requests
+									</li>
+									<li>
+										<strong>Account Discovery:</strong> Finds services and websites where you have accounts,
+										even if you forgot about them
+									</li>
+									<li>
+										<strong>Data Exposure Alerts:</strong> Identifies potential data leaks or unexpected
+										companies that have your information
+									</li>
+								</ul>
+								<div class="mt-2 rounded-lg bg-green-50 p-2">
+									<p class="text-xs text-green-800">
+										<strong>Privacy Note:</strong> Email scanning happens locally on your device. Only
+										sender domains and metadata are analyzed - message content stays private and encrypted.
+									</p>
+								</div>
+							</div>
+						</div>
+
 						<p class="text-sm text-blue-800">
 							Most email providers require special setup for third-party applications. Click on your
 							provider below for detailed instructions.
