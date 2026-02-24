@@ -205,9 +205,7 @@ pub async fn start_scan(
     let vault_key = get_vault_key(&vault)?;
 
     // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Create orchestrator for this scan
     // TODO: These should be cached/shared across scans
@@ -321,9 +319,7 @@ pub async fn get_scan_status(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Query the scan job status
     let job =
@@ -353,9 +349,7 @@ pub async fn get_findings(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Get all findings for this scan job
     let mut findings = spectral_db::findings::get_by_scan_job(db.pool(), &scan_job_id)
@@ -387,9 +381,7 @@ pub async fn verify_finding(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Update verification status
     spectral_db::findings::verify_finding(
@@ -417,9 +409,7 @@ pub async fn submit_removals_for_confirmed(
         .ok_or_else(|| "Vault not found or locked".to_string())?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Query all findings for this scan
     let findings = spectral_db::findings::get_by_scan_job(db.pool(), &scan_job_id)
@@ -472,9 +462,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
         .ok_or_else(|| "Vault not found or locked".to_string())?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Get the underlying Pool<Sqlite> which can be cloned
     let pool = db.pool().clone();
@@ -605,9 +593,7 @@ pub async fn get_captcha_queue(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Get CAPTCHA queue
     spectral_db::removal_attempts::get_captcha_queue(db.pool())
@@ -629,9 +615,7 @@ pub async fn get_failed_queue(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Get failed queue
     spectral_db::removal_attempts::get_failed_queue(db.pool())
@@ -675,9 +659,7 @@ pub async fn get_removal_job_history(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Get job history
     spectral_db::removal_attempts::get_job_history(db.pool())
@@ -708,9 +690,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
 
     // Get database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
 
     // Reset status to Pending, clear timestamps and error
     spectral_db::removal_attempts::update_status(
@@ -859,9 +839,7 @@ pub async fn get_dashboard_summary(
     let vault = state
         .get_vault(&vault_id)
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
     let pool = db.pool();
 
     // Count distinct brokers with at least one finding.
@@ -1036,9 +1014,7 @@ pub async fn get_privacy_score(
     let vault = state
         .get_vault(&vault_id)
         .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+    let db = get_db(&vault)?;
     let pool = db.pool();
 
     // Count all confirmed findings. The penalty applies to all Confirmed findings
