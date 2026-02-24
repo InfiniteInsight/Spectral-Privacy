@@ -140,7 +140,7 @@ def _validate_removal_section(removal: dict) -> list[str]:
     if "url" in removal:
         url = removal["url"]
         if not url.startswith("https://"):
-            if url.startswith("http://"):
+            if url.startswith("http://"):  # NOSONAR - Validation code to reject HTTP URLs
                 errors.append(f"removal.url must use HTTPS (not HTTP), got '{url}'")
             else:
                 errors.append(f"removal.url must be a full HTTPS URL, got '{url}'")
