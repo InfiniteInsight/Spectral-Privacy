@@ -5,27 +5,35 @@ use spectral_vault::{UserProfile, Vault};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+/// Normalize string for comparison (lowercase and trim).
+fn normalize_string(s: &str) -> String {
+    s.to_lowercase().trim().to_string()
+}
+
+/// Calculate Jaro-Winkler similarity between two name parts.
+fn name_part_similarity(part1: &str, part2: &str) -> f64 {
+    strsim::jaro_winkler(part1, part2)
+}
+
 /// Calculate name similarity using Jaro-Winkler (0.0 to 1.0).
 fn calculate_name_similarity(profile_name: &str, finding_name: &str) -> f64 {
-    let p = profile_name.to_lowercase().trim().to_string();
-    let f = finding_name.to_lowercase().trim().to_string();
+    let p = normalize_string(profile_name);
+    let f = normalize_string(finding_name);
 
-    let full_score = strsim::jaro_winkler(&p, &f);
+    let full_score = name_part_similarity(&p, &f);
 
     // Also try component matching (first + last)
     let p_parts: Vec<&str> = p.split_whitespace().collect();
     let f_parts: Vec<&str> = f.split_whitespace().collect();
 
-    let component_score = if p_parts.len() > 1 && f_parts.len() > 1 {
-        let first_score = strsim::jaro_winkler(p_parts[0], f_parts[0]);
-        let last_idx_p = p_parts.len() - 1;
-        let last_idx_f = f_parts.len() - 1;
-        let last_score = strsim::jaro_winkler(p_parts[last_idx_p], f_parts[last_idx_f]);
-        (first_score + last_score) / 2.0
-    } else if !p_parts.is_empty() && !f_parts.is_empty() {
-        strsim::jaro_winkler(p_parts[0], f_parts[0])
-    } else {
-        0.0
+    let component_score = match (p_parts.len(), f_parts.len()) {
+        (p_len, f_len) if p_len > 1 && f_len > 1 => {
+            let first_score = name_part_similarity(p_parts[0], f_parts[0]);
+            let last_score = name_part_similarity(p_parts[p_len - 1], f_parts[f_len - 1]);
+            (first_score + last_score) / 2.0
+        }
+        (p_len, f_len) if p_len > 0 && f_len > 0 => name_part_similarity(p_parts[0], f_parts[0]),
+        _ => 0.0,
     };
 
     full_score.max(component_score)
@@ -41,14 +49,14 @@ fn collect_profile_locations(
     // Add current address
     if let (Some(city), Some(state)) = (&profile.city, &profile.state) {
         if let (Ok(c), Ok(s)) = (city.decrypt(vault_key), state.decrypt(vault_key)) {
-            locations.insert((c.to_lowercase(), s.to_lowercase()));
+            locations.insert((normalize_string(&c), normalize_string(&s)));
         }
     }
 
     // Add previous addresses
     for prev in &profile.previous_addresses_v2 {
         if let (Ok(c), Ok(s)) = (prev.city.decrypt(vault_key), prev.state.decrypt(vault_key)) {
-            locations.insert((c.to_lowercase(), s.to_lowercase()));
+            locations.insert((normalize_string(&c), normalize_string(&s)));
         }
     }
 
@@ -74,7 +82,7 @@ fn has_matching_address(finding: &Finding, profile_locations: &HashSet<(String, 
             continue;
         };
 
-        if profile_locations.contains(&(city.to_lowercase(), state.to_lowercase())) {
+        if profile_locations.contains(&(normalize_string(&city), normalize_string(&state))) {
             return true;
         }
     }

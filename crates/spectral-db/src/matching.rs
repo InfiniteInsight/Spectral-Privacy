@@ -3,6 +3,14 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 
+/// Base SQL query for fetching findings with broker scan join.
+const FINDINGS_BASE_QUERY: &str = "SELECT f.id, f.broker_scan_id, f.broker_id, f.profile_id,
+        f.listing_url, f.verification_status, f.extracted_data,
+        f.discovered_at, f.verified_at, f.verified_by_user,
+        f.removal_attempt_id
+ FROM findings f
+ JOIN broker_scans bs ON f.broker_scan_id = bs.id";
+
 /// A possible match found on another broker for a zero-result broker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PossibleMatch {
@@ -29,43 +37,18 @@ pub async fn get_findings_from_other_brokers(
     scan_job_id: &str,
     exclude_broker_ids: &[String],
 ) -> Result<Vec<crate::findings::Finding>, sqlx::Error> {
-    if exclude_broker_ids.is_empty() {
-        // No brokers to exclude, get all findings
-        let rows = sqlx::query(
-            "SELECT f.id, f.broker_scan_id, f.broker_id, f.profile_id,
-                    f.listing_url, f.verification_status, f.extracted_data,
-                    f.discovered_at, f.verified_at, f.verified_by_user,
-                    f.removal_attempt_id
-             FROM findings f
-             JOIN broker_scans bs ON f.broker_scan_id = bs.id
-             WHERE bs.scan_job_id = ?
-             ORDER BY f.discovered_at DESC",
+    let query = if exclude_broker_ids.is_empty() {
+        format!("{FINDINGS_BASE_QUERY} WHERE bs.scan_job_id = ? ORDER BY f.discovered_at DESC")
+    } else {
+        let placeholders = exclude_broker_ids
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "{FINDINGS_BASE_QUERY} WHERE bs.scan_job_id = ? AND f.broker_id NOT IN ({placeholders}) ORDER BY f.discovered_at DESC"
         )
-        .bind(scan_job_id)
-        .fetch_all(pool)
-        .await?;
-
-        return crate::findings::parse_findings_from_rows(rows);
-    }
-
-    // Build dynamic query with placeholders for excluded brokers
-    let placeholders = exclude_broker_ids
-        .iter()
-        .map(|_| "?")
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let query = format!(
-        "SELECT f.id, f.broker_scan_id, f.broker_id, f.profile_id,
-                f.listing_url, f.verification_status, f.extracted_data,
-                f.discovered_at, f.verified_at, f.verified_by_user,
-                f.removal_attempt_id
-         FROM findings f
-         JOIN broker_scans bs ON f.broker_scan_id = bs.id
-         WHERE bs.scan_job_id = ?
-           AND f.broker_id NOT IN ({placeholders})
-         ORDER BY f.discovered_at DESC"
-    );
+    };
 
     let mut query_builder = sqlx::query(&query).bind(scan_job_id);
     for broker_id in exclude_broker_ids {
