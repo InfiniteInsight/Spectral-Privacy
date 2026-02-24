@@ -108,7 +108,12 @@ def _validate_removal_methods(removal: dict) -> list[str]:
         return errors
 
     method = removal["method"]
-    methods = [method] if isinstance(method, str) else method if isinstance(method, list) else []
+    if isinstance(method, str):
+        methods = [method]
+    elif isinstance(method, list):
+        methods = method
+    else:
+        methods = []
 
     if not methods:
         errors.append("removal.method must be a string or array of strings")

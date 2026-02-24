@@ -72,7 +72,7 @@ def split_architecture():
         section_lines = lines[start_line:end_line]
 
         if section_num in SECTIONS:
-            filename, title = SECTIONS[section_num]
+            filename, _ = SECTIONS[section_num]
             section_content = '\n'.join(section_lines)
             (ARCH_DIR / filename).write_text(section_content)
             print(f"Created: {filename} ({len(section_lines)} lines)")
