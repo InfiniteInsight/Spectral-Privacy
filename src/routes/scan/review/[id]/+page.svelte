@@ -3,13 +3,16 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import type { Finding } from '$lib/api/scan';
+	import type { Finding, ZeroResultBroker } from '$lib/api/scan';
+	import { scanAPI } from '$lib/api/scan';
 	import { removalAPI } from '$lib/api/removal';
 
 	const scanJobId = $derived($page.params.id);
 	let expandedFindings = $state<Set<string>>(new Set());
 	let actionError = $state<string | null>(null);
 	let isSubmitting = $state(false);
+	let possibleMatches = $state<ZeroResultBroker[]>([]);
+	let dismissedMatches = $state<Set<string>>(new Set());
 
 	onMount(async () => {
 		if (!scanJobId) {
@@ -24,6 +27,78 @@
 
 		// Load pending findings
 		await scanStore.loadFindings(vaultStore.currentVaultId, scanJobId, 'PendingVerification');
+
+		// Load possible matches
+		await loadPossibleMatches();
+	});
+
+	async function loadPossibleMatches() {
+		if (!vaultStore.currentVaultId || !scanJobId) return;
+
+		try {
+			const matches = await scanAPI.getPossibleMatches(vaultStore.currentVaultId, scanJobId);
+			possibleMatches = matches;
+		} catch (err) {
+			console.error('Failed to load possible matches:', err);
+		}
+	}
+
+	async function handleAcceptMatch(zeroResultBrokerId: string, matchedFindingId: string) {
+		if (!vaultStore.currentVaultId || !scanJobId) return;
+
+		try {
+			await scanAPI.acceptMatch(
+				vaultStore.currentVaultId,
+				scanJobId,
+				zeroResultBrokerId,
+				matchedFindingId
+			);
+
+			// Reload findings to get the new finding
+			await scanStore.loadFindings(vaultStore.currentVaultId, scanJobId, 'PendingVerification');
+
+			// Remove the match from possible matches
+			possibleMatches = possibleMatches
+				.map((broker) => {
+					if (broker.broker_id === zeroResultBrokerId) {
+						return {
+							...broker,
+							possible_matches: broker.possible_matches.filter(
+								(m) => m.finding.id !== matchedFindingId
+							)
+						};
+					}
+					return broker;
+				})
+				.filter((broker) => broker.possible_matches.length > 0);
+		} catch (err) {
+			console.error('Failed to accept match:', err);
+		}
+	}
+
+	async function handleDismissMatch(zeroResultBrokerId: string, matchedFindingId: string) {
+		if (!vaultStore.currentVaultId) return;
+
+		try {
+			await scanAPI.dismissMatch(vaultStore.currentVaultId, zeroResultBrokerId, matchedFindingId);
+
+			const dismissKey = `${zeroResultBrokerId}:${matchedFindingId}`;
+			dismissedMatches = new Set([...dismissedMatches, dismissKey]);
+		} catch (err) {
+			console.error('Failed to dismiss match:', err);
+		}
+	}
+
+	const visibleMatches = $derived.by(() => {
+		return possibleMatches
+			.map((broker) => ({
+				...broker,
+				possible_matches: broker.possible_matches.filter((match) => {
+					const dismissKey = `${broker.broker_id}:${match.finding.id}`;
+					return !dismissedMatches.has(dismissKey);
+				})
+			}))
+			.filter((broker) => broker.possible_matches.length > 0);
 	});
 
 	// Group findings by broker
@@ -309,6 +384,153 @@
 						</div>
 					{/each}
 				</div>
+
+				<!-- Possible Matches Section -->
+				{#if !scanStore.loading && visibleMatches.length > 0}
+					<div class="mt-8 space-y-6">
+						<div class="border-t border-gray-300 pt-6">
+							<h2 class="text-2xl font-bold text-gray-900 mb-2">Possible Matches</h2>
+							<p class="text-gray-600 text-sm mb-6">
+								These brokers returned no results, but we found similar people on other brokers.
+							</p>
+						</div>
+
+						{#each visibleMatches as zeroResultBroker}
+							<div class="border border-amber-200 bg-amber-50 rounded-lg">
+								<div class="bg-amber-100 px-6 py-4 border-b border-amber-200">
+									<h3 class="text-lg font-semibold text-gray-900">
+										{zeroResultBroker.broker_id}
+										<span class="text-sm font-normal text-gray-600 ml-2">
+											({zeroResultBroker.possible_matches.length} possible match{zeroResultBroker
+												.possible_matches.length !== 1
+												? 'es'
+												: ''})
+										</span>
+									</h3>
+								</div>
+
+								<div class="divide-y divide-amber-200">
+									{#each zeroResultBroker.possible_matches as match}
+										{@const isExpanded = expandedFindings.has(match.finding.id)}
+
+										<div class="px-6 py-4">
+											<div class="flex items-start justify-between gap-4">
+												<div class="flex-1">
+													<div class="flex items-center gap-2 mb-1">
+														<p class="font-medium text-gray-900">
+															{match.finding.extracted_data.name || 'Unknown'}
+															{#if match.finding.extracted_data.age}
+																<span class="text-gray-600 text-sm ml-2">
+																	Age {match.finding.extracted_data.age}
+																</span>
+															{/if}
+														</p>
+														<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+															{Math.round(match.similarity_score * 100)}% match
+														</span>
+													</div>
+
+													<p class="text-sm text-gray-600">
+														Found on: <span class="font-medium">{match.source_broker_id}</span>
+													</p>
+
+													{#if match.finding.extracted_data.addresses.length > 0}
+														<p class="text-sm text-gray-600 mt-1">
+															{match.finding.extracted_data.addresses[0]}
+															{#if match.location_matched}
+																<span class="ml-2 text-green-600 font-medium">✓ Location match</span
+																>
+															{/if}
+														</p>
+													{/if}
+												</div>
+
+												<div class="flex items-center gap-2">
+													<button
+														onclick={() =>
+															handleAcceptMatch(zeroResultBroker.broker_id, match.finding.id)}
+														class="px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 text-sm font-medium"
+													>
+														This is me
+													</button>
+													<button
+														onclick={() =>
+															handleDismissMatch(zeroResultBroker.broker_id, match.finding.id)}
+														class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+													>
+														Not me
+													</button>
+													<button
+														onclick={() => toggleExpanded(match.finding.id)}
+														class="px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-md text-sm font-medium"
+													>
+														{isExpanded ? 'Hide' : 'Details'}
+													</button>
+												</div>
+											</div>
+
+											{#if isExpanded}
+												<div class="mt-4 p-4 bg-white rounded-md border border-amber-200">
+													<dl class="grid grid-cols-2 gap-4 text-sm">
+														<div>
+															<dt class="font-medium text-gray-700">Name Similarity</dt>
+															<dd class="text-gray-900">
+																{Math.round(match.name_similarity * 100)}%
+															</dd>
+														</div>
+														<div>
+															<dt class="font-medium text-gray-700">Location Match</dt>
+															<dd class="text-gray-900">
+																{match.location_matched ? 'Yes ✓' : 'No'}
+															</dd>
+														</div>
+														{#if match.finding.extracted_data.phone_numbers.length > 0}
+															<div class="col-span-2">
+																<dt class="font-medium text-gray-700">Phone Numbers</dt>
+																<dd class="text-gray-900">
+																	{match.finding.extracted_data.phone_numbers.join(', ')}
+																</dd>
+															</div>
+														{/if}
+														{#if match.finding.extracted_data.emails.length > 0}
+															<div class="col-span-2">
+																<dt class="font-medium text-gray-700">Emails</dt>
+																<dd class="text-gray-900">
+																	{match.finding.extracted_data.emails.join(', ')}
+																</dd>
+															</div>
+														{/if}
+														{#if match.finding.extracted_data.relatives.length > 0}
+															<div class="col-span-2">
+																<dt class="font-medium text-gray-700">Relatives</dt>
+																<dd class="text-gray-900">
+																	{match.finding.extracted_data.relatives.join(', ')}
+																</dd>
+															</div>
+														{/if}
+														<div class="col-span-2">
+															<dt class="font-medium text-gray-700">Listing URL</dt>
+															<dd class="text-gray-900">
+																<a
+																	href={match.finding.listing_url}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	class="text-primary-600 hover:text-primary-700 underline"
+																>
+																	View on {match.source_broker_id} ↗
+																</a>
+															</dd>
+														</div>
+													</dl>
+												</div>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
 
 				<!-- Footer Actions -->
 				<div class="flex items-center justify-between pt-6 border-t border-gray-200">

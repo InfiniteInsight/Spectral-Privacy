@@ -108,7 +108,12 @@ def _validate_removal_methods(removal: dict) -> list[str]:
         return errors
 
     method = removal["method"]
-    methods = [method] if isinstance(method, str) else method if isinstance(method, list) else []
+    if isinstance(method, str):
+        methods = [method]
+    elif isinstance(method, list):
+        methods = method
+    else:
+        methods = []
 
     if not methods:
         errors.append("removal.method must be a string or array of strings")
@@ -134,8 +139,11 @@ def _validate_removal_section(removal: dict) -> list[str]:
     # Validate URL if present
     if "url" in removal:
         url = removal["url"]
-        if not url.startswith(("http://", "https://")):
-            errors.append(f"removal.url must be a full URL, got '{url}'")
+        if not url.startswith("https://"):
+            if url.startswith("http://"):  # NOSONAR - Validation code to reject HTTP URLs
+                errors.append(f"removal.url must use HTTPS (not HTTP), got '{url}'")
+            else:
+                errors.append(f"removal.url must be a full HTTPS URL, got '{url}'")
 
     return errors
 

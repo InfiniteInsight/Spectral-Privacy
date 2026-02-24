@@ -268,7 +268,7 @@ pub async fn finding_exists_by_url(
 }
 
 /// Helper function to parse findings from database rows.
-fn parse_findings_from_rows(
+pub(crate) fn parse_findings_from_rows(
     rows: Vec<sqlx::sqlite::SqliteRow>,
 ) -> Result<Vec<Finding>, sqlx::Error> {
     let mut findings = Vec::new();

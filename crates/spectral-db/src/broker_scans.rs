@@ -121,6 +121,46 @@ pub async fn get_by_scan_job(
     Ok(scans)
 }
 
+/// Get broker scans with zero findings for a scan job.
+///
+/// Returns broker scans that completed successfully but found no results.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database query fails.
+pub async fn get_zero_result_scans(
+    pool: &Pool<Sqlite>,
+    scan_job_id: &str,
+) -> Result<Vec<BrokerScan>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, scan_job_id, broker_id, status, started_at, completed_at,
+                error_message, findings_count
+         FROM broker_scans
+         WHERE scan_job_id = ?
+           AND status = 'Success'
+           AND findings_count = 0
+         ORDER BY broker_id",
+    )
+    .bind(scan_job_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut scans = Vec::new();
+    for row in rows {
+        scans.push(BrokerScan {
+            id: row.try_get("id")?,
+            scan_job_id: row.try_get("scan_job_id")?,
+            broker_id: row.try_get("broker_id")?,
+            status: row.try_get("status")?,
+            started_at: row.try_get("started_at")?,
+            completed_at: row.try_get("completed_at")?,
+            error_message: row.try_get("error_message")?,
+            findings_count: row.try_get("findings_count")?,
+        });
+    }
+
+    Ok(scans)
+}
+
 /// Get a specific broker scan by ID.
 ///
 /// # Errors

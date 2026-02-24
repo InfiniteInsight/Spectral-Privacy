@@ -47,6 +47,7 @@ sqlx.workspace = true
 uuid.workspace = true
 hex = "0.4"
 urlencoding = "2.1"
+strsim = "0.11"
 
 [dev-dependencies]
 uuid.workspace = true
