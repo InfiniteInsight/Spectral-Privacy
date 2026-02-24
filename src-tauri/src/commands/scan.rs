@@ -13,14 +13,25 @@ use tokio::sync::Semaphore;
 use tracing::info;
 use uuid::Uuid;
 
-/// Helper to get vault from state with database access.
-fn get_vault_with_db(
-    state: &AppState,
-    vault_id: &str,
-) -> Result<Arc<spectral_vault::Vault>, String> {
+/// Helper to get vault from state.
+fn get_vault(state: &AppState, vault_id: &str) -> Result<Arc<spectral_vault::Vault>, String> {
     state
         .get_vault(vault_id)
         .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))
+}
+
+/// Helper to get database with standard error message.
+fn get_db(vault: &spectral_vault::Vault) -> Result<&spectral_db::Database, String> {
+    vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {e}"))
+}
+
+/// Helper to get encryption key with standard error message.
+fn get_vault_key(vault: &spectral_vault::Vault) -> Result<&[u8; 32], String> {
+    vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {e}"))
 }
 
 /// Scan tier for filtering brokers by priority
@@ -191,9 +202,7 @@ pub async fn start_scan(
         .map_err(|e| format!("Failed to load profile: {}", e))?;
 
     // Get the vault's encryption key
-    let vault_key = vault
-        .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key = get_vault_key(&vault)?;
 
     // Get the vault's database
     let db = vault
@@ -469,9 +478,7 @@ pub async fn process_removal_batch<R: tauri::Runtime>(
 
     // Get the underlying Pool<Sqlite> which can be cloned
     let pool = db.pool().clone();
-    let vault_key = vault
-        .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key = get_vault_key(&vault)?;
     let vault_key_vec = vault_key.to_vec();
 
     // Create a new EncryptedPool with the same pool and key
@@ -719,9 +726,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
 
     // Get the underlying Pool<Sqlite> which can be cloned
     let pool = db.pool().clone();
-    let vault_key = vault
-        .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key = get_vault_key(&vault)?;
     let vault_key_vec = vault_key.to_vec();
 
     // Create a new EncryptedPool with the same pool and key
@@ -1098,8 +1103,8 @@ pub async fn get_removal_evidence(
         "get_removal_evidence: vault_id={}, attempt_id={}",
         vault_id, attempt_id
     );
-    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
-    let db = vault.database().map_err(|e| e.to_string())?;
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
 
     use sqlx::Row;
     let row = sqlx::query(
@@ -1178,7 +1183,7 @@ async fn load_removal_context(
     vault: &Arc<spectral_vault::Vault>,
     attempt_id: &str,
 ) -> Result<RemovalEmailContext, String> {
-    let db = vault.database().map_err(|e| e.to_string())?;
+    let db = get_db(vault)?;
 
     // Get the removal attempt
     let attempt = spectral_db::removal_attempts::get_by_id(db.pool(), attempt_id)
@@ -1251,9 +1256,7 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
 
     // Get vault encryption key for profile decryption
-    let vault_key = vault
-        .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+    let vault_key = get_vault_key(&vault)?;
 
     // Load all removal context (attempt, finding, broker, profile)
     let context = load_removal_context(&state, &vault, &attempt_id).await?;
@@ -1308,13 +1311,9 @@ pub async fn get_possible_matches(
 ) -> Result<Vec<ZeroResultBrokerResponse>, String> {
     use crate::matching_service;
 
-    let vault = get_vault_with_db(&state, &vault_id)?;
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {e}"))?;
-    let vault_key = vault
-        .encryption_key()
-        .map_err(|e| format!("Failed to get vault key: {e}"))?;
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+    let vault_key = get_vault_key(&vault)?;
 
     // Get profile from scan job
     let profile = {
@@ -1370,10 +1369,8 @@ pub async fn accept_possible_match(
     zero_result_broker_id: String,
     matched_finding_id: String,
 ) -> Result<FindingResponse, String> {
-    let vault = get_vault_with_db(&state, &vault_id)?;
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {e}"))?;
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
 
     let original = spectral_db::findings::get_by_id(db.pool(), &matched_finding_id)
         .await
