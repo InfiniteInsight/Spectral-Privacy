@@ -873,26 +873,20 @@ pub async fn get_dashboard_summary(
             .await
             .map_err(|e| format!("Failed to count failed removals: {}", e))?;
 
-    // Compute score only when there is something to base it on.
-    let has_data = brokers_scanned > 0 || submitted > 0 || failed > 0;
-    let privacy_score = if has_data {
-        // Unresolved = confirmed findings with no removal yet.
-        let unresolved: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'",
-        )
-        .fetch_one(pool)
-        .await
-        .map_err(|e| format!("Failed to count confirmed findings: {}", e))?;
+    // Unresolved = confirmed findings with no removal yet.
+    let unresolved: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("Failed to count confirmed findings: {}", e))?;
 
-        Some(calculate_privacy_score(
-            unresolved as u32,
-            submitted as u32,
-            failed as u32,
-            0,
-        ))
-    } else {
-        None
-    };
+    // Always calculate privacy score for consistency with score page
+    let privacy_score = Some(calculate_privacy_score(
+        unresolved as u32,
+        submitted as u32,
+        failed as u32,
+        0,
+    ));
 
     // Last 5 scan jobs as activity events.
     let scan_rows: Vec<(String, String, String)> = sqlx::query_as(
