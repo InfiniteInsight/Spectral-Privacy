@@ -66,6 +66,21 @@ pub struct ExtractedDataResponse {
     pub emails: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct PossibleMatchResponse {
+    pub finding: FindingResponse,
+    pub similarity_score: f64,
+    pub name_similarity: f64,
+    pub location_matched: bool,
+    pub source_broker_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ZeroResultBrokerResponse {
+    pub broker_id: String,
+    pub possible_matches: Vec<PossibleMatchResponse>,
+}
+
 /// Convert database Finding to API response.
 fn finding_to_response(finding: spectral_db::findings::Finding) -> FindingResponse {
     // Extract fields from JSON extracted_data
@@ -1272,6 +1287,141 @@ fn render_email_template(
         rendered = rendered.replace(&format!("{{{{{key}}}}}"), value);
     }
     rendered
+}
+
+/// Get possible matches for zero-result brokers.
+#[tauri::command]
+pub async fn get_possible_matches(
+    state: State<'_, AppState>,
+    vault_id: String,
+    scan_job_id: String,
+) -> Result<Vec<ZeroResultBrokerResponse>, String> {
+    use crate::matching_service;
+
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {}", e))?;
+
+    // Get profile from scan job
+    let profile = {
+        let profile_id_str: String = // nosemgrep: use-zeroize-for-secrets
+            sqlx::query_scalar("SELECT profile_id FROM scan_jobs WHERE id = ?")
+                .bind(&scan_job_id)
+                .fetch_one(db.pool())
+                .await
+                .map_err(|e| format!("Failed to get scan job: {}", e))?;
+
+        let profile_id = spectral_core::types::ProfileId::new(&profile_id_str)
+            .map_err(|e| format!("Invalid profile ID: {}", e))?;
+
+        vault
+            .load_profile(&profile_id)
+            .await
+            .map_err(|e| format!("Failed to load profile: {}", e))?
+    };
+
+    let matches =
+        matching_service::find_possible_matches(db, &vault, &scan_job_id, &profile, vault_key)
+            .await?;
+
+    let mut response = Vec::new();
+    for (broker_id, possible_matches) in matches {
+        let matches_response: Vec<PossibleMatchResponse> = possible_matches
+            .into_iter()
+            .map(|m| PossibleMatchResponse {
+                finding: finding_to_response(m.finding),
+                similarity_score: m.similarity_score,
+                name_similarity: m.name_similarity,
+                location_matched: m.location_matched,
+                source_broker_id: m.source_broker_id,
+            })
+            .collect();
+
+        response.push(ZeroResultBrokerResponse {
+            broker_id,
+            possible_matches: matches_response,
+        });
+    }
+
+    response.sort_by(|a, b| a.broker_id.cmp(&b.broker_id));
+    Ok(response)
+}
+
+/// Accept a possible match - create finding for zero-result broker.
+#[tauri::command]
+pub async fn accept_possible_match(
+    state: State<'_, AppState>,
+    vault_id: String,
+    scan_job_id: String,
+    zero_result_broker_id: String,
+    matched_finding_id: String,
+) -> Result<FindingResponse, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+
+    let original = spectral_db::findings::get_by_id(db.pool(), &matched_finding_id)
+        .await
+        .map_err(|e| format!("Failed to get finding: {}", e))?
+        .ok_or_else(|| "Finding not found".to_string())?;
+
+    // nosemgrep: use-zeroize-for-secrets
+    let broker_scan_id: String = sqlx::query_scalar(
+        "SELECT id FROM broker_scans
+         WHERE scan_job_id = ? AND broker_id = ?
+         LIMIT 1",
+    )
+    .bind(&scan_job_id)
+    .bind(&zero_result_broker_id)
+    .fetch_one(db.pool())
+    .await
+    .map_err(|e| format!("Failed to get broker scan: {}", e))?;
+
+    let new_finding = spectral_db::findings::create_finding(
+        db.pool(),
+        broker_scan_id.clone(),
+        zero_result_broker_id.clone(),
+        original.profile_id,
+        original.listing_url,
+        original.extracted_data.clone(),
+    )
+    .await
+    .map_err(|e| format!("Failed to create finding: {}", e))?;
+
+    sqlx::query(
+        "UPDATE broker_scans
+         SET findings_count = findings_count + 1
+         WHERE id = ?",
+    )
+    .bind(&broker_scan_id)
+    .execute(db.pool())
+    .await
+    .map_err(|e| format!("Failed to update broker scan: {}", e))?;
+
+    Ok(finding_to_response(new_finding))
+}
+
+/// Dismiss a possible match (client-side only).
+#[tauri::command]
+pub async fn dismiss_possible_match(
+    _state: State<'_, AppState>,
+    _vault_id: String,
+    _zero_result_broker_id: String,
+    _matched_finding_id: String,
+) -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(test)]
