@@ -88,6 +88,10 @@
 	let auditError = $state<string | null>(null);
 	let auditFilter = $state<string>('all'); // 'all' or specific event type
 
+	// Email setup help state
+	let showEmailHelp = $state(false);
+	let expandedProvider = $state<string | null>(null);
+
 	async function handleTestSmtp() {
 		smtpTestResult = 'testing';
 		try {
@@ -1087,6 +1091,369 @@
 						{:else if imapTestResult === 'error'}
 							<span class="text-sm text-red-600">{imapError}</span>
 						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Email Setup Help Section -->
+			<div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+				<button
+					onclick={() => (showEmailHelp = !showEmailHelp)}
+					class="flex w-full items-center justify-between text-left"
+				>
+					<div class="flex items-center gap-2">
+						<svg
+							class="h-5 w-5 text-blue-600"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						<h3 class="font-medium text-blue-900">
+							Setup Instructions for Popular Email Providers
+						</h3>
+					</div>
+					<svg
+						class="h-5 w-5 text-blue-600 transition-transform {showEmailHelp ? 'rotate-180' : ''}"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 9l-7 7-7-7"
+						/>
+					</svg>
+				</button>
+
+				{#if showEmailHelp}
+					<div class="mt-4 space-y-4">
+						<p class="text-sm text-blue-800">
+							Most email providers require special setup for third-party applications. Click on your
+							provider below for detailed instructions.
+						</p>
+
+						<!-- Gmail Instructions -->
+						<div class="rounded-lg border border-blue-300 bg-white">
+							<button
+								onclick={() => (expandedProvider = expandedProvider === 'gmail' ? null : 'gmail')}
+								class="flex w-full items-center justify-between p-3 text-left"
+							>
+								<span class="font-medium text-gray-900">Gmail</span>
+								<svg
+									class="h-4 w-4 text-gray-600 transition-transform {expandedProvider === 'gmail'
+										? 'rotate-180'
+										: ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 9l-7 7-7-7"
+									/>
+								</svg>
+							</button>
+							{#if expandedProvider === 'gmail'}
+								<div class="border-t border-blue-200 p-3">
+									<div class="space-y-3 text-sm text-gray-700">
+										<div>
+											<p class="font-medium text-gray-900">SMTP & IMAP Settings:</p>
+											<ul class="ml-4 mt-1 list-disc space-y-1">
+												<li>
+													SMTP Host: <code class="rounded bg-gray-100 px-1">smtp.gmail.com</code>
+												</li>
+												<li>SMTP Port: <code class="rounded bg-gray-100 px-1">587</code> (TLS)</li>
+												<li>
+													IMAP Host: <code class="rounded bg-gray-100 px-1">imap.gmail.com</code>
+												</li>
+												<li>IMAP Port: <code class="rounded bg-gray-100 px-1">993</code> (SSL)</li>
+											</ul>
+										</div>
+										<div>
+											<p class="font-medium text-gray-900">Setup Steps:</p>
+											<ol class="ml-4 mt-1 list-decimal space-y-2">
+												<li>
+													<strong>Enable 2-Factor Authentication:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>
+															Go to <a
+																href="https://myaccount.google.com/security"
+																target="_blank"
+																class="text-blue-600 hover:underline">Google Account Security</a
+															>
+														</li>
+														<li>Click "2-Step Verification" and follow the setup</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Generate App Password:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>
+															Go to <a
+																href="https://myaccount.google.com/apppasswords"
+																target="_blank"
+																class="text-blue-600 hover:underline">App Passwords</a
+															>
+														</li>
+														<li>Select "Mail" and "Other (Custom name)"</li>
+														<li>Enter "Spectral Privacy" as the name</li>
+														<li>Copy the 16-character password (no spaces)</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Enable IMAP:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>
+															Go to <a
+																href="https://mail.google.com/mail/u/0/#settings/fwdandpop"
+																target="_blank"
+																class="text-blue-600 hover:underline"
+																>Gmail Settings → Forwarding and POP/IMAP</a
+															>
+														</li>
+														<li>Click "Enable IMAP" and save changes</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Configure Spectral:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>Use your Gmail address as username</li>
+														<li>Use the app password (NOT your regular Gmail password)</li>
+													</ul>
+												</li>
+											</ol>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Outlook/Hotmail Instructions -->
+						<div class="rounded-lg border border-blue-300 bg-white">
+							<button
+								onclick={() =>
+									(expandedProvider = expandedProvider === 'outlook' ? null : 'outlook')}
+								class="flex w-full items-center justify-between p-3 text-left"
+							>
+								<span class="font-medium text-gray-900">Outlook / Hotmail</span>
+								<svg
+									class="h-4 w-4 text-gray-600 transition-transform {expandedProvider === 'outlook'
+										? 'rotate-180'
+										: ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 9l-7 7-7-7"
+									/>
+								</svg>
+							</button>
+							{#if expandedProvider === 'outlook'}
+								<div class="border-t border-blue-200 p-3">
+									<div class="space-y-3 text-sm text-gray-700">
+										<div>
+											<p class="font-medium text-gray-900">SMTP & IMAP Settings:</p>
+											<ul class="ml-4 mt-1 list-disc space-y-1">
+												<li>
+													SMTP Host: <code class="rounded bg-gray-100 px-1"
+														>smtp-mail.outlook.com</code
+													>
+													or <code class="rounded bg-gray-100 px-1">smtp.office365.com</code>
+												</li>
+												<li>SMTP Port: <code class="rounded bg-gray-100 px-1">587</code> (TLS)</li>
+												<li>
+													IMAP Host: <code class="rounded bg-gray-100 px-1"
+														>outlook.office365.com</code
+													>
+												</li>
+												<li>IMAP Port: <code class="rounded bg-gray-100 px-1">993</code> (SSL)</li>
+											</ul>
+										</div>
+										<div>
+											<p class="font-medium text-gray-900">Setup Steps:</p>
+											<ol class="ml-4 mt-1 list-decimal space-y-2">
+												<li>
+													<strong>Enable 2FA (Recommended):</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>
+															Go to <a
+																href="https://account.microsoft.com/security"
+																target="_blank"
+																class="text-blue-600 hover:underline">Microsoft Account Security</a
+															>
+														</li>
+														<li>Set up two-step verification</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Generate App Password:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>Go to Security settings → Advanced security options</li>
+														<li>Under "App passwords", create a new password</li>
+														<li>Use this app password in Spectral</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Configure Spectral:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>Username: your full Outlook/Hotmail email address</li>
+														<li>
+															Password: the app password (or regular password if 2FA not enabled)
+														</li>
+													</ul>
+												</li>
+											</ol>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Yahoo Instructions -->
+						<div class="rounded-lg border border-blue-300 bg-white">
+							<button
+								onclick={() => (expandedProvider = expandedProvider === 'yahoo' ? null : 'yahoo')}
+								class="flex w-full items-center justify-between p-3 text-left"
+							>
+								<span class="font-medium text-gray-900">Yahoo Mail</span>
+								<svg
+									class="h-4 w-4 text-gray-600 transition-transform {expandedProvider === 'yahoo'
+										? 'rotate-180'
+										: ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 9l-7 7-7-7"
+									/>
+								</svg>
+							</button>
+							{#if expandedProvider === 'yahoo'}
+								<div class="border-t border-blue-200 p-3">
+									<div class="space-y-3 text-sm text-gray-700">
+										<div>
+											<p class="font-medium text-gray-900">SMTP & IMAP Settings:</p>
+											<ul class="ml-4 mt-1 list-disc space-y-1">
+												<li>
+													SMTP Host: <code class="rounded bg-gray-100 px-1"
+														>smtp.mail.yahoo.com</code
+													>
+												</li>
+												<li>SMTP Port: <code class="rounded bg-gray-100 px-1">587</code> (TLS)</li>
+												<li>
+													IMAP Host: <code class="rounded bg-gray-100 px-1"
+														>imap.mail.yahoo.com</code
+													>
+												</li>
+												<li>IMAP Port: <code class="rounded bg-gray-100 px-1">993</code> (SSL)</li>
+											</ul>
+										</div>
+										<div>
+											<p class="font-medium text-gray-900">Setup Steps:</p>
+											<ol class="ml-4 mt-1 list-decimal space-y-2">
+												<li>
+													<strong>Generate App Password:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>
+															Go to <a
+																href="https://login.yahoo.com/account/security"
+																target="_blank"
+																class="text-blue-600 hover:underline">Yahoo Account Security</a
+															>
+														</li>
+														<li>Click "Generate app password"</li>
+														<li>Select "Other App" and name it "Spectral Privacy"</li>
+														<li>Copy the generated password</li>
+													</ul>
+												</li>
+												<li>
+													<strong>Configure Spectral:</strong>
+													<ul class="ml-4 mt-1 list-disc">
+														<li>Username: your Yahoo email address</li>
+														<li>Password: the app password (NOT your regular Yahoo password)</li>
+													</ul>
+												</li>
+											</ol>
+										</div>
+										<div class="rounded-lg bg-yellow-50 p-2">
+											<p class="text-xs text-yellow-800">
+												<strong>Note:</strong> Yahoo requires app passwords for all third-party applications.
+												You cannot use your regular password.
+											</p>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- General/Other Providers -->
+						<div class="rounded-lg border border-blue-300 bg-white">
+							<button
+								onclick={() => (expandedProvider = expandedProvider === 'other' ? null : 'other')}
+								class="flex w-full items-center justify-between p-3 text-left"
+							>
+								<span class="font-medium text-gray-900">Other Email Providers</span>
+								<svg
+									class="h-4 w-4 text-gray-600 transition-transform {expandedProvider === 'other'
+										? 'rotate-180'
+										: ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M19 9l-7 7-7-7"
+									/>
+								</svg>
+							</button>
+							{#if expandedProvider === 'other'}
+								<div class="border-t border-blue-200 p-3">
+									<div class="space-y-3 text-sm text-gray-700">
+										<p>
+											For other email providers, you'll need to find their SMTP and IMAP settings.
+											Common steps:
+										</p>
+										<ol class="ml-4 list-decimal space-y-2">
+											<li>Search for "[Your Provider] SMTP IMAP settings" online</li>
+											<li>Look for SSL/TLS enabled ports (usually 587 for SMTP, 993 for IMAP)</li>
+											<li>Check if your provider requires app-specific passwords</li>
+											<li>
+												Some providers may need "Allow less secure apps" enabled (not recommended)
+											</li>
+										</ol>
+										<div class="rounded-lg bg-blue-50 p-2">
+											<p class="text-xs text-blue-800">
+												<strong>Common IMAP Ports:</strong> 993 (SSL), 143 (STARTTLS)<br />
+												<strong>Common SMTP Ports:</strong> 587 (TLS), 465 (SSL), 25 (unencrypted - not
+												recommended)
+											</p>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			</div>
