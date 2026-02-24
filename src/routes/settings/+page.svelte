@@ -1083,7 +1083,26 @@
 	{:else if activeTab === 'audit'}
 		<section>
 			<h2 class="mb-2 text-lg font-semibold text-gray-800">Privacy Audit Log</h2>
-			<p class="mb-4 text-sm text-gray-500">Audit log will appear here (Phase 6 Task 5)</p>
+			<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+				<svg
+					class="mx-auto mb-4 h-12 w-12 text-gray-400"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+					/>
+				</svg>
+				<h3 class="mb-2 text-lg font-medium text-gray-900">Coming Soon</h3>
+				<p class="text-sm text-gray-600">
+					The audit log will track all privacy-related actions, including scans, removals, and data
+					access events.
+				</p>
+			</div>
 		</section>
 	{/if}
 </div>
