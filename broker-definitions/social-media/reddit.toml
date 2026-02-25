@@ -1,0 +1,70 @@
+# Reddit - Social News Aggregation and Discussion
+# Last verified: 2026-02-25
+
+[broker]
+id = "reddit"
+name = "Reddit"
+url = "https://www.reddit.com"
+domain = "reddit.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "web-form"
+url = "https://www.reddit.com/search"
+requires_fields = []
+
+[search.result_selectors]
+results_container = "[data-testid='search-results']"
+result_item = "[data-testid='post-container']"
+no_results_indicator = ".no-results"
+
+[removal]
+method = "account-required"
+url = "https://www.reddit.com/settings/privacy"
+confirmation = "automatic"
+notes = """
+Reddit privacy controls:
+
+1. PERSONALIZED ADS:
+   - Settings > Privacy > Personalized ads
+   - Turn OFF "Personalize ads based on activity"
+   - Turn OFF "Personalize ads based on information from partners"
+
+2. ACTIVITY VISIBILITY:
+   - Settings > Privacy > Active in communities visibility
+   - Turn OFF "Show which communities I am active in on my profile"
+
+3. CONTENT VISIBILITY:
+   - Settings > Privacy > Content visibility
+   - Turn ON "Make my content not safe for work (NSFW)"
+   - Reduces discoverability in some contexts
+
+4. SEARCH ENGINE INDEXING:
+   - Settings > Privacy > Search engine indexing
+   - Turn OFF "Allow search engines to index my user profile"
+   - Prevents Google from showing your profile
+
+5. PERSONALIZATION:
+   - Settings > Privacy > Personalization
+   - Turn OFF "Personalize recommendations based on activity"
+
+6. DOWNLOAD YOUR DATA:
+   - Visit https://www.reddit.com/settings/data-request
+   - Request GDPR data export
+   - Includes: posts, comments, votes, messages
+   - Processing takes 30 days
+
+7. DELETE ACCOUNT:
+   - Settings > Account > Deactivate Account
+   - User profile shows [deleted]
+   - Posts/comments remain but username removed
+   - URL: https://www.reddit.com/settings/account
+
+NOTE: Deleting Reddit account does NOT delete posts/comments - they remain with [deleted] username. Must manually delete posts before deactivating if you want content gone.
+"""

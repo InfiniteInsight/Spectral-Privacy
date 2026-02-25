@@ -25,6 +25,10 @@ VALID_CATEGORIES = {
     "social-media",
     "government-records",
     "financial",
+    "property-records",
+    "automotive",
+    "employment",
+    "location-data",
     "other",
 }
 

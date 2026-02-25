@@ -1,0 +1,68 @@
+# Amazon Advertising - E-commerce Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "amazon-advertising"
+name = "Amazon Advertising"
+url = "https://www.amazon.com/adprefs"
+domain = "amazon.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "account-required"
+url = "https://www.amazon.com/adprefs"
+instructions = "Amazon tracks purchase history, browsing, search queries, Alexa interactions, Prime Video viewing, Kindle reading, and device usage. Data used for personalized product recommendations and advertising."
+
+[removal]
+method = "account-required"
+url = "https://www.amazon.com/adprefs"
+confirmation = "automatic"
+notes = """
+Amazon advertising and privacy controls:
+
+1. ADVERTISING PREFERENCES:
+   - Visit https://www.amazon.com/adprefs
+   - Turn OFF "Personalized ads on Amazon"
+   - Turn OFF "Ads from third parties"
+   - Turn OFF "Personalized ads on other sites and apps"
+   - Removes interest-based advertising
+
+2. BROWSING HISTORY:
+   - Visit https://www.amazon.com/gp/history
+   - Click "Manage history" > "Remove all items"
+   - Turn OFF "Turn Browsing History on/off"
+   - Stops recommendations based on viewing
+
+3. ALEXA PRIVACY:
+   - Alexa app > Settings > Alexa Privacy
+   - Review Voice History (delete recordings)
+   - Turn OFF "Use of Voice Recordings"
+   - Manage Smart Home device data
+
+4. INTEREST-BASED ADS ACROSS WEB:
+   - Visit https://www.amazon.com/privacyprefs/retail
+   - Opt-out of cross-site tracking
+   - Disables Amazon tracking pixels on other websites
+
+5. DOWNLOAD YOUR DATA:
+   - Visit https://www.amazon.com/gp/privacycentral/dsar/preview.html
+   - Request "Download Your Information"
+   - Includes: orders, browsing, Prime Video, Kindle, Alexa interactions
+
+6. DELETE RECOMMENDATIONS:
+   - Visit https://www.amazon.com/hz/mycd/myx#/home/recommendations/list
+   - Remove individual product recommendations
+   - Fix: "Not interested" or "Remove"
+
+7. THIRD-PARTY SELLER DATA:
+   - Communication Preferences > "Offers and promotions"
+   - Unsubscribe from third-party marketing emails
+
+NOTE: Cannot fully delete Amazon account data without closing account. Purchase history remains for legal/tax purposes. Focus on limiting future tracking and ad personalization.
+"""

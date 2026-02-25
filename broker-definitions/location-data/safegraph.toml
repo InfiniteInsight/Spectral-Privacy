@@ -1,0 +1,94 @@
+# SafeGraph - Location Intelligence and Foot Traffic Data
+# Last verified: 2026-02-25
+
+[broker]
+id = "safegraph"
+name = "SafeGraph"
+url = "https://www.safegraph.com"
+domain = "safegraph.com"
+category = "location-data"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://www.safegraph.com"
+instructions = "SafeGraph collects location data from mobile apps (via SDK partnerships) to track where people go: stores, restaurants, workplaces, homes. Creates patterns of life data. Not publicly searchable - sold to businesses and researchers."
+
+[removal]
+method = "email"
+email = "privacy@safegraph.com"
+subject = "CCPA/Privacy Rights Request - Data Deletion"
+body = """
+I am exercising my privacy rights under applicable law (CCPA/GDPR).
+
+Request Type: Deletion of Personal Data
+
+Advertising IDs to remove:
+- iOS IDFA: [Your iPhone advertising ID]
+- Android AAID: [Your Android advertising ID]
+
+Email: {user_email}
+
+Please confirm deletion of all location data associated with these device identifiers.
+
+Thank you.
+"""
+response_days = 45
+notes = """
+SafeGraph location data opt-out (DIFFICULT):
+
+1. UNDERSTAND THE PROBLEM:
+   - SafeGraph embeds SDK in mobile apps
+   - Apps with SafeGraph track your location in background
+   - Creates "patterns of life" - where you live, work, shop, worship
+   - Sells data to hedge funds, researchers, government, businesses
+   - No way to know which apps use SafeGraph SDK
+
+2. FIND YOUR ADVERTISING IDs:
+   - iPhone: Settings > Privacy > Tracking > [View Advertising ID]
+   - Android: Settings > Google > Ads > [View Advertising ID]
+
+3. OPT-OUT REQUESTS:
+   - Email: privacy@safegraph.com
+   - Subject: "CCPA Data Deletion Request" or "GDPR Erasure Request"
+   - Include your advertising IDs (iOS IDFA and/or Android AAID)
+   - California residents: Invoke CCPA right to deletion
+   - EU residents: Invoke GDPR right to erasure
+
+4. RESET ADVERTISING ID (Ongoing):
+   - iPhone: Settings > Privacy > Tracking > Reset Advertising Identifier
+   - Android: Settings > Google > Ads > Reset advertising ID
+   - Do this regularly to break tracking continuity
+
+5. LIMIT AD TRACKING:
+   - iPhone: Settings > Privacy > Tracking > Turn OFF "Allow Apps to Request to Track"
+   - Android: Settings > Google > Ads > Turn ON "Opt out of Ads Personalization"
+
+6. APP PERMISSIONS:
+   - iOS: Settings > Privacy > Location Services
+   - Android: Settings > Location > App permissions
+   - Set all non-essential apps to "Never" or "While Using App"
+   - NEVER grant "Always Allow" location permission
+
+7. DELETE SUSPICIOUS APPS:
+   - Free utility apps, weather apps, flashlight apps
+   - These often monetize via location data collection
+   - Use built-in OS features instead
+
+REALITY CHECK:
+- SafeGraph claimed to stop consumer data collection in 2021
+- But similar companies (Foursquare, PlaceIQ, Near) still operate
+- Best defense: Strict app permissions + regular advertising ID resets
+- This is an ongoing privacy threat, not one-time fix
+
+ALTERNATIVE APPROACH:
+- Use privacy-focused phone OS (GrapheneOS, CalyxOS)
+- Minimize app installations
+- Use web versions instead of apps when possible
+- Never grant location permission unless absolutely necessary
+"""

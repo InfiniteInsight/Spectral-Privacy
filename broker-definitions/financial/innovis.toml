@@ -1,0 +1,63 @@
+# Innovis - Fourth Major Credit Bureau
+# Last verified: 2026-02-25
+
+[broker]
+id = "innovis"
+name = "Innovis"
+url = "https://www.innovis.com"
+domain = "innovis.com"
+category = "financial"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 180
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.innovis.com/personal/credit-report"
+instructions = "Innovis is the 4th major credit bureau (often forgotten). Request free annual credit report. Verify by phone or mail with SSN, DOB, address. Not as widely used as Experian/Equifax/TransUnion but still important."
+
+[removal]
+method = "phone"
+phone = "1-800-540-2505"
+notes = """
+Innovis credit bureau privacy controls:
+
+1. OPT-OUT OF PRE-SCREENED OFFERS:
+   - Visit OptOutPrescreen.com or call 1-888-567-8688
+   - This opts you out from ALL 4 credit bureaus (Innovis included)
+   - 5-year opt-out online or permanent via mail
+
+2. SECURITY FREEZE:
+   - Phone: 1-800-540-2505
+   - Mail: Innovis Security Freeze, P.O. Box 495, Pittsburgh, PA 15230
+   - Online: https://www.innovis.com/personal/securityFreeze
+   - FREE by federal law
+   - Prevents unauthorized access to credit report
+
+3. FREE CREDIT REPORT:
+   - AnnualCreditReport.com (federally mandated)
+   - Or call: 1-800-540-2505
+   - Or mail: Innovis Consumer Assistance, P.O. Box 1358, Columbus, OH 43216
+
+4. DISPUTE INACCURATE INFORMATION:
+   - Phone: 1-800-540-2505
+   - Online: https://www.innovis.com/personal/disputes
+   - Mail: Include name, address, SSN, DOB, description of error
+   - Must investigate within 30 days (FCRA requirement)
+
+5. FRAUD ALERT:
+   - If identity theft victim, place fraud alert
+   - Call: 1-800-540-2505
+   - Free, lasts 1 year (renewable)
+   - Lenders must verify identity before extending credit
+
+IMPORTANT: Like other credit bureaus, you CANNOT and SHOULD NOT delete legitimate credit history. Focus on:
+- Security freeze (best fraud protection)
+- Opt-out of marketing (reduce junk mail)
+- Dispute errors (ensure accuracy)
+
+NOTE: Innovis is less commonly used than the big 3, but some lenders, landlords, and employers do check it. Don't ignore it.
+"""

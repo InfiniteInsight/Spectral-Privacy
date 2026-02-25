@@ -1,0 +1,90 @@
+# Zillow - Real Estate and Property Database
+# Last verified: 2026-02-25
+
+[broker]
+id = "zillow"
+name = "Zillow"
+url = "https://www.zillow.com"
+domain = "zillow.com"
+category = "property-records"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.zillow.com/homes/{address}-{city}-{state}_rb/"
+requires_fields = ["address", "city", "state"]
+
+[search.result_selectors]
+results_container = ".search-results"
+result_item = ".list-card"
+listing_url = "a.list-card-link"
+no_results_indicator = ".no-results"
+
+[removal]
+method = "email"
+email = "privacy@zillow.com"
+subject = "Property Owner Privacy Request - {address}"
+body = """
+I am the property owner and requesting removal/editing of my property information on Zillow.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Property Owner Name: {full_name}
+Email: {user_email}
+
+Request: [Choose one]:
+- Remove owner name from public display
+- Mark property as "Off Market - Not for Sale"
+- Update incorrect property information
+
+Please confirm when changes have been made.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Zillow property privacy (LIMITED OPTIONS):
+
+1. CLAIM YOUR HOME:
+   - Visit property page on Zillow
+   - Click "Edit Facts" or "Claim this home"
+   - Verify ownership (requires account + verification)
+   - Can edit some details, add photos, update status
+
+2. REMOVE OWNER NAME:
+   - Email privacy@zillow.com with property address
+   - Request: "Please remove owner name from public display"
+   - Zillow may comply but not guaranteed
+   - Property records are public - only removes from Zillow display
+
+3. MARK AS NOT FOR SALE:
+   - Claim home (see #1)
+   - Update listing status to "Off Market"
+   - Reduces visibility but doesn't remove property
+
+4. HIDE ZESTIMATE (Not Possible):
+   - Zestimate cannot be hidden or removed
+   - It's based on public records and algorithm
+   - Can only dispute if wildly inaccurate
+
+5. OPT-OUT OF ZILLOW OFFERS:
+   - Contact privacy@zillow.com
+   - Request removal from "Zillow Offers" program
+   - Stops direct purchase offers from Zillow
+
+IMPORTANT LIMITATIONS:
+- Property ownership records are PUBLIC DATA (county records)
+- Zillow aggregates from public sources
+- Cannot fully "remove" - only update how displayed
+- Even if removed from Zillow, data exists in county records
+- Other sites (Realtor.com, Redfin) will still show property
+
+ALTERNATIVES:
+- LLC/Trust Ownership: Own property through LLC for privacy
+- Homestead Exemption: Some states allow privacy protections
+- Contact county recorder to check public record options
+"""

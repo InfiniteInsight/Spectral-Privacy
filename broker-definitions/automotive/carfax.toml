@@ -1,0 +1,68 @@
+# Carfax - Vehicle History Reports
+# Last verified: 2026-02-25
+
+[broker]
+id = "carfax"
+name = "Carfax"
+url = "https://www.carfax.com"
+domain = "carfax.com"
+category = "automotive"
+difficulty = "Hard"
+typical_removal_days = 90
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Canada"]
+
+[search]
+method = "web-form"
+url = "https://www.carfax.com/VehicleHistory"
+requires_fields = []
+
+[removal]
+method = "mail"
+address = "Carfax Data Corrections, 5860 Trinity Parkway, Suite 600, Centreville, VA 20120"
+notes = """
+Carfax vehicle history (LIMITED REMOVAL):
+
+1. UNDERSTAND WHAT CARFAX IS:
+   - Aggregates vehicle data from DMVs, insurance, service records, auctions
+   - Used by buyers to check accident history, ownership, title status
+   - Data comes from government and business sources
+   - Carfax does NOT create data - only reports it
+
+2. DISPUTE INACCURATE INFORMATION:
+   - Only option is to correct ERRORS, not remove accurate data
+   - Mail: Carfax Data Corrections, 5860 Trinity Parkway, Suite 600, Centreville, VA 20120
+   - Include:
+     * VIN (Vehicle Identification Number)
+     * Description of error
+     * Supporting documentation (receipts, repair orders, title)
+   - Processing: 30-90 days
+
+3. ONLINE DISPUTE:
+   - Visit https://www.carfax.com/company/data-content
+   - Click "Report a Problem"
+   - Requires Carfax account
+   - Upload supporting documents
+
+4. BUYBACK GUARANTEE:
+   - If Carfax report missed a major problem (branded title, odometer rollback, severe damage)
+   - May be eligible for buyback (up to $50,000)
+   - Details: https://www.carfax.com/buyback-guarantee
+
+WHAT YOU CANNOT DO:
+- Remove accurate accident history
+- Remove accurate title brands (salvage, flood, lemon)
+- Remove accurate ownership history
+- Remove accurate service records
+- Hide vehicle history from potential buyers
+
+REALITY CHECK:
+- Vehicle history is based on legal documents (DMV, insurance claims, police reports)
+- Removing accurate data would be fraud
+- Focus: Ensure accuracy, not removal
+- If selling vehicle with issues, disclose them honestly
+
+NOTE: AutoCheck and other services also report vehicle history. Even if you could remove from Carfax (you can't), data exists elsewhere.
+"""

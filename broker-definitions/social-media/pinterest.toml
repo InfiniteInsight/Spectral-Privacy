@@ -1,0 +1,61 @@
+# Pinterest - Visual Discovery and Shopping Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "pinterest"
+name = "Pinterest"
+url = "https://www.pinterest.com"
+domain = "pinterest.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://www.pinterest.com"
+instructions = "Pinterest profiles are semi-public. Data collected: pins, boards, searches, clicks, shopping behavior, interests, demographics. Used for product recommendations and advertising."
+
+[removal]
+method = "account-required"
+url = "https://www.pinterest.com/settings/privacy"
+confirmation = "automatic"
+notes = """
+Pinterest privacy controls:
+
+1. SEARCH PRIVACY:
+   - Settings > Privacy and data > Search privacy
+   - Turn ON "Keep your searches secret"
+   - Stops showing your searches in others' feeds
+
+2. PERSONALIZATION:
+   - Settings > Privacy and data > Personalization
+   - Turn OFF "Use sites you visit to improve recommendations"
+   - Turn OFF "Use your activity for ads personalization"
+
+3. AD PREFERENCES:
+   - Visit https://www.pinterest.com/settings/privacy
+   - Under "Ads" section: Turn OFF "Use information from our partners"
+   - Turn OFF "Activity for ads personalization"
+
+4. DOWNLOAD YOUR DATA:
+   - Settings > Privacy and data > Get your data
+   - Request archive of all Pinterest data
+   - Processing takes 2-5 days
+
+5. MAKE PROFILE PRIVATE:
+   - Settings > Account settings > Visibility
+   - Turn ON "Hide your profile from search engines"
+   - Make boards secret (visible only to you)
+
+6. DELETE ACCOUNT:
+   - Settings > Account management > Permanently delete account
+   - Account deactivated for 14 days
+   - Permanently deleted after 14 days
+   - URL: https://www.pinterest.com/settings/account-management
+
+NOTE: Pinterest tracks shopping intent and purchases across web via Pinterest Tag. Use privacy controls or browser extensions to block tracking.
+"""

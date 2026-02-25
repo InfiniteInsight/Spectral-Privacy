@@ -1,0 +1,69 @@
+# The Trade Desk - Programmatic Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "the-trade-desk"
+name = "The Trade Desk"
+url = "https://www.thetradedesk.com"
+domain = "thetradedesk.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.thetradedesk.com"
+instructions = "The Trade Desk is a demand-side platform (DSP) for programmatic advertising. Tracks browsing behavior across websites to show targeted ads. Uses cookies and device IDs. Not publicly searchable - operates behind the scenes."
+
+[removal]
+method = "web-form"
+url = "https://www.adsrvr.org"
+confirmation = "automatic"
+notes = """
+The Trade Desk opt-out:
+
+1. CONSUMER OPT-OUT SITE:
+   - Visit https://www.adsrvr.org
+   - Click "Do Not Sell My Personal Information" or "Opt Out"
+   - Sets opt-out cookie in your browser
+   - Must repeat per browser/device
+
+2. COOKIE-BASED LIMITATION:
+   - Opt-out is cookie-based, not account-based
+   - Clearing cookies removes opt-out
+   - Must opt-out again after clearing browser data
+
+3. UNIFIED ID 2.0 (UID2):
+   - The Trade Desk's cookie replacement system
+   - Requires email-based ID
+   - Visit transparency page: https://www.transparentadvertising.com
+   - Can request deletion of UID2 profile
+
+4. NAI OPT-OUT:
+   - Visit https://optout.networkadvertising.org
+   - The Trade Desk is an NAI member
+   - Opt-out from multiple ad networks at once
+
+5. DAA OPT-OUT:
+   - Visit https://optout.aboutads.info
+   - Digital Advertising Alliance opt-out tool
+   - Covers The Trade Desk and other platforms
+
+6. BROWSER-LEVEL BLOCKING:
+   - Use browser privacy features:
+     * Safari: Intelligent Tracking Prevention (auto-blocks)
+     * Firefox: Enhanced Tracking Protection
+     * Brave: Built-in ad/tracker blocking
+   - Install uBlock Origin or Privacy Badger extensions
+
+7. GDPR/CCPA REQUESTS:
+   - Email: privacy@thetradedesk.com
+   - California: CCPA right to opt-out of sale
+   - EU: GDPR right to erasure
+
+NOTE: The Trade Desk powers ads across millions of websites. Opt-out stops personalized ads but doesn't stop all ads. Cookie-based opt-outs are fragile - browser extensions provide better protection.
+"""

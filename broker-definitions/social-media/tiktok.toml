@@ -1,0 +1,59 @@
+# TikTok - Short-Form Video Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "tiktok"
+name = "TikTok"
+url = "https://www.tiktok.com"
+domain = "tiktok.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://www.tiktok.com"
+instructions = "TikTok profiles are public by default. Search via app or website. Data collected: videos, likes, comments, watch history, device info, location, biometric data (face/voice), browsing behavior."
+
+[removal]
+method = "account-required"
+url = "https://www.tiktok.com/privacy/settings"
+confirmation = "automatic"
+notes = """
+TikTok privacy controls:
+
+1. ACCOUNT PRIVACY:
+   - Settings > Privacy > Private account (prevents public viewing)
+   - Settings > Privacy > Suggest your account to others (turn OFF)
+   - Settings > Privacy > Download your data
+
+2. PERSONALIZED ADS:
+   - Settings > Ads > Ads personalization (turn OFF)
+   - Limits ad targeting based on your activity
+
+3. DATA DOWNLOAD:
+   - Settings > Privacy > Download your data
+   - Request JSON file of all data TikTok has on you
+   - Processing takes 3-5 days
+
+4. DELETE ACCOUNT:
+   - Settings > Manage account > Delete account
+   - Account deactivated for 30 days (can reactivate)
+   - Permanently deleted after 30 days
+   - URL: https://www.tiktok.com/setting/account
+
+5. LIMIT DATA COLLECTION:
+   - Settings > Privacy > Discoverability (turn all OFF)
+   - Settings > Privacy > Safety > Comments (restrict)
+   - Don't sync contacts or Facebook friends
+
+6. AD SETTINGS (OFF-TIKTOK):
+   - Visit https://www.tiktok.com/ads/settings
+   - Opt-out of TikTok pixel tracking on other websites
+
+WARNING: TikTok collects extensive data including biometric identifiers (face, voice), precise location, device identifiers, and browsing behavior. Privacy controls are limited. Deletion is the only way to stop collection.
+"""
