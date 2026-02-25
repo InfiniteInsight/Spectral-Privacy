@@ -12,8 +12,8 @@ pub struct AppState {
     /// Base directory for all vaults (~/.local/share/spectral/vaults/)
     pub vaults_dir: PathBuf,
 
-    /// Currently unlocked vaults: vault_id -> Vault
-    /// RwLock allows concurrent reads (status checks)
+    /// Currently unlocked vaults: `vault_id` -> Vault
+    /// `RwLock` allows concurrent reads (status checks)
     pub unlocked_vaults: RwLock<HashMap<String, Arc<Vault>>>,
 
     /// Shared browser engine for browser-form removal submissions.

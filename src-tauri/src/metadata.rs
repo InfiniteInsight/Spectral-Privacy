@@ -32,7 +32,7 @@ impl VaultMetadata {
         }
     }
 
-    /// Update the last_accessed timestamp to now.
+    /// Update the `last_accessed` timestamp to now.
     pub fn touch(&mut self) {
         self.last_accessed = Utc::now();
     }

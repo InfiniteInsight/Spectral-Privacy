@@ -7,6 +7,7 @@ const VERIFICATION_WINDOW_DAYS: u64 = 7;
 const SECONDS_PER_DAY: u64 = 86400;
 
 /// Check if a sender address matches any known broker email address.
+#[must_use]
 pub fn matches_broker_sender(sender: &str, broker_emails: &[String]) -> bool {
     broker_emails.iter().any(|b| b.eq_ignore_ascii_case(sender))
 }
@@ -38,7 +39,7 @@ pub struct PollResult {
     pub errors: Vec<String>,
 }
 
-/// Poll IMAP inbox for broker verification emails (SYNCHRONOUS - wrap in spawn_blocking if needed)
+/// Poll IMAP inbox for broker verification emails (SYNCHRONOUS - wrap in `spawn_blocking` if needed)
 pub fn poll_for_verifications(
     config: &ImapConfig,
     broker_email_to_attempt: &HashMap<String, String>,

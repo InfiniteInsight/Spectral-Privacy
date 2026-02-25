@@ -1,0 +1,126 @@
+# TransUnion - Consumer Credit Bureau
+# Last verified: 2026-02-25
+# NOTE: This is a CREDIT BUREAU - you cannot and should not remove legitimate credit data.
+# This definition focuses on privacy controls: freezes, opt-outs, and accuracy.
+
+[broker]
+id = "transunion"
+name = "TransUnion"
+url = "https://www.transunion.com"
+domain = "transunion.com"
+category = "data-aggregator"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 180
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://www.transunion.com/credit-reports"
+instructions = """
+⚠️ IMPORTANT: TransUnion is a credit bureau regulated by the Fair Credit Reporting Act (FCRA).
+
+Your credit report is a FINANCIAL ASSET, not privacy threat. It enables you to:
+- Qualify for mortgages, auto loans, credit cards
+- Rent apartments (landlords verify creditworthiness)
+- Get approved for utilities, phone plans
+- Apply for certain jobs (with your permission)
+
+Attempting to "delete" credit history would make you financially invisible = unable to borrow at reasonable rates.
+
+To view your report:
+1. Free annual report: AnnualCreditReport.com
+2. Create TransUnion account for monitoring
+3. Verify with SSN, DOB, address history
+
+Report shows: credit accounts, payment patterns, balances, inquiries, public records.
+"""
+
+[removal]
+method = "account-required"
+url = "https://service.transunion.com/dss/orderStep1_form.page"
+notes = """
+CREDIT PRIVACY STRATEGY (not data removal):
+
+✅ EFFECTIVE PRIVACY CONTROLS:
+
+1. SECURITY FREEZE (Strongest Protection):
+   - FREE by federal law since 2018
+   - Blocks identity thieves from opening accounts in your name
+   - Does NOT lower credit score
+   - Does NOT affect existing accounts, employment checks, or insurance
+   - Online: https://service.transunion.com/dss/orderStep1_form.page
+   - Phone: 1-888-909-8872
+   - Mail: TransUnion LLC, P.O. Box 2000, Chester, PA 19016
+   - Include: Full name, address, SSN, DOB
+   - Lift freeze instantly online when applying for credit
+
+2. OPT-OUT OF PRE-SCREENED OFFERS:
+   - Stops unsolicited credit/insurance offers
+   - OptOutPrescreen.com or call 1-888-567-8688
+   - 5-year opt-out (online, instant) or permanent (mail form)
+   - Affects all major bureaus (TransUnion, Equifax, Experian, Innovis)
+
+3. OPT-OUT OF TRANSUNION MARKETING:
+   - Prevents selling your info to marketers
+   - Phone: 1-800-916-8800
+   - Mail: Name Removal Option, TransUnion LLC, P.O. Box 505, Woodlyn, PA 19094
+   - Include: Name, address, SSN, DOB, signature
+   - Processing time: 30 days
+
+4. DISPUTE PROCESS FOR INACCURACIES:
+   - Legal right to accurate information under FCRA
+   - Online: https://www.transunion.com/credit-disputes/dispute-your-credit
+   - Phone: 1-800-916-8800
+   - Mail: TransUnion Consumer Solutions, P.O. Box 2000, Chester, PA 19016
+   - Investigation required within 30 days by law
+   - Removes unverifiable or incorrect data
+   - Cannot remove accurate negative information (protected by FCRA)
+
+5. FRAUD ALERTS:
+   - For identity theft victims
+   - Forces lenders to verify identity before extending credit
+   - Free, lasts 1 year (renewable indefinitely)
+   - Extended 7-year alert available for confirmed theft
+   - Phone: 1-800-680-7289
+
+❌ WHAT NOT TO DO:
+
+- Try to "delete" your entire credit file (impossible and harmful)
+- Remove legitimate accounts (destroys credit score)
+- Dispute accurate information (illegal)
+- Attempt to erase valid negative history prematurely
+
+⚖️ CALIFORNIA RESIDENTS (CCPA):
+- Right to know what personal data is collected
+- Right to opt-out of sales to third parties
+- EXCEPTION: Credit reporting data protected by FCRA
+- Submit CCPA requests: https://www.transunion.com/ccpa
+- Cannot delete credit data via CCPA
+
+📋 AUTOMATIC EXPIRATION PERIODS:
+- Late payments, collections: 7 years from first delinquency
+- Chapter 7 bankruptcy: 10 years from filing
+- Chapter 13 bankruptcy: 7 years from filing
+- Hard inquiries: 2 years (only affect score for 1 year)
+- Tax liens: 7 years from payment
+- Positive accounts: Remain indefinitely (good for score!)
+
+🎯 RECOMMENDED ACTION PLAN:
+1. ✅ Place security freeze (do this on all 3 bureaus)
+2. ✅ Opt-out of pre-screened credit offers (reduce junk mail)
+3. ✅ Review credit report annually for errors (free)
+4. ✅ Dispute any inaccuracies found
+5. ✅ Consider credit monitoring service
+6. ✅ Maintain good payment history (best long-term strategy)
+7. ❌ DO NOT try to "remove" or "delete" legitimate credit data
+
+WHY CREDIT HISTORY MATTERS:
+- Without it: No mortgage, high-interest loans, apartment denials
+- With good history: Lower rates, better terms, financial opportunities
+- Focus on building positive history, not removing valid information
+
+For assistance: 1-800-916-8800 or visit https://www.transunion.com/customer-support
+"""

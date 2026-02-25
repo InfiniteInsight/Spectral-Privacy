@@ -1,0 +1,81 @@
+# FastBackgroundCheck - Phone and People Search
+# Last verified: 2026-02-25
+
+[broker]
+id = "fastbackgroundcheck"
+name = "FastBackgroundCheck"
+url = "https://www.fastbackgroundcheck.com"
+domain = "fastbackgroundcheck.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 3
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.fastbackgroundcheck.com/person/{first}-{last}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".search-results"
+result_item = ".person-result"
+listing_url = "a.profile-link"
+name = ".person-name"
+age = ".age"
+location = ".location"
+phones = ".phone-numbers .phone"
+no_results_indicator = ".no-results-message"
+
+[removal]
+method = "web-form"
+url = "https://www.fastbackgroundcheck.com/ng/control/privacy"
+confirmation = "email-verification"
+notes = """
+FastBackgroundCheck opt-out:
+
+1. OPT-OUT FORM:
+   - Visit https://www.fastbackgroundcheck.com/ng/control/privacy
+   - Enter your information:
+     * First Name
+     * Middle Initial (optional)
+     * Last Name
+     * Age/Age Range
+     * State
+     * Email
+   - Click "Find My Record"
+
+2. SELECT RECORD:
+   - Review results to find your listing
+   - Click checkbox next to correct record
+   - Click "Remove My Records"
+
+3. EMAIL VERIFICATION:
+   - Check email for verification link
+   - Click link to confirm removal
+   - Processing takes 24-72 hours
+
+4. VERIFY REMOVAL:
+   - After 3 days, search for your name
+   - If still listed, repeat opt-out process
+
+Note: Opt-out only removes from FastBackgroundCheck.com. Data may still appear on other sites in their network. May need to submit separate requests for related domains.
+"""
+
+[removal.fields]
+first_name = "{first_name}"
+last_name = "{last_name}"
+state = "{state}"
+email = "{user_email}"
+
+[removal.form_selectors]
+first_name_input = "#firstName"
+last_name_input = "#lastName"
+state_select = "#state"
+email_input = "#email"
+search_button = "button.find-record"
+select_record_checkbox = "input[type='checkbox'][name='record']"
+submit_button = "button.remove-records"
+success_indicator = ".removal-confirmation"

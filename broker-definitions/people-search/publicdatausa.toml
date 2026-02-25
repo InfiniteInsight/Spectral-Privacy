@@ -1,0 +1,50 @@
+# PublicDataUSA - Public Records Search
+# Last verified: 2026-02-25
+
+[broker]
+id = "publicdatausa"
+name = "PublicDataUSA"
+url = "https://www.publicdatausa.com"
+domain = "publicdatausa.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.publicdatausa.com/people/{first}-{last}/{state}/{city}"
+requires_fields = ["first_name", "last_name", "state", "city"]
+
+[search.result_selectors]
+results_container = ".search-results-container"
+result_item = ".person-card"
+listing_url = "a.person-link"
+name = ".person-name"
+age = ".age-display"
+location = ".address-display"
+relatives = ".relatives-section .relative-name"
+phones = ".phone-section .phone-number"
+no_results_indicator = ".no-matches-found"
+captcha_required = ".g-recaptcha, iframe[title*='recaptcha' i]"
+
+[removal]
+method = "email"
+email = "privacy@publicdatausa.com"
+subject = "Privacy Removal Request - {full_name}"
+body = """
+I am requesting the removal of my personal information from PublicDataUSA.
+
+Listing URL: {found_listing_url}
+Name: {full_name}
+Email: {user_email}
+
+Please confirm when my information has been removed from your database.
+
+Thank you.
+"""
+response_days = 10
+notes = "Email-based removal. Include listing URL and proof of identity. Response typically within 5-7 business days. May require follow-up."

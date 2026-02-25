@@ -50,5 +50,5 @@ async fn test_full_scan_flow() {
     // Wait briefly for background execution
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-    println!("Integration test completed - scan job created: {}", job_id);
+    println!("Integration test completed - scan job created: {job_id}");
 }

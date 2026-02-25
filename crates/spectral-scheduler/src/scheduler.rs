@@ -3,6 +3,7 @@
 use chrono::DateTime;
 
 /// Returns true if `next_run_at` is in the past relative to `now`.
+#[must_use]
 pub fn is_job_due(next_run_at: &str, now: &str) -> bool {
     let next = DateTime::parse_from_rfc3339(next_run_at).ok();
     let current = DateTime::parse_from_rfc3339(now).ok();
@@ -13,10 +14,11 @@ pub fn is_job_due(next_run_at: &str, now: &str) -> bool {
 }
 
 /// Return the ISO-8601 timestamp for `now + interval_days`.
+#[must_use]
 pub fn next_run_timestamp(interval_days: u32) -> String {
     use chrono::Utc;
     // nosemgrep: llm-prompt-injection-risk - false positive, this is chrono date arithmetic
-    let next = Utc::now() + chrono::Duration::days(interval_days as i64);
+    let next = Utc::now() + chrono::Duration::days(i64::from(interval_days));
     next.to_rfc3339()
 }
 

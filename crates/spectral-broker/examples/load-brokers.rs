@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let loader = match BrokerLoader::with_default_dir() {
         Ok(loader) => loader,
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             eprintln!("\nMake sure you're running this from the workspace root!");
             return Err(Box::new(e));
         }
@@ -38,8 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 result_selectors,
             } => {
                 println!("    Search: URL template");
-                println!("      Template: {}", template);
-                println!("      Requires: {:?}", requires_fields);
+                println!("      Template: {template}");
+                println!("      Requires: {requires_fields:?}");
                 if result_selectors.is_some() {
                     println!("      ✓ Has result selectors");
                 } else {
@@ -47,10 +47,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             spectral_broker::SearchMethod::WebForm { url, .. } => {
-                println!("    Search: Web form at {}", url);
+                println!("    Search: Web form at {url}");
             }
             spectral_broker::SearchMethod::Manual { url, .. } => {
-                println!("    Search: Manual at {}", url);
+                println!("    Search: Manual at {url}");
             }
         }
 

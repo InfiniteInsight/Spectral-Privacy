@@ -1,0 +1,49 @@
+# That'sThem - Free People Search and Reverse Phone Lookup
+# Last verified: 2026-02-25
+
+[broker]
+id = "thatsthem"
+name = "That'sThem"
+url = "https://thatsthem.com"
+domain = "thatsthem.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 2
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://thatsthem.com/name/{first}-{last}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".ThatsThem-results"
+result_item = ".result-item"
+listing_url = "a.name-link"
+name = ".name"
+age = ".age"
+location = ".location"
+relatives = ".relatives .name"
+phones = ".phone-list .phone"
+emails = ".email-list .email"
+no_results_indicator = ".no-results"
+captcha_required = "#recaptcha, iframe[src*='recaptcha']"
+
+[removal]
+method = "browser-form"
+url = "https://thatsthem.com/optout"
+confirmation = "automatic"
+notes = "Fast opt-out process. Requires exact listing URL. Usually processed within 24-48 hours. No email verification needed."
+
+[removal.fields]
+listing_url = "{found_listing_url}"
+
+[removal.form_selectors]
+listing_url_input = "#url, input[name='url']"
+submit_button = "button[type='submit'], .optout-submit"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".success, .removal-confirmed"
+error_indicator = ".error"

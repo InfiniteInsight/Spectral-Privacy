@@ -9,7 +9,7 @@ use spectral_vault::VaultError;
 /// Serializable error for Tauri IPC commands.
 #[derive(Debug, Serialize)]
 pub struct CommandError {
-    /// Error code for frontend handling (e.g., "VAULT_LOCKED")
+    /// Error code for frontend handling (e.g., "`VAULT_LOCKED`")
     pub code: String,
     /// User-friendly error message
     pub message: String,
@@ -41,7 +41,7 @@ impl CommandError {
     }
 }
 
-/// Convert VaultError to CommandError for IPC serialization.
+/// Convert `VaultError` to `CommandError` for IPC serialization.
 impl From<VaultError> for CommandError {
     fn from(err: VaultError) -> Self {
         match err {
@@ -80,14 +80,14 @@ impl From<VaultError> for CommandError {
     }
 }
 
-/// Convert std::io::Error to CommandError.
+/// Convert `std::io::Error` to `CommandError`.
 impl From<std::io::Error> for CommandError {
     fn from(err: std::io::Error) -> Self {
         Self::new("FILESYSTEM_ERROR", format!("Filesystem error: {err}"))
     }
 }
 
-/// Convert SpectralError to CommandError.
+/// Convert `SpectralError` to `CommandError`.
 impl From<SpectralError> for CommandError {
     fn from(err: SpectralError) -> Self {
         match err {

@@ -9,7 +9,7 @@ use tauri::{Manager, State};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-/// Helper to create test app with AppState and temporary directory.
+/// Helper to create test app with `AppState` and temporary directory.
 fn create_test_app() -> (tauri::App<tauri::test::MockRuntime>, TempDir) {
     let temp_dir = TempDir::new().expect("create temp dir");
     let vaults_dir = temp_dir.path().join("vaults");

@@ -25,7 +25,7 @@ pub trait BrowserActions {
 /// Helper to extract domain from URL
 pub fn extract_domain(url: &str) -> Result<String> {
     let url = url::Url::parse(url)
-        .map_err(|e| BrowserError::NavigationError(format!("Invalid URL: {}", e)))?;
+        .map_err(|e| BrowserError::NavigationError(format!("Invalid URL: {e}")))?;
 
     url.host_str()
         .ok_or_else(|| BrowserError::NavigationError("No host in URL".to_string()))

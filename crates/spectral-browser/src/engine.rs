@@ -77,8 +77,7 @@ impl BrowserEngine {
                         Fedora: sudo dnf install chromium\n\
                         Arch: sudo pacman -S chromium\n\
                         Or set CHROME_PATH environment variable to your Chrome installation.\n\
-                        Original error: {}",
-                    msg
+                        Original error: {msg}"
                 ))
             } else {
                 BrowserError::ChromiumError(msg)
@@ -197,7 +196,7 @@ impl BrowserActions for BrowserEngine {
             page.find_element(selector),
         )
         .await
-        .map_err(|_| BrowserError::Timeout(format!("Selector {} not found", selector)))?
+        .map_err(|_| BrowserError::Timeout(format!("Selector {selector} not found")))?
         .map_err(|e| BrowserError::SelectorNotFound(e.to_string()))?;
 
         Ok(())

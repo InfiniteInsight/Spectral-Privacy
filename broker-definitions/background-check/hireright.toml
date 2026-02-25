@@ -1,0 +1,78 @@
+# HireRight - Employment Background Screening
+# Last verified: 2026-02-25
+
+[broker]
+id = "hireright"
+name = "HireRight"
+url = "https://www.hireright.com"
+domain = "hireright.com"
+category = "background-check"
+difficulty = "Medium"
+typical_removal_days = 14
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://www.hireright.com"
+instructions = "HireRight conducts employment verification, criminal background checks, drug testing, and identity verification for employers. Data not publicly searchable - only visible to employers conducting screening. You can view your own reports if you've been screened."
+
+[removal]
+method = "email"
+email = "dispute@hireright.com"
+subject = "Consumer Rights Request - {full_name}"
+body = """
+I am writing to exercise my consumer rights under the Fair Credit Reporting Act (FCRA).
+
+Request Type: [Choose one: Access to my consumer file / Dispute inaccurate information]
+
+Full Name: {full_name}
+Date of Birth: {date_of_birth}
+Social Security Number (last 4 digits): [XXX-XX-####]
+Current Address: {address}, {city}, {state} {zip_code}
+Email: {user_email}
+
+Please investigate and respond within 30 days as required by FCRA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+HireRight consumer rights under FCRA:
+
+1. REQUEST YOUR FILE:
+   - Call: 1-866-521-6995
+   - Email: dispute@hireright.com
+   - Online: https://www.hireright.com/applicant-center
+   - Must provide: Full name, DOB, SSN, address
+   - Free disclosure if requested within 60 days of screening
+
+2. DISPUTE PROCESS:
+   - If report contains errors, file dispute
+   - Methods:
+     * Online: https://www.hireright.com/applicant-center
+     * Email: dispute@hireright.com
+     * Mail: HireRight Disputes, P.O. Box 1090, Alpharetta, GA 30009
+   - Include:
+     * Name, address, DOB, SSN
+     * Specific items you dispute
+     * Explanation why information is inaccurate
+     * Supporting documentation
+   - HireRight must investigate within 30 days
+   - Will correct or delete unverifiable information
+
+3. REINVESTIGATION RIGHTS:
+   - If adverse action taken (not hired) based on report
+   - Employer must provide copy of report
+   - You have right to dispute before decision finalized
+   - HireRight must reinvestigate disputed items
+
+4. CCPA/GDPR REQUESTS:
+   - California residents: CCPA rights to access, delete, opt-out
+   - EU residents: GDPR rights to access, rectification, erasure
+   - Submit to: privacy@hireright.com
+
+Note: Employment screening is legal and necessary for hiring. Cannot fully "opt-out" but can ensure accuracy and exercise FCRA rights.
+"""

@@ -1,0 +1,57 @@
+# Google Ads - Advertising Personalization Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "google-ads"
+name = "Google Ads"
+url = "https://www.google.com/ads"
+domain = "google.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://adssettings.google.com"
+instructions = "Log into your Google account and visit Ad Settings (https://adssettings.google.com). Review topics, demographics, and interests Google has inferred about you. Check 'My Ad Center' to see how Google personalizes ads."
+
+[removal]
+method = "web-form"
+url = "https://adssettings.google.com"
+confirmation = "automatic"
+notes = """
+Disable Google ad personalization:
+
+1. TURN OFF AD PERSONALIZATION:
+   - Visit https://adssettings.google.com
+   - Click "Turn off" next to "Ad Personalization"
+   - Applies to Google Search, YouTube, Gmail, and partner sites
+
+2. MANAGE AD TOPICS:
+   - Review and remove individual ad topics/interests
+   - Click X next to each topic you want to remove
+
+3. DELETE ADVERTISING ID (Mobile):
+   - Android: Settings > Privacy > Ads > Delete Advertising ID
+   - iOS: Settings > Privacy > Tracking > Ask App Not to Track
+
+4. OPT-OUT OF GOOGLE ANALYTICS:
+   - Install Google Analytics Opt-out Browser Add-on
+   - Download: https://tools.google.com/dlpage/gaoptout
+
+5. ACTIVITY CONTROLS:
+   - Visit https://myactivity.google.com/activitycontrols
+   - Turn off Web & App Activity
+   - Turn off YouTube History
+   - Turn off Location History
+
+Note: Opt-outs are account-based. Must be logged in. Resets if you clear cookies.
+"""
+
+[removal.form_selectors]
+toggle_personalization = "button[aria-label*='personalization' i]"
+success_indicator = ".settings-saved"

@@ -62,25 +62,19 @@ pub async fn get_broker_detail(
 ) -> Result<BrokerDetail, CommandError> {
     // Get broker definition
     let def = state.get_broker_definition(&broker_id).ok_or_else(|| {
-        CommandError::new(
-            "BROKER_NOT_FOUND",
-            format!("Broker {} not found", broker_id),
-        )
+        CommandError::new("BROKER_NOT_FOUND", format!("Broker {broker_id} not found"))
     })?;
 
     // Look up vault scan status for this broker
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault {} not unlocked", vault_id),
+            format!("Vault {vault_id} not unlocked"),
         )
     })?;
 
     let db = vault.database().map_err(|e| {
-        CommandError::new(
-            "DATABASE_ERROR",
-            format!("Failed to access database: {}", e),
-        )
+        CommandError::new("DATABASE_ERROR", format!("Failed to access database: {e}"))
     })?;
 
     // Query for findings - count how many findings exist for this broker

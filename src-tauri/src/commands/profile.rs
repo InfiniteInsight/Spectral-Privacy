@@ -28,7 +28,7 @@ pub async fn profile_create(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault '{}' is not unlocked", vault_id),
+            format!("Vault '{vault_id}' is not unlocked"),
         )
     })?;
 
@@ -104,7 +104,7 @@ pub async fn profile_get(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault '{}' is not unlocked", vault_id),
+            format!("Vault '{vault_id}' is not unlocked"),
         )
     })?;
 
@@ -216,7 +216,7 @@ pub async fn profile_update(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault '{}' is not unlocked", vault_id),
+            format!("Vault '{vault_id}' is not unlocked"),
         )
     })?;
 
@@ -294,7 +294,7 @@ pub async fn profile_list(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault '{}' is not unlocked", vault_id),
+            format!("Vault '{vault_id}' is not unlocked"),
         )
     })?;
 
@@ -323,7 +323,7 @@ pub async fn profile_list(
             .map(|f| f.decrypt(key))
             .transpose()?
             .unwrap_or_default();
-        let full_name = format!("{} {}", first_name, last_name).trim().to_string();
+        let full_name = format!("{first_name} {last_name}").trim().to_string();
 
         // Decrypt email
         let email = profile
@@ -359,7 +359,7 @@ pub async fn get_profile_completeness(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault '{}' is not unlocked", vault_id),
+            format!("Vault '{vault_id}' is not unlocked"),
         )
     })?;
 
