@@ -42,6 +42,7 @@ pub mod discovery_findings;
 pub mod error;
 pub mod findings;
 pub mod google_removal;
+pub mod map_blur;
 pub mod matching;
 pub mod migrations;
 pub mod removal_attempts;
@@ -234,7 +235,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 14);
+        assert_eq!(version_after, 15);
     }
 
     #[tokio::test]
@@ -267,6 +268,7 @@ mod tests {
                 "email_removals",
                 "findings",
                 "google_removal_requests",
+                "map_blur_requests",
                 "profiles",
                 "removal_attempts",
                 "removal_evidence",

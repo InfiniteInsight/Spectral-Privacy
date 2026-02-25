@@ -26,6 +26,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tokio.workspace = true
 chrono.workspace = true
+reqwest.workspace = true
 
 # Internal crates (uncomment as they are created)
 spectral-core = { path = "../crates/spectral-core" }

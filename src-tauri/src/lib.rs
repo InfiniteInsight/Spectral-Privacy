@@ -5,6 +5,7 @@
 
 pub mod commands;
 mod error;
+mod geocoding;
 mod matching_service;
 mod metadata;
 pub mod removal_worker;
@@ -161,6 +162,9 @@ pub fn run() {
             commands::audit::get_audit_log_by_type,
             commands::audit::create_audit_entry,
             commands::audit::clear_audit_log,
+            commands::map_blur::generate_map_blur_requests,
+            commands::map_blur::get_map_blur_requests,
+            commands::map_blur::mark_map_blur_submitted,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
