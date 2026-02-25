@@ -3,7 +3,8 @@
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_cookies::{
-    BrokerCookiePattern, Browser, Cookie, CookieMatcher, CookieRemover, CookieScanner,
+    BrokerCookiePattern, Browser, BrowserProfile, Cookie, CookieMatcher, CookieRemover,
+    CookieScanner,
 };
 use std::collections::HashMap;
 use tauri::State;
@@ -205,6 +206,68 @@ pub async fn get_cookies_for_broker(
         .collect())
 }
 
+/// Helper to remove cookies for a single browser profile.
+async fn remove_cookies_for_profile(
+    db_pool: &sqlx::Pool<sqlx::Sqlite>,
+    browser_type_str: &str,
+    profile_name: &str,
+    cookies_with_ids: Vec<(String, Cookie)>,
+    profile: &BrowserProfile,
+    remover: &CookieRemover,
+) -> CookieRemovalResponse {
+    // Check if browser is running
+    if Browser::is_browser_running(profile.browser_type) {
+        return CookieRemovalResponse {
+            browser_type: browser_type_str.to_string(),
+            profile_name: profile_name.to_string(),
+            cookies_removed: 0,
+            cookies_failed: cookies_with_ids.len(),
+            backup_path: None,
+            errors: vec![format!(
+                "{} is running. Please close the browser and try again.",
+                browser_type_str
+            )],
+        };
+    }
+
+    let cookies: Vec<Cookie> = cookies_with_ids.iter().map(|(_, c)| c.clone()).collect();
+
+    // Remove cookies
+    match remover.remove_cookies(profile, &cookies) {
+        Ok(result) => {
+            // Mark successfully removed cookies in database
+            let removed_ids: Vec<String> = cookies_with_ids
+                .iter()
+                .take(result.cookies_removed)
+                .map(|(id, _)| id.clone())
+                .collect();
+
+            if !removed_ids.is_empty() {
+                let _ = spectral_db::cookies::mark_cookies_removed(db_pool, removed_ids).await;
+            }
+
+            CookieRemovalResponse {
+                browser_type: browser_type_str.to_string(),
+                profile_name: profile_name.to_string(),
+                cookies_removed: result.cookies_removed,
+                cookies_failed: result.cookies_failed,
+                backup_path: result
+                    .backup_path
+                    .and_then(|p| p.to_str().map(|s| s.to_string())),
+                errors: result.errors,
+            }
+        }
+        Err(e) => CookieRemovalResponse {
+            browser_type: browser_type_str.to_string(),
+            profile_name: profile_name.to_string(),
+            cookies_removed: 0,
+            cookies_failed: cookies_with_ids.len(),
+            backup_path: None,
+            errors: vec![e.to_string()],
+        },
+    }
+}
+
 /// Remove cookies for a specific broker.
 #[tauri::command]
 pub async fn remove_cookies_for_broker(
@@ -267,61 +330,16 @@ pub async fn remove_cookies_for_broker(
         });
 
         if let Some(profile) = profile {
-            // Check if browser is running
-            if Browser::is_browser_running(profile.browser_type) {
-                removal_responses.push(CookieRemovalResponse {
-                    browser_type: browser_type_str.clone(),
-                    profile_name: profile_name.clone(),
-                    cookies_removed: 0,
-                    cookies_failed: cookies_with_ids.len(),
-                    backup_path: None,
-                    errors: vec![format!(
-                        "{} is running. Please close the browser and try again.",
-                        browser_type_str
-                    )],
-                });
-                continue;
-            }
-
-            let cookies: Vec<Cookie> = cookies_with_ids.iter().map(|(_, c)| c.clone()).collect();
-
-            // Remove cookies
-            match remover.remove_cookies(profile, &cookies) {
-                Ok(result) => {
-                    // Mark successfully removed cookies in database
-                    let removed_ids: Vec<String> = cookies_with_ids
-                        .iter()
-                        .take(result.cookies_removed)
-                        .map(|(id, _)| id.clone())
-                        .collect();
-
-                    if !removed_ids.is_empty() {
-                        let _ = spectral_db::cookies::mark_cookies_removed(db.pool(), removed_ids)
-                            .await;
-                    }
-
-                    removal_responses.push(CookieRemovalResponse {
-                        browser_type: browser_type_str.clone(),
-                        profile_name: profile_name.clone(),
-                        cookies_removed: result.cookies_removed,
-                        cookies_failed: result.cookies_failed,
-                        backup_path: result
-                            .backup_path
-                            .and_then(|p| p.to_str().map(|s| s.to_string())),
-                        errors: result.errors,
-                    });
-                }
-                Err(e) => {
-                    removal_responses.push(CookieRemovalResponse {
-                        browser_type: browser_type_str.clone(),
-                        profile_name: profile_name.clone(),
-                        cookies_removed: 0,
-                        cookies_failed: cookies_with_ids.len(),
-                        backup_path: None,
-                        errors: vec![e.to_string()],
-                    });
-                }
-            }
+            let response = remove_cookies_for_profile(
+                db.pool(),
+                &browser_type_str,
+                &profile_name,
+                cookies_with_ids,
+                profile,
+                &remover,
+            )
+            .await;
+            removal_responses.push(response);
         }
     }
 
@@ -372,6 +390,63 @@ pub async fn get_recent_cookie_scans(
         .collect())
 }
 
+/// Parse a single broker TOML file and extract cookie patterns.
+async fn parse_broker_cookie_patterns(
+    path: &std::path::Path,
+) -> Result<Option<BrokerCookiePattern>, String> {
+    // Read TOML file
+    let content = tokio::fs::read_to_string(path)
+        .await
+        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+
+    // Parse TOML
+    let toml_value: toml::Value = toml::from_str(&content)
+        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+
+    // Extract broker ID
+    let broker_id = toml_value
+        .get("broker")
+        .and_then(|b| b.get("id"))
+        .and_then(|id| id.as_str())
+        .ok_or_else(|| format!("Missing broker.id in {}", path.display()))?
+        .to_string();
+
+    // Check if this broker has cookie patterns
+    if let Some(removal) = toml_value.get("removal") {
+        if let Some(cookies) = removal.get("cookies") {
+            let cookie_patterns = cookies
+                .get("patterns")
+                .and_then(|p| p.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+
+            let cookie_domains = cookies
+                .get("domains")
+                .and_then(|d| d.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+
+            if !cookie_patterns.is_empty() && !cookie_domains.is_empty() {
+                return Ok(Some(BrokerCookiePattern {
+                    broker_id,
+                    patterns: cookie_patterns,
+                    domains: cookie_domains,
+                }));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
 /// Load broker cookie patterns from TOML files.
 async fn load_broker_cookie_patterns() -> Result<Vec<BrokerCookiePattern>, String> {
     let broker_defs_path = std::path::PathBuf::from("broker-definitions");
@@ -391,54 +466,8 @@ async fn load_broker_cookie_patterns() -> Result<Vec<BrokerCookiePattern>, Strin
         if path.extension().and_then(|s| s.to_str()) == Some("toml")
             && path.file_name().and_then(|s| s.to_str()) != Some("schema.toml")
         {
-            // Read TOML file
-            let content = tokio::fs::read_to_string(path)
-                .await
-                .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
-
-            // Parse TOML
-            let toml_value: toml::Value = toml::from_str(&content)
-                .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
-
-            // Extract broker ID
-            let broker_id = toml_value
-                .get("broker")
-                .and_then(|b| b.get("id"))
-                .and_then(|id| id.as_str())
-                .ok_or_else(|| format!("Missing broker.id in {}", path.display()))?
-                .to_string();
-
-            // Check if this broker has cookie patterns
-            if let Some(removal) = toml_value.get("removal") {
-                if let Some(cookies) = removal.get("cookies") {
-                    let cookie_patterns = cookies
-                        .get("patterns")
-                        .and_then(|p| p.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                .collect::<Vec<String>>()
-                        })
-                        .unwrap_or_default();
-
-                    let cookie_domains = cookies
-                        .get("domains")
-                        .and_then(|d| d.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                .collect::<Vec<String>>()
-                        })
-                        .unwrap_or_default();
-
-                    if !cookie_patterns.is_empty() && !cookie_domains.is_empty() {
-                        patterns.push(BrokerCookiePattern {
-                            broker_id,
-                            patterns: cookie_patterns,
-                            domains: cookie_domains,
-                        });
-                    }
-                }
+            if let Some(pattern) = parse_broker_cookie_patterns(path).await? {
+                patterns.push(pattern);
             }
         }
     }

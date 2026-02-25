@@ -54,6 +54,22 @@ impl CookieMatcher {
         None
     }
 
+    /// Check if domains match with dot prefix handling.
+    fn domains_match_with_dot_prefix(domain1: &str, domain2: &str) -> bool {
+        if domain2.starts_with('.') {
+            domain1 == &domain2[1..] || domain1.ends_with(domain2)
+        } else if domain1.starts_with('.') {
+            domain2 == &domain1[1..] || domain2.ends_with(domain1)
+        } else {
+            false
+        }
+    }
+
+    /// Check if one domain is a subdomain of another.
+    fn is_subdomain(domain1: &str, domain2: &str) -> bool {
+        domain1.ends_with(&format!(".{}", domain2)) || domain2.ends_with(&format!(".{}", domain1))
+    }
+
     /// Check if a cookie domain matches any of the broker domains.
     fn domain_matches(cookie_domain: &str, broker_domains: &[String]) -> bool {
         for broker_domain in broker_domains {
@@ -62,22 +78,13 @@ impl CookieMatcher {
                 return true;
             }
 
-            // Subdomain match (cookie domain starts with . or broker domain starts with .)
-            if broker_domain.starts_with('.') {
-                if cookie_domain == &broker_domain[1..] || cookie_domain.ends_with(broker_domain) {
-                    return true;
-                }
-            } else if cookie_domain.starts_with('.')
-                && (broker_domain == &cookie_domain[1..] || broker_domain.ends_with(cookie_domain))
-            {
+            // Subdomain match with dot prefix handling
+            if Self::domains_match_with_dot_prefix(cookie_domain, broker_domain) {
                 return true;
             }
 
             // Check if cookie domain is a subdomain of broker domain
-            if cookie_domain.ends_with(&format!(".{}", broker_domain)) {
-                return true;
-            }
-            if broker_domain.ends_with(&format!(".{}", cookie_domain)) {
+            if Self::is_subdomain(cookie_domain, broker_domain) {
                 return true;
             }
         }
