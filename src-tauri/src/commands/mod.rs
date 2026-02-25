@@ -2,6 +2,7 @@
 
 pub mod audit;
 pub mod brokers;
+pub mod cookies;
 pub mod discovery;
 pub mod llm;
 pub mod privacy;

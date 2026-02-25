@@ -51,3 +51,16 @@ impl std::fmt::Display for SameSite {
         }
     }
 }
+
+impl std::str::FromStr for SameSite {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "None" => Ok(SameSite::None),
+            "Lax" => Ok(SameSite::Lax),
+            "Strict" => Ok(SameSite::Strict),
+            _ => Err(format!("Invalid SameSite value: {}", s)),
+        }
+    }
+}
