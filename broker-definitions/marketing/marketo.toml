@@ -1,0 +1,106 @@
+# Marketo - Marketing Automation Platform (Adobe)
+# Last verified: 2026-02-25
+
+[broker]
+id = "marketo"
+name = "Marketo (Adobe)"
+url = "https://www.marketo.com"
+domain = "marketo.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.marketo.com"
+instructions = "Marketo (owned by Adobe) is B2B marketing automation platform. Tracks: email opens, form submissions, website visits, content downloads. Data held by companies using Marketo."
+
+[removal]
+method = "email"
+email = "privacy@marketo.com"
+subject = "CCPA/GDPR Data Deletion Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Deletion of all personal data held by Marketo
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Any associated tracking data
+
+Please delete from:
+- Marketo platform databases
+- All customer company instances tracking me
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Marketo privacy controls (INFRASTRUCTURE PLATFORM):
+
+1. HOW MARKETO WORKS:
+   - Used by B2B companies for marketing automation
+   - Tracks: email engagement, form fills, website behavior
+   - Builds detailed lead profiles and scoring
+   - Powers email campaigns, nurture programs, webinar registration
+   - You're tracked when visiting Marketo-powered websites
+
+2. IDENTIFY MARKETO TRACKING:
+   - Look for Marketo tracking code (Munchkin) on websites
+   - Check for domains: *.mktoresp.com, *.marketo.net, *.marketo.com
+   - Form submissions often go through Marketo
+   - Landing pages hosted on: *.go.marketo.com
+
+3. REQUEST FROM COMPANIES:
+   - Email the company's privacy/support contact
+   - Request deletion under GDPR (EU) or CCPA (California)
+   - Companies must comply within 30-45 days
+   - More effective than contacting Marketo directly
+
+4. MARKETO DIRECT REQUEST:
+   - Email: privacy@marketo.com
+   - Marketo will attempt to delete from customer databases
+   - May require cooperation from client companies
+   - GDPR/CCPA rights still apply
+
+5. UNSUBSCRIBE FROM EMAILS:
+   - Click "Unsubscribe" in marketing emails
+   - Marketo honors CAN-SPAM unsubscribes
+   - Prevents that company from emailing you
+   - Doesn't delete existing data
+
+6. COOKIE OPT-OUT:
+   - Marketo uses Munchkin tracking cookie
+   - No official opt-out page (must block via browser)
+   - Cookie name: _mkto_trk
+   - Use Spectral cookie scanner to remove
+
+7. BROWSER-LEVEL BLOCKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block domains: *.mktoresp.com, *.marketo.net, *.marketo.com
+   - Prevents tracking across all Marketo-powered sites
+
+REALITY:
+- Marketo is widely used by B2B tech companies
+- If you download whitepapers or attend webinars, you're in Marketo databases
+- Data is controlled by client companies, not Marketo
+- Must opt-out from each company separately
+- Browser blocking is most effective prevention
+
+TECHNICAL DETAILS:
+- Munchkin tracking cookie: _mkto_trk
+- Cookie lifespan: 730 days (2 years)
+- Tracks: page views, link clicks, form submissions
+- Associated domains: *.go.marketo.com (landing pages), *.mktoresp.com (emails)
+"""
+
+[removal.cookies]
+patterns = ["_mkto_trk", "_mkto_*"]
+domains = [".marketo.com", ".mktoresp.com", ".marketo.net", ".go.marketo.com"]

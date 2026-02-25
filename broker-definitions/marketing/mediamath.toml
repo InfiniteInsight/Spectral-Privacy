@@ -1,0 +1,86 @@
+# MediaMath - Programmatic Marketing Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "mediamath"
+name = "MediaMath"
+url = "https://www.mediamath.com"
+domain = "mediamath.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "none"
+url = "https://www.mediamath.com"
+instructions = "MediaMath is a demand-side platform (DSP) for programmatic advertising. Operates invisibly via ad exchanges - you cannot search for your profile directly."
+
+[removal]
+method = "web-form"
+url = "https://www.mediamath.com/privacy-policy"
+notes = """
+MediaMath privacy controls:
+
+1. WHAT IS MEDIAMATH:
+   - Demand-side platform (DSP) for advertisers
+   - Powers programmatic ad buying across web/mobile
+   - Tracks: browsing behavior, interests, demographics
+   - Creates audience segments for targeted advertising
+   - You never see MediaMath brand (operates behind scenes)
+
+2. OPT OUT OF PERSONALIZED ADS:
+   - Visit https://www.mediamath.com/privacy-policy
+   - Scroll to "Opt-Out of Interest-Based Advertising"
+   - Click opt-out link
+   - Sets opt-out cookie (mm_optout=1)
+
+3. INDUSTRY-WIDE OPT-OUT TOOLS:
+   - NAI: https://optout.networkadvertising.org
+   - DAA: https://optout.aboutads.info
+   - Both include MediaMath in opt-out lists
+   - Must repeat on each browser/device
+
+4. CCPA/GDPR RIGHTS:
+   - Email: privacy@mediamath.com
+   - Subject: "CCPA/GDPR Data Subject Request"
+   - Request: Data access, deletion, or opt-out of sale
+   - Include: Name, email, approximate tracking dates
+   - Response within 30-45 days
+
+5. BROWSER-LEVEL BLOCKING:
+   - Use ad blockers: Privacy Badger, uBlock Origin
+   - Block domains: *.mathtag.com, *.mediamath.com
+   - Most effective prevention method
+
+6. MOBILE ADVERTISING ID RESET:
+   - iOS: Settings → Privacy → Apple Advertising → Reset Identifier
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Breaks MediaMath's cross-device tracking
+
+REALITY:
+- MediaMath operates across 100,000+ websites
+- Invisible to end users (B2B platform)
+   - Opt-out is cookie-based (fragile)
+   - Even with opt-out, still tracks (just doesn't personalize ads)
+   - Browser blocking > opt-outs
+
+COOKIE-BASED LIMITATION:
+- Opt-out uses cookie: mm_optout=1
+- Clearing cookies deletes opt-out preference
+- Must re-opt-out after cookie clearing
+- This is industry-standard problem
+
+TECHNICAL DETAILS:
+- Primary tracking domain: mathtag.com
+- Cookie name: uuid (MediaMath user identifier)
+- Cookie lifespan: 13 months
+- Also uses: uuidc, mt_mop, mt_misc, id
+"""
+
+[removal.cookies]
+patterns = ["uuid", "uuidc", "mt_mop", "mt_misc", "id", "mm_optout"]
+domains = [".mathtag.com", ".mediamath.com"]

@@ -1,0 +1,65 @@
+# Outbrain - Content Discovery and Native Advertising
+# Last verified: 2026-02-25
+
+[broker]
+id = "outbrain"
+name = "Outbrain"
+url = "https://www.outbrain.com"
+domain = "outbrain.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.outbrain.com"
+instructions = "Outbrain powers content recommendation widgets ('Around the Web', 'More From') on news sites. Tracks reading behavior, clicks, interests for personalized recommendations and native ads."
+
+[removal]
+method = "web-form"
+url = "https://my.outbrain.com/recommendations-settings/home"
+confirmation = "automatic"
+notes = """
+Outbrain opt-out:
+
+1. OPT-OUT CENTER:
+   - Visit https://my.outbrain.com/recommendations-settings/home
+   - Toggle "Personalized Recommendations" to OFF
+   - Sets opt-out cookie in browser
+   - Must repeat per browser/device
+
+2. COOKIE-BASED LIMITATION:
+   - Opt-out cookie name: obOptOut
+   - Clearing cookies removes opt-out status
+   - Must re-opt-out after clearing browser data
+
+3. NAI/DAA OPT-OUTS:
+   - NAI: https://optout.networkadvertising.org
+   - DAA: https://optout.aboutads.info
+   - Outbrain is a member of both
+
+4. COOKIE REMOVAL:
+   - Clear Outbrain tracking cookies
+   - Cookie names: obuid, outbrain_cid_fetch
+   - Use Spectral cookie scanner
+
+5. CCPA/GDPR REQUESTS:
+   - Email: privacy@outbrain.com
+   - California residents: CCPA deletion/opt-out rights
+   - EU residents: GDPR erasure rights
+
+6. BROWSER-LEVEL BLOCKING:
+   - Use ad blocker (uBlock Origin, AdGuard)
+   - Outbrain widgets will be blocked
+   - Or use Privacy Badger for tracking protection
+
+NOTE: Outbrain is Taboola's main competitor - both power 'recommended content' on news sites. Similar privacy concerns and opt-out methods.
+"""
+
+[removal.cookies]
+patterns = ["obuid", "outbrain_cid_fetch", "ob_*"]
+domains = [".outbrain.com", ".zemanta.com"]

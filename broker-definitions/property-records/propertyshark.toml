@@ -1,0 +1,104 @@
+# PropertyShark - Real Estate Data and Property Records
+# Last verified: 2026-02-25
+
+[broker]
+id = "propertyshark"
+name = "PropertyShark"
+url = "https://www.propertyshark.com"
+domain = "propertyshark.com"
+category = "property-records"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.propertyshark.com/mason/Property/{state}/{county}/{address}"
+requires_fields = ["address", "county", "state"]
+
+[removal]
+method = "email"
+email = "support@propertyshark.com"
+subject = "Property Owner Privacy Request - {address}"
+body = """
+I am the property owner requesting privacy controls.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Owner Name: {full_name}
+Email: {user_email}
+
+Request Type: [Choose one]
+- Remove owner name from public display
+- Correct inaccurate property information
+- Privacy under CCPA/applicable law
+
+Under CCPA/applicable privacy laws, I request confirmation of this action.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+PropertyShark privacy controls:
+
+1. WHAT IS PROPERTYSHARK:
+   - Real estate data platform
+   - Aggregates property records from:
+     * County assessor/recorder offices
+     * Deeds and titles
+     * Sales history
+     * Tax assessments
+     * Liens and mortgages
+   - Used by: Real estate professionals, investors, researchers
+
+2. DATA SOURCES:
+   - All data from public government records
+   - County assessor databases
+   - Recorder of deeds
+   - Tax collector records
+   - PropertyShark doesn't create data - just republishes public info
+
+3. OWNER NAME REMOVAL REQUEST:
+   - Email: support@propertyshark.com
+   - Request removal of owner name from public display
+   - Include: Property address, proof of ownership
+   - PropertyShark may comply but not guaranteed
+
+4. CORRECT INACCURATE DATA:
+   - If PropertyShark shows wrong info
+   - Email: support@propertyshark.com with corrections
+   - Better: Correct at source (county assessor)
+   - PropertyShark re-syncs from government records
+
+5. CCPA REQUESTS (California):
+   - Email: support@propertyshark.com
+   - Subject: "CCPA Privacy Rights Request"
+   - Right to know, delete, opt-out of sale
+   - Must verify identity as property owner
+
+6. REALITY CHECK:
+   - Property ownership is PUBLIC RECORD (government database)
+   - PropertyShark pulls from county assessor (public source)
+   - "Removal" only affects PropertyShark display, not source data
+   - Property still visible on: Zillow, Redfin, Realtor.com, county websites
+   - Even if unlisted on PropertyShark, tax records remain public
+
+7. BEST PRIVACY PRACTICES:
+   - Own property via LLC or land trust (hides personal name at source)
+   - Request county assessor privacy options (varies by state)
+   - Some states allow address confidentiality programs
+   - Understand: Complete property privacy is nearly impossible
+
+8. WHY PROPERTYSHARK IS DIFFERENT:
+   - More detailed than Zillow/Redfin (includes liens, mortgages, tax history)
+   - Subscription service (not free like Zillow)
+   - Used by professionals (real estate agents, title companies, investors)
+
+ALTERNATIVE APPROACH:
+- Instead of removal, ensure accuracy
+- Correct errors at county level (flows to PropertyShark)
+- Accept that property ownership is inherently public
+- Focus on protecting other PII (phone, email, SSN)
+"""

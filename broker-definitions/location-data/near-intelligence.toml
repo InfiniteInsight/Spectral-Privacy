@@ -1,0 +1,109 @@
+# Near Intelligence - Location Data Platform (Azira acquired by Near)
+# Last verified: 2026-02-25
+
+[broker]
+id = "near-intelligence"
+name = "Near Intelligence (formerly Azira)"
+url = "https://near.com"
+domain = "near.com"
+category = "location-data"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "none"
+url = "https://near.com"
+instructions = "Near Intelligence (formerly Azira, merged with Near) tracks mobile location data globally. Aggregates movement patterns from mobile apps. Cannot search for individual data."
+
+[removal]
+method = "web-form"
+url = "https://near.com/privacy-policy"
+notes = """
+Near Intelligence location tracking privacy:
+
+1. WHAT IS NEAR INTELLIGENCE:
+   - Global location intelligence platform
+   - Formerly two companies: Near (Asia/global) + Azira (US)
+   - Merged in 2020
+   - Tracks mobile device locations via:
+     * 1.6 billion unique devices globally
+     * Mobile apps with location permissions
+     * GPS, Wi-Fi, Bluetooth beacons
+   - Creates profiles: Demographics, interests, movement patterns
+   - Sold for: Advertising, retail analytics, real estate
+
+2. HOW NEAR GETS YOUR DATA:
+   - Free mobile apps sell location data
+   - SDK (software development kit) embedded in apps
+   - You grant location permission → app shares with Near
+   - Tracks: Store visits, dwell time, frequency, patterns
+   - Aggregates into audience segments
+
+3. OPT OUT OF NEAR TRACKING:
+   - Visit: https://near.com/privacy-policy
+   - Look for "Opt-Out" or "Your Privacy Choices"
+   - May require mobile advertising ID
+   - Or email: privacy@near.com
+
+4. MOBILE AD ID OPT-OUT (PRIMARY METHOD):
+   - iOS:
+     * Settings → Privacy & Security → Tracking → OFF
+     * Settings → Privacy & Security → Apple Advertising → Turn OFF "Personalized Ads"
+   - Android:
+     * Settings → Google → Ads → Opt out of Ads Personalization
+     * Settings → Privacy → Ads → Delete advertising ID (Android 12+)
+
+5. RESET MOBILE ADVERTISING ID:
+   - iOS: Settings → Privacy → Apple Advertising → Reset Identifier
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Do this monthly to break tracking continuity
+   - Near cannot link old profile to new ID
+
+6. REVIEW APP PERMISSIONS:
+   - Remove location permission from unnecessary apps
+   - iOS: Settings → Privacy → Location Services
+   - Android: Settings → Apps → Permissions → Location
+   - Use "While Using App" not "Always"
+   - Many apps don't need location to function
+
+7. CCPA/GDPR RIGHTS:
+   - Email: privacy@near.com
+   - Request: Data access, deletion, opt-out of sale
+   - Include: Mobile advertising ID (IDFA for iOS, AAID for Android)
+   - Must verify identity
+   - Response within 30-45 days
+
+REALITY:
+- Near tracks 1.6 BILLION devices (one of largest location trackers)
+- Operates across 44 countries
+- Invisible to users (B2B platform)
+- Apps rarely disclose they share location with Near
+- Best protection: Aggressive permission management
+
+RECENT CONTROVERSY:
+- FTC investigated location data brokers (2023-2024)
+- Near sells "sensitive location" data (clinics, places of worship)
+- Raising privacy concerns globally
+- Opt-outs are weak; legislation needed
+
+TECHNICAL DETAILS:
+- Near SDK embedded in 1000s of mobile apps
+- Tracks real-time + historical location
+- Accuracy: 50-100 meters typically
+- Data retention: Years (varies by customer contract)
+
+PREVENTION STRATEGIES:
+1. Minimize app downloads (each app = potential leak)
+2. Read app privacy policies for location sharing
+3. Use web versions when possible
+4. Reset ad ID monthly
+5. Consider Android 12+ "Delete advertising ID" feature
+"""
+
+[removal.cookies]
+patterns = ["_ga*", "_gid", "near_*"]
+domains = [".near.com", ".near.co", ".azira.com"]

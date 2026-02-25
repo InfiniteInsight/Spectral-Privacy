@@ -1,0 +1,90 @@
+# Salesforce Marketing Cloud - Marketing Automation and Customer Data
+# Last verified: 2026-02-25
+
+[broker]
+id = "salesforce-marketing"
+name = "Salesforce Marketing Cloud"
+url = "https://www.salesforce.com/products/marketing-cloud"
+domain = "salesforce.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.salesforce.com"
+instructions = "Salesforce Marketing Cloud is B2B/B2C platform used by companies to track customer interactions: email opens, clicks, website visits, purchases, support tickets. Data collected by companies you interact with, not publicly searchable."
+
+[removal]
+method = "email"
+email = "privacy@salesforce.com"
+subject = "CCPA/GDPR Data Deletion Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Deletion of all personal data held by Salesforce Marketing Cloud
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Phone: [If applicable]
+
+I request confirmation of deletion from:
+- Salesforce Marketing Cloud databases
+- All customer company instances using Salesforce to track me
+
+Please respond within legally required timeframe.
+
+Thank you.
+"""
+response_days = 45
+notes = """
+Salesforce Marketing Cloud privacy (COMPLEX):
+
+1. UNDERSTAND THE STRUCTURE:
+   - Salesforce is a platform used by OTHER companies
+   - Companies you interact with store your data in Salesforce
+   - You're tracked across: email, web visits, purchases, support
+   - No centralized "opt-out" - must request from each company
+
+2. REQUEST FROM COMPANIES:
+   - Identify companies using Salesforce to email you
+   - Look for "Powered by Salesforce" in email footers
+   - Email each company's privacy contact
+   - Request deletion under CCPA/GDPR
+
+3. SALESFORCE DIRECT REQUEST:
+   - Email: privacy@salesforce.com
+   - Limited effectiveness (Salesforce hosts data for clients)
+   - May redirect you to specific companies
+   - CCPA/GDPR still applies
+
+4. EMAIL TRACKING:
+   - Salesforce tracks email opens via invisible pixels
+   - Disable image loading in email client to block
+   - Or use email client with tracking protection
+
+5. WEB TRACKING:
+   - Salesforce tracking pixel on company websites
+   - Look for domains: *.salesforce.com, *.exacttarget.com
+   - Use Privacy Badger or uBlock Origin to block
+
+6. COOKIE REMOVAL:
+   - Clear Salesforce tracking cookies
+   - Cookie domains: .salesforce.com, .exacttarget.com
+   - Use Spectral cookie scanner
+
+REALITY:
+- Salesforce is infrastructure - companies control the data
+- Must opt-out from each company separately
+- This is why we need comprehensive privacy laws
+- Best protection: Minimal info sharing + ad blockers
+"""
+
+[removal.cookies]
+patterns = ["sfdc-*", "et_*", "s_*"]
+domains = [".salesforce.com", ".exacttarget.com", ".marketingcloud.com"]

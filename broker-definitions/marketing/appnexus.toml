@@ -1,0 +1,79 @@
+# AppNexus/Xandr - Programmatic Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "appnexus"
+name = "Xandr (formerly AppNexus)"
+url = "https://www.xandr.com"
+domain = "xandr.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "none"
+url = "https://www.xandr.com"
+instructions = "Xandr (formerly AppNexus, owned by Microsoft) is a programmatic ad exchange. You cannot search for your profile - operates invisibly via ad auctions across thousands of websites."
+
+[removal]
+method = "web-form"
+url = "https://platform.xandr.com/privacy-center"
+notes = """
+Xandr (AppNexus) privacy controls:
+
+1. WHAT IS XANDR/APPNEXUS:
+   - Programmatic advertising platform (owned by Microsoft since 2021)
+   - Powers real-time bidding (RTB) ad auctions
+   - Tracks you across thousands of publisher websites
+   - You never interact with Xandr directly - it's infrastructure
+   - Creates detailed profiles: interests, demographics, browsing behavior
+
+2. OPT OUT OF PERSONALIZED ADS:
+   - Visit https://platform.xandr.com/privacy-center
+   - Click "Opt Out of Interest-Based Advertising"
+   - Sets an opt-out cookie (anj cookie with uuid2=optout)
+   - Also available via NAI/DAA industry opt-out tools
+
+3. INDUSTRY-WIDE OPT-OUT TOOLS:
+   - NAI: https://optout.networkadvertising.org
+   - DAA: https://optout.aboutads.info
+   - Both include Xandr in their opt-out lists
+   - Must use on every browser/device
+
+4. CCPA/GDPR RIGHTS:
+   - Email: privacy@xandr.com
+   - Request data access, deletion, or opt-out of sale
+   - Include: Name, email, approximate dates you may have been tracked
+   - Response within 30-45 days
+
+5. BROWSER-LEVEL BLOCKING:
+   - Use ad blockers: Privacy Badger, uBlock Origin
+   - Block domains: *.adnxs.com, *.appnexus.com, *.adnxs-simple.com
+   - Most effective prevention method
+
+REALITY:
+- Xandr operates invisibly - you never see their brand
+- Tracks across ~100,000+ websites via ad tags
+- Opt-out is cookie-based (cleared cookies = lost opt-out)
+- Even with opt-out, still serves ads (just not personalized)
+- Browser blocking more effective than opt-outs
+
+COOKIE-BASED LIMITATION:
+- Opt-out uses cookie: anj=uuid2:optout
+- Clearing browser cookies deletes opt-out
+- Must re-opt-out after cookie clearing
+- This is why Spectral's cookie scanner needs smart handling
+
+TECHNICAL DETAILS:
+- Primary tracking cookie: uuid2 (stored in anj cookie)
+- Cookie lifespan: 90 days, refreshed on each site visit
+- Also uses: sess, icu, anj (multiple cookies)
+"""
+
+[removal.cookies]
+patterns = ["uuid2", "anj", "sess", "icu", "icu_*"]
+domains = [".adnxs.com", ".appnexus.com", ".adnxs-simple.com"]

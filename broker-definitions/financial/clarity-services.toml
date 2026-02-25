@@ -1,0 +1,97 @@
+# Clarity Services - Financial Consumer Reporting Agency
+# Last verified: 2026-02-25
+
+[broker]
+id = "clarity-services"
+name = "Clarity Services"
+url = "https://www.clarityservices.com"
+domain = "clarityservices.com"
+category = "financial"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "phone"
+phone = "1-800-772-7633"
+instructions = "Clarity Services is specialty consumer reporting agency for alternative financial services (payday loans, check cashing, rent-to-own). Call to request report or visit website."
+
+[removal]
+method = "phone"
+phone = "1-800-772-7633"
+notes = """
+Clarity Services consumer rights:
+
+1. WHAT IS CLARITY SERVICES:
+   - Specialty consumer reporting agency (like a credit bureau)
+   - Focus: Alternative financial services
+   - Tracks payment history for:
+     * Payday loans
+     * Title loans
+     * Check cashing services
+     * Rent-to-own purchases
+     * Installment loans
+     * Short-term credit
+   - Used when you apply for these services
+
+2. REQUEST FREE REPORT:
+   - Phone: 1-800-772-7633
+   - Online: https://www.clarityservices.com/consumers/request-your-file
+   - Mail: Clarity Services, P.O. Box 5717, Clearwater, FL 33758
+   - Include: Full name, address, SSN, DOB
+   - Free report once per 12 months (FCRA)
+
+3. DISPUTE INACCURATE INFORMATION:
+   - If report shows errors
+   - Phone: 1-800-772-7633
+   - Mail dispute letter to address above
+   - Include:
+     * Name, address, SSN, DOB
+     * Description of error
+     * Supporting documentation
+   - Must investigate within 30 days (FCRA)
+
+4. SECURITY FREEZE:
+   - Prevents unauthorized access to your Clarity file
+   - Stops lenders from checking your alternative credit
+   - Phone: 1-800-772-7633
+   - FREE by law (FCRA)
+   - Lift temporarily when applying for service
+
+5. OPT OUT OF PRE-SCREENED OFFERS:
+   - Clarity participates in pre-screening for offers
+   - Opt out: Call 1-888-567-8688 or visit optoutprescreen.com
+   - Permanent or 5-year opt-out available
+
+6. WHAT YOU CANNOT DO:
+   - Cannot remove accurate payment history
+   - Cannot delete valid late payments before expiration
+   - Cannot "opt out" if you've used alternative financial services
+   - Removing accurate data would be fraud
+
+7. NEGATIVE INFORMATION EXPIRATION:
+   - Most items: 7 years from date of delinquency
+   - Paid collections: 7 years
+   - Unpaid collections: 7 years
+   - Automatically deleted after expiration
+
+REALITY:
+- Clarity Services is like ChexSystems/NCTUE but for alternative finance
+- Legitimate payment history cannot be deleted early
+- Focus on: Ensuring accuracy, security freeze
+- If you have negative Clarity history, it stays for 7 years
+
+WHY THIS MATTERS:
+- Used by payday lenders, check cashing stores, rent-to-own
+- Negative Clarity history = harder to get emergency short-term credit
+- But: Alternative financial services often have predatory rates
+- Being denied may actually protect you from expensive debt
+
+TIP: If denied due to Clarity Services:
+- Request your Clarity report to see why
+- Dispute any errors
+- Build traditional credit to avoid needing alternative services
+"""

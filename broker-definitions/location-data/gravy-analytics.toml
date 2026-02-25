@@ -1,0 +1,137 @@
+# Gravy Analytics - Location Intelligence Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "gravy-analytics"
+name = "Gravy Analytics (Venntel)"
+url = "https://gravyanalytics.com"
+domain = "gravyanalytics.com"
+category = "location-data"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "none"
+url = "https://gravyanalytics.com"
+instructions = "Gravy Analytics (owns Venntel) sells location data from mobile apps to government, law enforcement, and commercial clients. Cannot search for individual data - operates at aggregate level."
+
+[removal]
+method = "email"
+email = "privacy@gravyanalytics.com"
+subject = "CCPA Data Deletion and Opt-Out Request"
+body = """
+I am exercising my privacy rights under CCPA.
+
+Request: Deletion and opt-out from location tracking
+
+Mobile Advertising IDs:
+- iOS IDFA: [Settings → Privacy → Apple Advertising → Advertising Identifier]
+- Android AAID: [Settings → Google → Ads]
+
+Personal Information:
+- Name: {full_name}
+- Email: {user_email}
+
+Request:
+1. Delete all location data associated with my device IDs
+2. Opt out of future tracking
+
+Confirm within 30 days.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Gravy Analytics location tracking privacy (SENSITIVE):
+
+1. WHAT IS GRAVY ANALYTICS:
+   - Location intelligence platform
+   - Owns Venntel (sells to government/law enforcement)
+   - Buys location data from mobile apps
+   - Tracks devices to specific lat/long coordinates
+   - Sold to:
+     * Law enforcement (without warrants)
+     * ICE (Immigration and Customs Enforcement)
+     * IRS, DEA, FBI
+     * Commercial clients
+   - HIGHLY CONTROVERSIAL
+
+2. HOW GRAVY GETS YOUR DATA:
+   - Purchases location data from mobile app companies
+   - Apps include: Weather, games, fitness, navigation
+   - You granted location permission → app sells to data broker → broker sells to Gravy
+   - Gravy claims data is "anonymized" but can track specific devices
+   - Can identify individuals by home/work locations
+
+3. WHY THIS IS CONCERNING:
+   - Government agencies buying location data without warrants
+   - Circumvents 4th Amendment protections
+   - Tracks visits to: Protests, clinics, places of worship, meetings
+   - "Anonymous" data easily re-identified
+   - Used by ICE for immigration enforcement
+
+4. OPT OUT (LIMITED EFFECTIVENESS):
+   - Email: privacy@gravyanalytics.com
+   - Request deletion and opt-out
+   - Include mobile advertising IDs (IDFA, AAID)
+   - Gravy may comply but no guarantee
+
+5. MOBILE AD ID OPT-OUT:
+   - iOS:
+     * Settings → Privacy & Security → Tracking → OFF (blocks at OS level)
+     * Settings → Privacy & Security → Apple Advertising → Turn OFF "Personalized Ads"
+     * Reset Identifier (monthly)
+   - Android:
+     * Settings → Google → Ads → Opt out of Ads Personalization
+     * Settings → Privacy → Ads → Delete advertising ID (Android 12+)
+     * Reset advertising ID (monthly)
+
+6. AGGRESSIVE APP PERMISSION MANAGEMENT:
+   - Remove location permission from ALL non-essential apps
+   - iOS: Settings → Privacy → Location Services → Review each app
+   - Android: Settings → Apps → Permissions → Location
+   - Use "While Using App" NEVER "Always Allow"
+   - Consider: Does this app NEED location to function?
+
+7. CCPA RIGHTS (CALIFORNIA):
+   - Email: privacy@gravyanalytics.com
+   - Right to: Know, delete, opt-out of sale
+   - Gravy must comply within 45 days
+   - Non-California residents have weaker rights
+
+8. CONGRESSIONAL SCRUTINY:
+   - Senate investigation into warrantless surveillance (2020-2024)
+   - Proposed legislation to ban sale to government
+   - But still legal as of 2026
+
+REALITY:
+- Gravy Analytics is one of several location data brokers selling to government
+- Others: Babel Street, Anomaly Six, Mobilewalla
+- Opt-outs are weak and voluntary
+- Apps continue selling location data to brokers
+- Only real protection: Deny location permissions
+
+PROTECTION STRATEGIES:
+1. Minimize app location permissions (use web versions)
+2. Use "While Using App" not "Always Allow"
+3. Reset/delete advertising ID monthly
+4. iOS: Enable "Ask App Not to Track" for all apps
+5. Android 12+: "Delete advertising ID" (most aggressive)
+6. Consider GrapheneOS or CalyxOS for maximum privacy
+
+FINDING YOUR ADVERTISING IDS:
+- iOS IDFA: Settings → Privacy & Security → Apple Advertising → Advertising Identifier
+- Android AAID: Settings → Google → Ads → Your advertising ID
+- Include in deletion requests
+
+DELETION REQUEST REALITY:
+- Even if Gravy deletes your data, apps continue sharing new data
+- Must pair deletion with: Permission changes + ad ID reset
+- Otherwise, new profile built within days/weeks
+
+This is why comprehensive federal privacy law is needed.
+"""

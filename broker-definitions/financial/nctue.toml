@@ -1,0 +1,82 @@
+# NCTUE - National Consumer Telecom & Utilities Exchange
+# Last verified: 2026-02-25
+
+[broker]
+id = "nctue"
+name = "NCTUE (Equifax)"
+url = "https://www.nctue.com"
+domain = "nctue.com"
+category = "financial"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.nctue.com/consumers"
+instructions = "NCTUE (owned by Equifax) tracks payment history for utilities, phone, cable, internet services. Like a credit bureau but for utility bills. Companies check NCTUE when you apply for service."
+
+[removal]
+method = "phone"
+phone = "1-866-349-5355"
+notes = """
+NCTUE consumer rights:
+
+1. WHAT IS NCTUE:
+   - National Consumer Telecom & Utilities Exchange
+   - Owned and operated by Equifax
+   - Tracks payment history for:
+     * Electric/gas/water utilities
+     * Phone service (landline, mobile)
+     * Cable/satellite TV
+     * Internet service
+
+2. REQUEST FREE REPORT:
+   - Phone: 1-866-349-5355
+   - Online: https://www.nctue.com/consumers
+   - Mail: NCTUE Consumer Relations, P.O. Box 105069, Atlanta, GA 30348
+   - Include: Full name, address, SSN, DOB
+   - Free report once per 12 months
+
+3. DISPUTE INACCURATE INFORMATION:
+   - If report shows errors (wrong payment history, wrong account)
+   - Phone: 1-866-349-5355
+   - Mail dispute letter to address above
+   - Include:
+     * Name, address, SSN, DOB
+     * Description of error
+     * Proof (utility bills, payment receipts)
+   - Must investigate within 30 days (FCRA)
+
+4. SECURITY FREEZE:
+   - Prevents unauthorized utility/telecom account openings
+   - Phone: 1-866-349-5355
+   - Or online at https://www.nctue.com/consumers
+   - FREE by law
+   - Lift temporarily when applying for new service
+
+5. WHAT YOU CANNOT DO:
+   - Cannot remove accurate payment history
+   - Cannot delete valid late payments before expiration
+   - Cannot "opt out" if you have utility/phone service
+
+6. NEGATIVE INFORMATION EXPIRATION:
+   - Most items: 7 years from date reported
+   - Paid collections: 7 years
+   - Unpaid collections: 7 years
+   - Automatically deleted after expiration
+
+REALITY:
+- NCTUE is like a credit bureau for utilities
+- Legitimate payment history cannot be deleted
+- Focus on: ensuring accuracy, security freeze
+- If you have unpaid utility bills, they'll stay for 7 years
+
+TIP: If you're denied utility service due to NCTUE:
+- Request your NCTUE report to see why
+- Consider "prepaid" or "deposit" utility options
+- Or add service in roommate/spouse name (if allowed)
+"""

@@ -1,0 +1,54 @@
+# TikTok Ads - TikTok Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "tiktok-ads"
+name = "TikTok Ads"
+url = "https://ads.tiktok.com"
+domain = "tiktok.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://www.tiktok.com/ads/settings"
+instructions = "TikTok tracks video views, likes, shares, watch time, interests, demographics, device info, and browsing behavior for ad targeting. Pixel tracks activity across other websites."
+
+[removal]
+method = "account-required"
+url = "https://www.tiktok.com/ads/settings"
+confirmation = "automatic"
+notes = """
+TikTok advertising opt-out:
+
+1. DISABLE AD PERSONALIZATION:
+   - TikTok app > Settings > Ads > Ads personalization (turn OFF)
+   - Web: https://www.tiktok.com/ads/settings
+   - Limits targeting based on your activity
+
+2. TikTok PIXEL OPT-OUT:
+   - Visit https://www.tiktok.com/ads/settings
+   - Disable "Ads based on your activity off TikTok"
+   - Stops tracking on other websites via TikTok pixel
+
+3. CCPA/GDPR DELETION:
+   - California/EU residents can request data deletion
+   - Email: privacy@tiktok.com
+   - Include: Email, username, request type
+
+4. COOKIE REMOVAL:
+   - Clear TikTok cookies from browser
+   - Cookie names: _ttp, _tt_enable_cookie, etc.
+   - Use Spectral cookie scanner to identify all TikTok cookies
+
+NOTE: Ad opt-out doesn't stop TikTok from collecting data - only limits ad personalization. For complete privacy, delete TikTok account.
+"""
+
+[removal.cookies]
+patterns = ["_ttp", "_tt_enable_cookie", "tt_webid*", "tt_csrf_token"]
+domains = [".tiktok.com", ".byteoversea.com", ".musical.ly"]

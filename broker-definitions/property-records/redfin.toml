@@ -1,0 +1,90 @@
+# Redfin - Real Estate Platform and Property Data
+# Last verified: 2026-02-25
+
+[broker]
+id = "redfin"
+name = "Redfin"
+url = "https://www.redfin.com"
+domain = "redfin.com"
+category = "property-records"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Canada"]
+
+[search]
+method = "url-template"
+template = "https://www.redfin.com/{state}/{city}/{address}"
+requires_fields = ["address", "city", "state"]
+
+[search.result_selectors]
+results_container = ".home-details"
+result_item = ".property-info"
+no_results_indicator = ".not-found"
+
+[removal]
+method = "email"
+email = "privacy@redfin.com"
+subject = "Property Owner Privacy Request - {address}"
+body = """
+I am the property owner requesting privacy controls.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Owner Name: {full_name}
+Email: {user_email}
+
+Request Type: [Choose one]
+- Remove owner name from public display
+- Mark property as private/unlisted
+- Correct inaccurate property information
+
+Under CCPA/applicable privacy laws, I request confirmation of this action.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Redfin property privacy controls:
+
+1. CLAIM YOUR HOME:
+   - Visit property page
+   - Click "Claim Your Home"
+   - Verify ownership with documentation
+   - Can update: photos, description, home facts
+
+2. OWNER NAME REMOVAL:
+   - Email: privacy@redfin.com
+   - Request removal of owner name from public view
+   - Include property address and proof of ownership
+   - Redfin may comply but not guaranteed
+
+3. UPDATE HOME FACTS:
+   - Claim home (see above)
+   - Update: bedrooms, bathrooms, square footage
+   - Correct inaccuracies in public record data
+
+4. CCPA REQUESTS (California):
+   - Email: privacy@redfin.com
+   - Subject: "CCPA Privacy Rights Request"
+   - Right to know, delete, opt-out of sale
+   - Must verify identity
+
+5. MARKET STATUS:
+   - Can update if home is for sale, pending, or sold
+   - Cannot make property invisible if recently sold/listed
+
+REALITY CHECK:
+- Property ownership is PUBLIC RECORD (county assessor)
+- Redfin pulls from MLS listings + public records
+- "Removal" only affects Redfin display, not source data
+- Property still visible on Zillow, Realtor.com, etc.
+- Even if unlisted, tax records remain public
+
+BEST PRIVACY PRACTICES:
+- Own via LLC or land trust (hides personal name)
+- Request county assessor privacy options (varies by state)
+- Some states allow address confidentiality programs
+- Understand: Complete property privacy is nearly impossible
+"""

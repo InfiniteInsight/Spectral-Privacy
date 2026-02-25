@@ -1,0 +1,83 @@
+# Realtor.com - Real Estate Listings and Property Data
+# Last verified: 2026-02-25
+
+[broker]
+id = "realtor"
+name = "Realtor.com"
+url = "https://www.realtor.com"
+domain = "realtor.com"
+category = "property-records"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.realtor.com/realestateandhomes-detail/{address}_{city}_{state}_{zip_code}"
+requires_fields = ["address", "city", "state", "zip_code"]
+
+[search.result_selectors]
+results_container = ".property-details"
+result_item = ".listing-detail"
+no_results_indicator = ".not-found"
+
+[removal]
+method = "email"
+email = "customer.service@realtor.com"
+subject = "Property Owner Privacy Request - {address}"
+body = """
+I am the property owner requesting privacy controls for my property listing.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Property Owner: {full_name}
+Email: {user_email}
+
+Request:
+- Remove owner name from public display
+- Update property status to unlisted/private
+- Limit visibility of property details
+
+Please confirm receipt and processing of this request.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Realtor.com property privacy (LIMITED):
+
+1. CLAIM YOUR HOME:
+   - Visit property page on Realtor.com
+   - Click "Claim this home" or "Edit home facts"
+   - Verify ownership (requires documentation)
+   - Can update some details, photos, description
+
+2. REMOVE OWNER NAME:
+   - Email customer.service@realtor.com
+   - Request: "Remove owner name from public display"
+   - Include property address
+   - May comply but not guaranteed
+
+3. UPDATE LISTING STATUS:
+   - If you claimed home, can mark as "Not for sale"
+   - Reduces visibility but doesn't fully remove
+
+4. CCPA REQUESTS (California):
+   - Email: privacy@move.com (Realtor.com parent company)
+   - Right to know what data is collected
+   - Right to opt-out of sale to third parties
+
+LIMITATIONS:
+- Property records are PUBLIC DATA (county assessor)
+- Realtor.com aggregates from MLS and public sources
+- Cannot fully "remove" - only limit how displayed
+- Even if removed from Realtor.com, data in county records
+- Other sites (Zillow, Redfin, Trulia) also show property
+
+ALTERNATIVES FOR PRIVACY:
+- Own property through LLC/trust (hides personal name)
+- Some states have homestead privacy protections
+- Contact county assessor about privacy options
+"""

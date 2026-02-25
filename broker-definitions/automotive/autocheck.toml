@@ -1,0 +1,85 @@
+# AutoCheck - Vehicle History Reports
+# Last verified: 2026-02-25
+
+[broker]
+id = "autocheck"
+name = "AutoCheck (Experian)"
+url = "https://www.autocheck.com"
+domain = "autocheck.com"
+category = "automotive"
+difficulty = "Hard"
+typical_removal_days = 90
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "web-form"
+url = "https://www.autocheck.com"
+requires_fields = []
+
+[removal]
+method = "mail"
+address = "AutoCheck Data Corrections, P.O. Box 105496, Atlanta, GA 30348"
+notes = """
+AutoCheck vehicle history (DISPUTE ERRORS ONLY):
+
+1. WHAT IS AUTOCHECK:
+   - Owned by Experian (credit bureau)
+   - Competitor to Carfax
+   - Aggregates vehicle data from:
+     * DMV title records
+     * Insurance claims
+     * Auction sales
+     * Service records
+     * Accident reports
+
+2. UNDERSTAND LIMITATIONS:
+   - AutoCheck reports factual data from official sources
+   - Cannot remove accurate accident history
+   - Cannot hide title brands (salvage, flood, rebuilt)
+   - Cannot erase ownership records
+   - Removing accurate data would be fraud
+
+3. DISPUTE INACCURATE INFORMATION ONLY:
+   - Mail: AutoCheck Data Corrections, P.O. Box 105496, Atlanta, GA 30348
+   - Include:
+     * VIN (Vehicle Identification Number)
+     * Specific error being disputed
+     * Supporting documentation (title, receipts, repair orders)
+   - Examples of valid disputes:
+     * Accident reported that didn't happen
+     * Mileage rollback that's incorrect
+     * Title brand error
+     * Service record for wrong vehicle
+
+4. ONLINE DISPUTE:
+   - Visit https://www.autocheck.com/vehiclehistory/contact
+   - Submit error report with documentation
+   - Processing: 30-90 days
+
+5. WHAT YOU CANNOT DO:
+   - Remove accurate accident history
+   - Hide legitimate flood/salvage title
+   - Erase factual ownership records
+   - Remove accurate service history
+
+6. BUYBACK GUARANTEE:
+   - If AutoCheck missed a major problem (title brand, severe damage)
+   - May be eligible for compensation
+   - Details: https://www.autocheck.com/vehiclehistory/buyback-guarantee
+
+REALITY CHECK:
+- Vehicle history is based on legal documents
+- DMV records are public and permanent
+- Even if removed from AutoCheck, data exists at DMV
+- Carfax and other services also have the same data
+- Focus: Ensure accuracy, not removal
+
+SELLING A VEHICLE WITH ISSUES:
+- Disclose accidents/damage honestly (legal requirement)
+- Provide repair documentation
+- Get independent inspection
+- Price accordingly for history
+"""
