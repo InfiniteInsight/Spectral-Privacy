@@ -40,6 +40,16 @@ export interface ZeroResultBroker {
 	possible_matches: PossibleMatch[];
 }
 
+export interface GoogleRemovalRequest {
+	id: string;
+	finding_id: string;
+	status: 'URLGenerated' | 'Submitted' | 'Completed' | 'Failed';
+	google_removal_url: string;
+	generated_at: string;
+	submitted_at?: string;
+	completed_at?: string;
+}
+
 export const scanAPI = {
 	/**
 	 * Start a new scan job
@@ -137,6 +147,34 @@ export const scanAPI = {
 			vaultId,
 			zeroResultBrokerId,
 			matchedFindingId
+		});
+	},
+
+	/**
+	 * Get Google removal request for a finding
+	 */
+	async getGoogleRemovalRequest(
+		vaultId: string,
+		findingId: string
+	): Promise<GoogleRemovalRequest | null> {
+		return await invoke<GoogleRemovalRequest | null>('get_google_removal_request', {
+			vaultId,
+			findingId
+		});
+	},
+
+	/**
+	 * Mark a Google removal request as submitted by the user
+	 */
+	async markGoogleRemovalSubmitted(
+		vaultId: string,
+		requestId: string,
+		notes?: string
+	): Promise<void> {
+		return await invoke('mark_google_removal_submitted', {
+			vaultId,
+			requestId,
+			notes
 		});
 	}
 };

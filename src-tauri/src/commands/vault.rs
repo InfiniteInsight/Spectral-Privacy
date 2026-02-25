@@ -118,7 +118,22 @@ pub async fn vault_unlock(
     }
 
     // Insert into unlocked vaults
-    state.insert_vault(vault_id.clone(), Arc::new(vault));
+    let vault_arc = Arc::new(vault);
+    state.insert_vault(vault_id.clone(), vault_arc.clone());
+
+    // Log vault unlock to audit log
+    if let Ok(db) = vault_arc.database() {
+        let _ = spectral_db::audit_log::insert_audit_entry(
+            db.pool(),
+            vault_id.clone(),
+            "VaultUnlocked".to_string(),
+            format!("Vault {} unlocked", vault_id),
+            None,
+            "LocalOnly".to_string(),
+            "Allowed".to_string(),
+        )
+        .await;
+    }
 
     info!("Vault unlocked successfully: {}", vault_id);
     Ok(())

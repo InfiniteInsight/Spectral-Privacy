@@ -1,5 +1,6 @@
 //! Tauri command handlers.
 
+pub mod audit;
 pub mod brokers;
 pub mod discovery;
 pub mod llm;

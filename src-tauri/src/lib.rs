@@ -131,6 +131,8 @@ pub fn run() {
             commands::scan::get_possible_matches,
             commands::scan::accept_possible_match,
             commands::scan::dismiss_possible_match,
+            commands::scan::get_google_removal_request,
+            commands::scan::mark_google_removal_submitted,
             commands::settings::test_smtp_connection,
             commands::settings::test_imap_connection,
             commands::scheduler::get_scheduled_jobs,
@@ -151,6 +153,10 @@ pub fn run() {
             commands::privacy::test_llm_provider,
             commands::llm::draft_email,
             commands::llm::fill_form,
+            commands::audit::get_audit_log,
+            commands::audit::get_audit_log_by_type,
+            commands::audit::create_audit_entry,
+            commands::audit::clear_audit_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import type { Finding, ZeroResultBroker } from '$lib/api/scan';
+	import type { Finding, ZeroResultBroker, GoogleRemovalRequest } from '$lib/api/scan';
 	import { scanAPI } from '$lib/api/scan';
 	import { removalAPI } from '$lib/api/removal';
 
@@ -13,6 +13,7 @@
 	let isSubmitting = $state(false);
 	let possibleMatches = $state<ZeroResultBroker[]>([]);
 	let dismissedMatches = $state<Set<string>>(new Set());
+	let googleRemovalRequests = $state<Map<string, GoogleRemovalRequest>>(new Map());
 
 	onMount(async () => {
 		if (!scanJobId) {
@@ -30,6 +31,9 @@
 
 		// Load possible matches
 		await loadPossibleMatches();
+
+		// Load Google removal requests
+		await loadGoogleRemovalRequests();
 	});
 
 	async function loadPossibleMatches() {
@@ -40,6 +44,48 @@
 			possibleMatches = matches;
 		} catch (err) {
 			console.error('Failed to load possible matches:', err);
+		}
+	}
+
+	async function loadGoogleRemovalRequests() {
+		if (!vaultStore.currentVaultId) return;
+
+		const newRequests = new Map<string, GoogleRemovalRequest>();
+
+		for (const finding of scanStore.findings) {
+			try {
+				const request = await scanAPI.getGoogleRemovalRequest(
+					vaultStore.currentVaultId,
+					finding.id
+				);
+				if (request) {
+					newRequests.set(finding.id, request);
+				}
+			} catch (err) {
+				console.error('Failed to load Google removal for finding:', finding.id, err);
+			}
+		}
+
+		googleRemovalRequests = newRequests;
+	}
+
+	async function handleGoogleRemovalClick(findingId: string) {
+		const request = googleRemovalRequests.get(findingId);
+		if (!request || !vaultStore.currentVaultId) return;
+
+		try {
+			// Open URL in browser
+			window.open(request.google_removal_url, '_blank');
+
+			// Mark as submitted if not already
+			if (request.status === 'URLGenerated') {
+				await scanAPI.markGoogleRemovalSubmitted(vaultStore.currentVaultId, request.id);
+
+				// Reload to reflect new status
+				await loadGoogleRemovalRequests();
+			}
+		} catch (err) {
+			console.error('Failed to process Google removal:', err);
 		}
 	}
 
@@ -126,6 +172,10 @@
 		actionError = null;
 		try {
 			await scanStore.verifyFinding(vaultStore.currentVaultId, findingId, isMatch);
+
+			// Reload Google removal requests after verification
+			// (a new request may have been created if confirmed)
+			await loadGoogleRemovalRequests();
 		} catch (err) {
 			actionError = 'Failed to update finding. Please try again.';
 			console.error('Verification failed:', err);
@@ -295,6 +345,23 @@
 													>
 														✓ Confirmed
 													</span>
+
+													<!-- Google Removal Button -->
+													{#if googleRemovalRequests.has(finding.id)}
+														{@const googleRequest = googleRemovalRequests.get(finding.id)}
+														{#if googleRequest}
+															<button
+																onclick={() => handleGoogleRemovalClick(finding.id)}
+																class="px-4 py-2 {googleRequest.status === 'URLGenerated'
+																	? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+																	: 'bg-green-100 text-green-700'} rounded-md transition-colors text-sm font-medium"
+															>
+																{googleRequest.status === 'URLGenerated'
+																	? '🔍 Request Google Removal'
+																	: '✓ Google Submitted'}
+															</button>
+														{/if}
+													{/if}
 												{:else}
 													<span
 														class="px-4 py-2 bg-gray-100 text-gray-500 rounded-md text-sm font-medium"

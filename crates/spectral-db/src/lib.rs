@@ -34,11 +34,13 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+pub mod audit_log;
 pub mod broker_scans;
 pub mod connection;
 pub mod discovery_findings;
 pub mod error;
 pub mod findings;
+pub mod google_removal;
 pub mod matching;
 pub mod migrations;
 pub mod removal_attempts;
@@ -231,7 +233,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 12);
+        assert_eq!(version_after, 13);
     }
 
     #[tokio::test]
@@ -260,6 +262,7 @@ mod tests {
                 "discovery_findings",
                 "email_removals",
                 "findings",
+                "google_removal_requests",
                 "profiles",
                 "removal_attempts",
                 "removal_evidence",
