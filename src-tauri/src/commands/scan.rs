@@ -320,6 +320,23 @@ pub async fn start_scan(
     )
     .await;
 
+    // Log scan start to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "ScanStarted".to_string(),
+        format!(
+            "Started scan job {} for profile {} with {} brokers",
+            job_id,
+            profile_id,
+            selected_brokers.len()
+        ),
+        Some(vec!["name".to_string(), "address".to_string()]),
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
+
     // Query the job to get complete information including total_brokers
     let job = sqlx::query_as::<_, (String, String, i64, i64, Option<String>)>(
         "SELECT id, status, completed_brokers, total_brokers, current_broker_name FROM scan_jobs WHERE id = ?",
@@ -476,6 +493,78 @@ pub async fn verify_finding(
                 vault_id.clone(),
                 "GoogleRemovalURLGenerated".to_string(),
                 format!("Generated Google removal URL for finding {finding_id}"),
+                None,
+                "LocalOnly".to_string(),
+                "Allowed".to_string(),
+            )
+            .await;
+        }
+    }
+
+    // Log finding verification to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "FindingVerified".to_string(),
+        format!(
+            "User {} finding {}",
+            if is_match { "confirmed" } else { "rejected" },
+            finding_id
+        ),
+        None,
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
+
+    // If confirmed as a match, generate Google removal URL
+    if is_match {
+        // Get the finding to extract data
+        let finding = spectral_db::findings::get_by_id(db.pool(), &finding_id)
+            .await
+            .map_err(|e| format!("Failed to get finding: {}", e))?;
+
+        if let Some(finding) = finding {
+            // Extract name, address, and phone from finding
+            let name = finding
+                .extracted_data
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown");
+
+            let address = finding
+                .extracted_data
+                .get("addresses")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            let phone = finding
+                .extracted_data
+                .get("phone_numbers")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            // Generate Google removal URL
+            let google_url =
+                spectral_db::google_removal::generate_removal_url(name, address, phone);
+
+            // Create Google removal request
+            let _ = spectral_db::google_removal::create_request(
+                db.pool(),
+                finding_id.clone(),
+                google_url,
+            )
+            .await
+            .map_err(|e| format!("Failed to create Google removal request: {}", e))?;
+
+            // Log to audit log
+            let _ = spectral_db::audit_log::insert_audit_entry(
+                db.pool(),
+                vault_id.clone(),
+                "GoogleRemovalURLGenerated".to_string(),
+                format!("Generated Google removal URL for finding {}", finding_id),
                 None,
                 "LocalOnly".to_string(),
                 "Allowed".to_string(),
