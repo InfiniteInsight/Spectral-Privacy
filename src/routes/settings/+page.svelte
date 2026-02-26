@@ -945,6 +945,7 @@
 							<input
 								type="password"
 								bind:value={apiKeys['open-ai']}
+								autocomplete="off"
 								placeholder={llmSettings.has_openai_key ? 'API key is saved' : 'Enter API key'}
 								class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
@@ -994,6 +995,7 @@
 							<input
 								type="password"
 								bind:value={apiKeys.claude}
+								autocomplete="off"
 								placeholder={llmSettings.has_claude_key ? 'API key is saved' : 'Enter API key'}
 								class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
@@ -1043,6 +1045,7 @@
 							<input
 								type="password"
 								bind:value={apiKeys.gemini}
+								autocomplete="off"
 								placeholder={llmSettings.has_gemini_key ? 'API key is saved' : 'Enter API key'}
 								class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
@@ -1135,6 +1138,7 @@
 								id="smtp-pass"
 								type="password"
 								bind:value={smtpPassword}
+								autocomplete="off"
 								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
 						</div>
@@ -1217,6 +1221,7 @@
 								id="imap-pass"
 								type="password"
 								bind:value={imapPassword}
+								autocomplete="off"
 								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
 						</div>
