@@ -124,3 +124,4 @@ vite.config.ts.timestamp-*
 *.sbom.json
 *-sbom.json
 *.cdx.json
+**/rust-bom.json

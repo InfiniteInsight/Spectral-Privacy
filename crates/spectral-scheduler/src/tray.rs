@@ -4,6 +4,7 @@
 ///
 /// On macOS and Windows this is always true.
 /// On Linux, requires `libappindicator3` or `libayatana-appindicator`.
+#[must_use]
 pub fn is_tray_supported() -> bool {
     #[cfg(target_os = "linux")]
     {

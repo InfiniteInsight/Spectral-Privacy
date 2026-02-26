@@ -1,0 +1,115 @@
+# Bombora - B2B Intent Data Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "bombora"
+name = "Bombora"
+url = "https://bombora.com"
+domain = "bombora.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "UK", "Global"]
+
+[search]
+method = "none"
+url = "https://bombora.com"
+instructions = "Bombora tracks B2B 'intent signals' - which companies are researching specific topics based on employee browsing behavior. Cannot search for individual data - operates at company level."
+
+[removal]
+method = "email"
+email = "privacy@bombora.com"
+subject = "CCPA/GDPR Data Deletion and Opt-Out Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Deletion and opt-out from Bombora intent tracking
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Work email domain: [your company domain]
+- IP address: [if known]
+
+Request:
+1. Delete all intent signal data associated with me
+2. Opt out of future tracking
+
+Confirm within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Bombora privacy controls (COMPANY-LEVEL TRACKING):
+
+1. WHAT IS BOMBORA:
+   - B2B "intent data" platform
+   - Tracks which COMPANIES (not individuals) are researching topics
+   - Example: "Acme Corp is researching 'cybersecurity software'"
+   - Sold to sales/marketing teams for lead prioritization
+   - Operates via "Data Co-op" (publishers share visitor data)
+
+2. HOW BOMBORA WORKS:
+   - Tracks your browsing on B2B publisher websites:
+     * TechCrunch, Forbes, industry trade publications
+     * White paper downloads, article reads
+   - Identifies your company via IP address or email domain
+   - Aggregates: "Company X employees reading Y topic"
+   - Does NOT create individual profiles (company-level signals)
+
+3. THE DATA CO-OP MODEL:
+   - 4,000+ B2B publishers share visitor data with Bombora
+   - In exchange, publishers get intent data about their visitors
+   - Your browsing behavior on Site A shared with Site B
+   - This is how Bombora knows what companies are researching
+
+4. OPT OUT OF BOMBORA:
+   - Visit: https://bombora.com/privacy (check for opt-out page)
+   - Or email: privacy@bombora.com
+   - Request: Opt-out and data deletion
+   - Must provide email or IP to identify
+
+5. BROWSER-LEVEL BLOCKING:
+   - Use ad blockers: Privacy Badger, uBlock Origin
+   - Block domains: *.bombora.com, *.ml314.com
+   - Prevents tracking across Data Co-op sites
+   - Most effective prevention method
+
+6. COOKIE REMOVAL:
+   - Clear Bombora tracking cookies
+   - Cookie name: _bmi (Bombora Marketing Intelligence)
+   - Domain: .bombora.com, .ml314.com
+   - Use Spectral cookie scanner
+
+7. CCPA/GDPR RIGHTS:
+   - Email privacy@bombora.com
+   - Request: Data access, deletion, opt-out of sale
+   - Bombora must comply within 30-45 days
+
+REALITY:
+- Bombora tracks at COMPANY level (aggregated, not individual)
+- Privacy impact lower than individual-level tracking
+- But still reveals: Your company is interested in X topic
+- Can influence which sales calls your company receives
+- Browser blocking prevents participation in Data Co-op
+
+UNIQUE TO BOMBORA:
+- Most ad tech tracks individuals; Bombora tracks companies
+- Uses IP address to map browsing to company
+- VPN defeats this (appears as different company/location)
+- Remote workers may be harder to attribute
+
+TECHNICAL DETAILS:
+- Cookie: _bmi (Bombora Marketing Intelligence)
+- Tracking domain: ml314.com (subsidiary)
+- Data retention: 12 months
+- Data Co-op: 4,000+ B2B publisher participants
+"""
+
+[removal.cookies]
+patterns = ["_bmi", "_ga*", "_gid"]
+domains = [".bombora.com", ".ml314.com"]

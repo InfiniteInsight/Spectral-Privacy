@@ -1,6 +1,6 @@
 //! Integration tests for removal batch processing
 //!
-//! Tests the process_removal_batch command and queue query commands
+//! Tests the `process_removal_batch` command and queue query commands
 //! to validate task spawning, database state, and queue filtering logic.
 
 use spectral_app::commands::scan::{get_captcha_queue, get_failed_queue};
@@ -15,7 +15,7 @@ use tauri::{Manager, State};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-/// Helper to create test app with AppState and temporary directory.
+/// Helper to create test app with `AppState` and temporary directory.
 fn create_test_app() -> (tauri::App<tauri::test::MockRuntime>, TempDir) {
     let temp_dir = TempDir::new().expect("create temp dir");
     let vaults_dir = temp_dir.path().join("vaults");
@@ -118,7 +118,7 @@ async fn setup_test_removal_structure(
             broker_scan_id.to_string(),
             "test-broker".to_string(),
             profile_id.to_string(),
-            format!("https://broker.example.com/person/{}", i),
+            format!("https://broker.example.com/person/{i}"),
             serde_json::json!({"name": "Test User"}),
         )
         .await

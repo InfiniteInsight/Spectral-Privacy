@@ -1,0 +1,89 @@
+# Yahoo Advertising (Verizon Media) - Digital Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "yahoo-advertising"
+name = "Yahoo Advertising (Verizon Media)"
+url = "https://www.yahooinc.com/advertising"
+domain = "yahoo.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.yahooinc.com"
+instructions = "Yahoo (part of Yahoo Inc., formerly Verizon Media) tracks across Yahoo Mail, Yahoo News, TechCrunch, Engadget, and partner sites. Cannot search for individual profiles."
+
+[removal]
+method = "web-form"
+url = "https://legal.yahoo.com/us/en/yahoo/privacy/adinfo/index.html"
+notes = """
+Yahoo advertising privacy controls:
+
+1. WHAT YAHOO TRACKS:
+   - Yahoo Mail activity (email opens, link clicks)
+   - Yahoo News, Finance, Sports browsing
+   - Search queries on Yahoo Search
+   - Partner network: TechCrunch, Engadget, Autoblog, etc.
+   - Cross-device tracking via Yahoo login
+
+2. OPT OUT OF PERSONALIZED ADS:
+   - Visit https://legal.yahoo.com/us/en/yahoo/privacy/adinfo/index.html
+   - Click "Opt-Out Preferences"
+   - Toggle OFF "Interest-Based Ads"
+   - Must be done separately for each browser/device
+
+3. YAHOO ACCOUNT PRIVACY SETTINGS:
+   - Login → Account Info → Privacy dashboard
+   - Manage data & privacy → Ad interest manager
+   - Remove all inferred interests
+   - Disable "Match ads to what I search for on Yahoo"
+
+4. OPT OUT VIA INDUSTRY TOOLS:
+   - NAI: https://optout.networkadvertising.org
+   - DAA: https://optout.aboutads.info
+   - Both include Yahoo in their opt-out lists
+
+5. CCPA/GDPR RIGHTS:
+   - Visit https://yahoo.mydashboard.oath.com/privacy
+   - Request data download, deletion, or opt-out of sale
+   - California/EU residents have strongest rights
+   - Response within 30-45 days
+
+6. ACCOUNT DELETION:
+   - Yahoo Account → Account security → Close your account
+   - All Yahoo Mail, contacts, calendar deleted
+   - Cannot be undone after 90 days
+   - Data may persist in backups for some time
+
+7. BROWSER-LEVEL BLOCKING:
+   - Use ad blockers to block: *.yahoo.com/ads, *.advertising.yahoo.com
+   - Block tracking pixels: *.analytics.yahoo.com
+   - Privacy Badger automatically blocks Yahoo trackers
+
+REALITY:
+- Yahoo owns AOL, TechCrunch, Engadget, and others
+- Tracks across entire network of properties
+- Opt-outs are cookie-based (except account settings)
+- Even logged-out users are tracked via cookies
+- Browser blocking more effective than opt-outs
+
+VERIZON MEDIA TRANSITION:
+- Yahoo was part of Verizon Media (2017-2021)
+- Now independent Yahoo Inc. (Apollo Global acquisition)
+- Privacy policies may reference old "Oath" or "Verizon Media" branding
+
+COOKIE-BASED LIMITATION:
+- Opt-out cookies can be cleared accidentally
+- Must re-opt-out after clearing browser data
+- Account-level settings persist better than cookie opt-outs
+"""
+
+[removal.cookies]
+patterns = ["B", "A1", "A3", "A1S", "GUC", "GUCS", "YSC", "PREF", "VISITOR_INFO*"]
+domains = [".yahoo.com", ".advertising.yahoo.com", ".analytics.yahoo.com", ".gemini.yahoo.com"]

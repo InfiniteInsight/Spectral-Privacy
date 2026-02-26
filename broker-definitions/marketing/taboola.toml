@@ -1,0 +1,66 @@
+# Taboola - Content Recommendation and Native Advertising
+# Last verified: 2026-02-25
+
+[broker]
+id = "taboola"
+name = "Taboola"
+url = "https://www.taboola.com"
+domain = "taboola.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.taboola.com"
+instructions = "Taboola powers 'recommended content' widgets on news sites. Tracks clicks, reading behavior, interests to show personalized content recommendations and ads. Uses cookies and pixels."
+
+[removal]
+method = "web-form"
+url = "https://www.taboola.com/policies/privacy-policy#user-choices-and-optout"
+confirmation = "automatic"
+notes = """
+Taboola opt-out:
+
+1. OPT-OUT PAGE:
+   - Visit https://www.taboola.com/policies/privacy-policy#user-choices-and-optout
+   - Click "Opt Out of Interest-Based Advertising"
+   - Sets opt-out cookie in browser
+   - Must repeat per browser/device
+
+2. COOKIE-BASED OPT-OUT:
+   - Opt-out cookie name: taboola_select
+   - Clearing cookies removes opt-out
+   - Must re-opt-out after clearing browser data
+
+3. NAI/DAA OPT-OUTS:
+   - NAI: https://optout.networkadvertising.org
+   - DAA: https://optout.aboutads.info
+   - Taboola is a member of both - use for multi-platform opt-out
+
+4. COOKIE REMOVAL:
+   - Clear Taboola tracking cookies
+   - Cookie names: taboola_*, t_gid, t_pt_gid
+   - Use Spectral cookie scanner
+
+5. CCPA/GDPR REQUESTS:
+   - Email: privacy@taboola.com
+   - California: Right to opt-out of sale
+   - EU: Right to erasure
+   - Include: Email or device ID
+
+6. BROWSER-LEVEL BLOCKING:
+   - Use ad blocker (uBlock Origin, AdGuard)
+   - Taboola widgets will show "Ad blocked" message
+   - Or use Privacy Badger to block tracking
+
+NOTE: Taboola is on millions of news and content sites. You see them as "You May Also Like" or "Recommended For You" widgets at bottom of articles.
+"""
+
+[removal.cookies]
+patterns = ["taboola_*", "t_gid", "t_pt_gid", "trc_*"]
+domains = [".taboola.com", ".trc.taboola.com"]

@@ -1,0 +1,91 @@
+# PeopleSmart - People Search and Background Reports
+# Last verified: 2026-02-25
+
+[broker]
+id = "peoplesmart"
+name = "PeopleSmart"
+url = "https://www.peoplesmart.com"
+domain = "peoplesmart.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "Standard"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.peoplesmart.com/people/{first_name}-{last_name}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = "#search-results"
+result_item = ".result-item"
+no_results_indicator = ".no-matches"
+
+[removal]
+method = "web-form"
+url = "https://www.peoplesmart.com/optout-go"
+notes = """
+PeopleSmart opt-out process:
+
+1. SEARCH FOR YOUR LISTING:
+   - Visit https://www.peoplesmart.com
+   - Search: First name, last name, state/city
+   - Locate your specific profile
+   - Copy the full profile URL
+
+2. OPT-OUT FORM:
+   - Visit https://www.peoplesmart.com/optout-go
+   - Paste your profile URL
+   - Enter email address for confirmation
+   - Complete reCAPTCHA if required
+
+3. EMAIL VERIFICATION:
+   - Check email inbox for verification message
+   - Click confirmation link
+   - Opt-out request submitted
+
+4. PROCESSING TIME:
+   - Removal: 3-5 business days
+   - May take up to 7 days to fully disappear
+   - Search engine cache may take longer
+
+5. VERIFY REMOVAL:
+   - After 7 days, search for yourself again
+   - If still listed, re-submit opt-out
+   - Or email: info@peoplesmart.com
+
+6. RE-LISTING RISK:
+   - PeopleSmart may re-add from public records
+   - Recommend checking every 30 days
+   - Owned by same parent company as other people search sites
+
+7. CCPA/GDPR RIGHTS:
+   - Email: privacy@peoplesmart.com
+   - California: Right to deletion, opt-out of sale
+   - EU: GDPR data subject rights
+   - Response: 30-45 days
+
+OWNERSHIP:
+- PeopleSmart owned by PeopleConnect (same as Intelius, TruthFinder, Instant Checkmate)
+- Opt-out from one does NOT opt out from others
+- Must submit separate requests to each site
+
+DATA SOURCES:
+- Public records (court, property, DMV)
+- Phone directories
+- Social media profiles
+- Data aggregators
+
+ALTERNATIVE CONTACT:
+- Email: info@peoplesmart.com
+- Include: Name, listing URL, request for removal
+- Reference CCPA if California resident
+
+TIP:
+- PeopleSmart shows "teaser" info for free, full report requires payment
+- Your free opt-out removes even the teaser info
+- Don't pay to see your own data - use opt-out process
+"""

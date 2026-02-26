@@ -49,21 +49,25 @@ impl PiiPatterns {
     }
 
     /// Check if text contains an email address
+    #[must_use]
     pub fn has_email(&self, text: &str) -> bool {
         self.email.is_match(text)
     }
 
     /// Check if text contains a phone number
+    #[must_use]
     pub fn has_phone(&self, text: &str) -> bool {
         self.phone.is_match(text)
     }
 
     /// Check if text contains an SSN
+    #[must_use]
     pub fn has_ssn(&self, text: &str) -> bool {
         self.ssn.is_match(text)
     }
 
     /// Find all PII matches in text
+    #[must_use]
     pub fn find_all(&self, text: &str) -> Vec<PiiMatch> {
         let mut matches = Vec::new();
 
@@ -97,6 +101,7 @@ pub enum PiiMatch {
 
 impl PiiMatch {
     /// Get human-readable description of the PII type
+    #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
             PiiMatch::Email => "Email address",
@@ -106,6 +111,7 @@ impl PiiMatch {
     }
 
     /// Get risk level for this type of PII
+    #[must_use]
     pub fn risk_level(&self) -> &'static str {
         match self {
             PiiMatch::Email => "medium",
@@ -115,6 +121,7 @@ impl PiiMatch {
     }
 
     /// Get PII type identifier for database storage
+    #[must_use]
     pub fn pii_type(&self) -> &'static str {
         match self {
             PiiMatch::Email => "email",
@@ -135,6 +142,7 @@ pub struct FileScanResult {
 const SCANNABLE_EXTENSIONS: &[&str] = &["txt", "csv", "json", "md", "log"];
 
 /// Check if a file should be scanned based on its extension
+#[must_use]
 pub fn is_scannable(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
         if let Some(ext_str) = ext.to_str() {

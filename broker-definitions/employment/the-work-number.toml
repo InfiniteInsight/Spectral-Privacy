@@ -1,0 +1,75 @@
+# The Work Number - Employment and Income Verification
+# Last verified: 2026-02-25
+
+[broker]
+id = "the-work-number"
+name = "The Work Number (Equifax)"
+url = "https://theworknumber.com"
+domain = "theworknumber.com"
+category = "employment"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "account-required"
+url = "https://employees.theworknumber.com"
+instructions = "The Work Number provides employment and income verification to employers, lenders, landlords, and government agencies. Your employer reports your salary, job title, employment dates. You can view your own data with account."
+
+[removal]
+method = "phone"
+phone = "1-800-367-5690"
+notes = """
+The Work Number privacy controls:
+
+1. VIEW YOUR DATA:
+   - Create free account: https://employees.theworknumber.com
+   - Verify identity with SSN, DOB, employer info
+   - See what data employers have reported about you
+   - Review employment dates, income, job title
+
+2. FREEZE YOUR REPORT:
+   - Prevents anyone from accessing your employment/income data
+   - Call: 1-800-367-5690
+   - Or online: https://employees.theworknumber.com
+   - FREE
+   - Can temporarily lift for specific verifiers (lender, landlord)
+   - Recommended if not job hunting or applying for loans
+
+3. MANAGE WHO CAN ACCESS:
+   - Without freeze: Employers, lenders, landlords, gov't can verify
+   - With freeze: Must create one-time access code for each verifier
+   - Gives you control over who sees salary/employment
+
+4. DISPUTE INACCURATE INFORMATION:
+   - If employment dates, salary, or job title is wrong
+   - Contact The Work Number: 1-800-367-5690
+   - Or contact your employer's HR/payroll department
+   - Employer must correct data with The Work Number
+
+5. OPT-OUT OPTIONS (LIMITED):
+   - Freeze is primary privacy control
+   - Cannot fully "opt out" if employer participates
+   - Some employers allow opting out - check with HR
+
+6. EMPLOYER PARTICIPATION:
+   - Not all employers use The Work Number
+   - Major corporations (Walmart, Amazon, many Fortune 500s) do
+   - If your employer participates, data is automatically reported
+
+IMPORTANT:
+- The Work Number is owned by Equifax
+- Used by 75% of Fortune 500 companies
+- Lenders/landlords use it to verify income instead of pay stubs
+- Freeze is your main privacy tool - use it unless actively needing verification
+- Data comes from your employer's payroll - can't be "deleted"
+
+REALITY:
+- This is an employment verification service, not a people search site
+- Cannot remove accurate employment/income data
+- Focus on: freezing access, ensuring accuracy
+- Freeze when not job hunting/applying for housing/loans
+"""

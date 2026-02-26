@@ -1,0 +1,128 @@
+# DMV.org - Vehicle Records and Driver Information
+# Last verified: 2026-02-25
+
+[broker]
+id = "dmv-org"
+name = "DMV.org"
+url = "https://www.dmv.org"
+domain = "dmv.org"
+category = "automotive"
+difficulty = "Hard"
+typical_removal_days = 90
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "web-form"
+url = "https://www.dmv.org"
+requires_fields = []
+
+[removal]
+method = "email"
+email = "support@dmv.org"
+subject = "Privacy Request"
+body = """
+I am requesting information about data privacy on DMV.org.
+
+Personal Information:
+- Name: {full_name}
+- Email: {user_email}
+
+Please advise on:
+- What data DMV.org collects about me
+- How to request deletion under CCPA/privacy laws
+
+Thank you.
+"""
+response_days = 30
+notes = """
+DMV.org privacy (NOT A GOVERNMENT WEBSITE):
+
+1. CRITICAL: DMV.ORG IS NOT THE GOVERNMENT:
+   - DMV.org is a PRIVATE COMPANY (.org doesn't mean government)
+   - Not affiliated with state DMVs
+   - Aggregates public DMV records + sells services
+   - Makes money from: Ads, affiliate links, premium services
+   - Actual government sites: *.gov (e.g., ca.gov, dmv.ca.gov)
+
+2. WHAT DMV.ORG DOES:
+   - Provides DMV information and guides
+   - Links to state DMV services
+   - Sells vehicle history reports
+   - Offers registration/title services (third-party)
+   - May collect your data when you use the site
+
+3. DMV.ORG PRIVACY CONTROLS:
+   - Privacy policy: https://www.dmv.org/privacy-policy
+   - Contact: https://www.dmv.org/contact
+   - Request data deletion via contact form
+   - CCPA/GDPR rights may apply
+
+4. ACTUAL DMV RECORDS (GOVERNMENT):
+   - Driver's license: Managed by state DMV (.gov sites)
+   - Vehicle registration: State DMV databases
+   - Title records: State motor vehicle departments
+   - These are PUBLIC RECORDS in most states
+
+5. DRIVER'S LICENSE PRIVACY (STATE DMV):
+   - DPPA (Driver's Privacy Protection Act): Federal law protecting driver info
+   - Limits who can access your DMV records
+   - Exceptions: Law enforcement, insurance, towing, courts
+   - Contact your STATE DMV to:
+     * Opt out of data sales (where allowed)
+     * Request address confidentiality (some states)
+     * Limit data sharing with marketing companies
+
+6. VEHICLE REGISTRATION PRIVACY:
+   - Most states: Vehicle ownership is public record
+   - Anyone can look up vehicle owner by license plate
+   - Some states allow privacy flags for:
+     * Law enforcement officers
+     * Judges
+     * Domestic violence survivors
+     * Stalking victims
+   - Contact state DMV for privacy programs
+
+7. HOW TO PROTECT DMV PRIVACY:
+   - Register vehicle to LLC/trust (not personal name)
+   - Use mail forwarding service for registration address
+   - Check state-specific privacy programs
+   - Opt out of data sales (DPPA allows some states)
+   - Example: California DMV lets you opt out of data sales to marketers
+
+8. DATA BROKERS & DMV DATA:
+   - Carfax, AutoCheck: Buy DMV data (title transfers, registrations)
+   - People search sites: May include vehicle ownership
+   - Cannot be fully removed (public records)
+   - Focus: Accuracy, not removal
+
+CONFUSION TO AVOID:
+- DMV.org ≠ Your state DMV
+- Removing data from DMV.org ≠ Removing from government DMV
+- Government DMV records are mostly public (DPPA has exceptions)
+
+ACTUAL GOVERNMENT DMV SITES (EXAMPLES):
+- California: dmv.ca.gov
+- New York: dmv.ny.gov
+- Texas: txdmv.gov
+- Florida: flhsmv.gov
+- Find yours: [Your State] + "dmv.gov" in search
+
+TO PROTECT YOUR PRIVACY:
+1. Contact YOUR STATE DMV (not DMV.org)
+2. Ask about:
+   - Opt-out of marketing data sales
+   - Address confidentiality programs
+   - Privacy flags (if eligible)
+3. Consider:
+   - LLC/trust for vehicle ownership
+   - Mail forwarding for registration address
+
+REALITY:
+- Driver's license and vehicle registration are largely public
+- DPPA protects from some commercial uses
+- Complete privacy very difficult
+- Focus: Limit marketing use, protect against stalking
+"""

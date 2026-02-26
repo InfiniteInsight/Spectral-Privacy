@@ -19,20 +19,17 @@ pub async fn get_scheduled_jobs(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault {} not unlocked", vault_id),
+            format!("Vault {vault_id} not unlocked"),
         )
     })?;
     let db = vault.database().map_err(|e| {
-        CommandError::new(
-            "DATABASE_ERROR",
-            format!("Failed to access database: {}", e),
-        )
+        CommandError::new("DATABASE_ERROR", format!("Failed to access database: {e}"))
     })?;
 
     db.get_scheduled_jobs().await.map_err(|e| {
         CommandError::new(
             "DATABASE_ERROR",
-            format!("Failed to get scheduled jobs: {}", e),
+            format!("Failed to get scheduled jobs: {e}"),
         )
     })
 }
@@ -53,14 +50,11 @@ pub async fn update_scheduled_job(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault {} not unlocked", vault_id),
+            format!("Vault {vault_id} not unlocked"),
         )
     })?;
     let db = vault.database().map_err(|e| {
-        CommandError::new(
-            "DATABASE_ERROR",
-            format!("Failed to access database: {}", e),
-        )
+        CommandError::new("DATABASE_ERROR", format!("Failed to access database: {e}"))
     })?;
 
     // Update interval and enabled status
@@ -74,13 +68,13 @@ pub async fn update_scheduled_job(
     sqlx::query(
         "UPDATE scheduled_jobs SET interval_days = ?, enabled = ?, next_run_at = ? WHERE id = ?",
     )
-    .bind(interval_days as i64)
+    .bind(i64::from(interval_days))
     .bind(if enabled { 1 } else { 0 })
     .bind(&next_run)
     .bind(&job_id)
     .execute(db.pool())
     .await
-    .map_err(|e| CommandError::new("DATABASE_ERROR", format!("Failed to update job: {}", e)))?;
+    .map_err(|e| CommandError::new("DATABASE_ERROR", format!("Failed to update job: {e}")))?;
 
     Ok(())
 }
@@ -98,7 +92,7 @@ pub async fn run_job_now(
         .map_err(|e| {
             CommandError::new(
                 "INVALID_JOB_TYPE",
-                format!("Invalid job type '{}': {}", job_type, e),
+                format!("Invalid job type '{job_type}': {e}"),
             )
         })?;
 
@@ -106,7 +100,7 @@ pub async fn run_job_now(
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
-            format!("Vault {} not unlocked", vault_id),
+            format!("Vault {vault_id} not unlocked"),
         )
     })?;
 
@@ -114,14 +108,14 @@ pub async fn run_job_now(
     let db = vault.database().map_err(|e| {
         CommandError::new(
             "DATABASE_ERROR",
-            format!("Failed to get vault database: {}", e),
+            format!("Failed to get vault database: {e}"),
         )
     })?;
 
     // Get the vault's encryption key
     let vault_key = vault
         .encryption_key()
-        .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {}", e)))?;
+        .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {e}")))?;
 
     match job_type {
         JobType::ScanAll => {
@@ -129,7 +123,7 @@ pub async fn run_job_now(
 
             // Get all profiles in the vault
             let profile_ids = vault.list_profiles().await.map_err(|e| {
-                CommandError::new("DATABASE_ERROR", format!("Failed to list profiles: {}", e))
+                CommandError::new("DATABASE_ERROR", format!("Failed to list profiles: {e}"))
             })?;
 
             if profile_ids.is_empty() {
@@ -145,14 +139,14 @@ pub async fn run_job_now(
 
             // Load the profile data
             let profile = vault.load_profile(profile_id).await.map_err(|e| {
-                CommandError::new("DATABASE_ERROR", format!("Failed to load profile: {}", e))
+                CommandError::new("DATABASE_ERROR", format!("Failed to load profile: {e}"))
             })?;
 
             // Get or initialize cached browser engine
             let browser_engine = state.get_or_init_browser_engine().await.map_err(|e| {
                 CommandError::new(
                     "BROWSER_ERROR",
-                    format!("Failed to get browser engine: {}", e),
+                    format!("Failed to get browser engine: {e}"),
                 )
             })?;
 
@@ -178,7 +172,7 @@ pub async fn run_job_now(
                 .await
                 .map_err(|e| {
                     error!("Scheduled scan failed: {}", e);
-                    CommandError::new("SCAN_ERROR", format!("Scan failed: {}", e))
+                    CommandError::new("SCAN_ERROR", format!("Scan failed: {e}"))
                 })?;
 
             info!("Scheduled scan started successfully");

@@ -1,0 +1,72 @@
+# LiveRamp - Identity Resolution and Data Connectivity
+# Last verified: 2026-02-25
+
+[broker]
+id = "liveramp"
+name = "LiveRamp"
+url = "https://liveramp.com"
+domain = "liveramp.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://liveramp.com/opt_out/"
+instructions = "LiveRamp connects online and offline data to create unified customer profiles for advertisers. They link emails, cookies, device IDs, and postal addresses. No public search of your profile available - data is used behind the scenes by brands and advertisers."
+
+[removal]
+method = "web-form"
+url = "https://liveramp.com/opt_out/"
+confirmation = "email-verification"
+notes = """
+LiveRamp opt-out process:
+
+1. OPT-OUT FORM:
+   - Visit https://liveramp.com/opt_out/
+   - Enter email address(es) to opt-out
+   - Enter postal address
+   - Submit form
+
+2. EMAIL VERIFICATION:
+   - Check email for verification link
+   - Click link to confirm opt-out
+   - Processing takes 5-7 business days
+
+3. MULTIPLE IDENTIFIERS:
+   - Opt-out all email addresses you use
+   - Opt-out all postal addresses
+   - Repeat for different devices/browsers
+
+4. OPT-OUT COVERAGE:
+   - Removes you from LiveRamp IdentityLink
+   - Prevents linking across devices and platforms
+   - Does not delete historical data already shared with clients
+
+5. ADDITIONAL PRIVACY:
+   - NAI Opt-Out: https://optout.networkadvertising.org
+   - DAA Opt-Out: https://optout.aboutads.info
+   - Both cover LiveRamp and other networks
+
+Note: Opt-out prevents future data linking but doesn't delete existing profile data that's already been distributed to advertisers. Must provide accurate email and address to match records.
+"""
+
+[removal.fields]
+email = "{user_email}"
+address = "{address}"
+city = "{city}"
+state = "{state}"
+zip_code = "{zip_code}"
+
+[removal.form_selectors]
+email_input = "#email, input[name='email']"
+address_input = "#address, input[name='address']"
+city_input = "#city"
+state_input = "#state"
+zip_input = "#zip"
+submit_button = "button[type='submit'], input[type='submit']"
+success_indicator = ".confirmation, .success-message"

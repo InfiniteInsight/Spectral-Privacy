@@ -1,0 +1,123 @@
+# Truework - Employment and Income Verification
+# Last verified: 2026-02-25
+
+[broker]
+id = "truework"
+name = "Truework"
+url = "https://www.truework.com"
+domain = "truework.com"
+category = "employment"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.truework.com"
+instructions = "Truework is employment and income verification platform. Connects employers' HR systems to verifiers (lenders, landlords, background checkers). Data comes from your employer, not public sources."
+
+[removal]
+method = "email"
+email = "privacy@truework.com"
+subject = "FCRA/CCPA Privacy Rights Request"
+body = """
+I am exercising my privacy rights under FCRA/CCPA.
+
+Request Type: [Choose one]
+- Access my employment verification records
+- Dispute inaccurate employment/income information
+- Opt out of specific verifications (if applicable)
+
+Personal Information:
+- Name: {full_name}
+- Email: {user_email}
+- Current/Former Employer: [Employer name]
+- SSN (last 4 digits): [Optional, for verification]
+
+Please respond within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Truework employment verification privacy:
+
+1. WHAT IS TRUEWORK:
+   - Employment and income verification platform
+   - Connects employers' HR systems to verifiers
+   - Used by: Mortgage lenders, landlords, background check companies
+   - Automates verification (replaces phone/fax to HR)
+   - Provides: Job title, dates of employment, income
+
+2. HOW TRUEWORK WORKS:
+   - Your employer integrates Truework with their HR system (Workday, ADP, etc.)
+   - When you apply for loan/apartment, lender requests verification
+   - You authorize verification (FCRA consent required)
+   - Truework pulls data from employer's HR system
+   - Verifier receives: Employment status, income, dates
+
+3. TRUEWORK DATA SOURCES:
+   - Directly from your employer's HR/payroll system
+   - NOT from public records or web scraping
+   - Only accessible with your consent (FCRA requirement)
+   - Data accuracy depends on employer's HR records
+
+4. YOUR RIGHTS (FCRA - FAIR CREDIT REPORTING ACT):
+   - Access: Request to see your Truework verification records
+   - Dispute: Challenge inaccurate employment/income data
+   - Consent: Verifications require your authorization
+   - Notice: Must be notified if adverse action taken
+
+5. REQUEST YOUR TRUEWORK DATA:
+   - Email: privacy@truework.com
+   - Request: Copy of all verifications performed
+   - Truework must provide within 30 days (FCRA)
+   - Free disclosure once per 12 months
+
+6. DISPUTE INACCURATE DATA:
+   - If Truework shows wrong job title, income, or dates
+   - Email: privacy@truework.com
+   - Include: Correct information, supporting docs (pay stubs, offer letter)
+   - Truework must investigate within 30 days
+   - Correction flows from employer's HR system
+
+7. CCPA RIGHTS (CALIFORNIA):
+   - Email: privacy@truework.com
+   - Right to: Know, delete, opt-out
+   - Truework must comply within 45 days
+   - May be limited by FCRA requirements
+
+8. WHAT YOU CANNOT DO:
+   - Cannot "opt out" of employment verification entirely
+   - Lenders/landlords require verification for approval
+   - Cannot remove accurate employment data
+   - Verification requires your consent (but refusing = denial)
+
+9. IF TRUEWORK SHOWS WRONG DATA:
+   - Error likely originates from employer's HR system
+   - Contact your employer's HR department
+   - Request HR update their records
+   - Truework syncs from HR system (not manually entered)
+
+REALITY:
+- Truework is infrastructure (like Plaid for banking)
+- Replaces manual HR verification calls
+- Data accuracy depends on employer
+- Cannot "remove" yourself (employment is verifiable fact)
+- Focus: Ensure accuracy in employer's HR system
+
+TRUEWORK VS THE WORK NUMBER:
+- The Work Number: Equifax-owned, larger database
+- Truework: Newer, tech-forward alternative
+- Both serve same function: Employment verification
+- Both require consent (FCRA)
+
+PRIVACY TIP:
+- Your employer chooses verification provider (not you)
+- If employer uses Truework, you can't opt out
+- But: All verifications require your consent
+- Review carefully before authorizing
+"""

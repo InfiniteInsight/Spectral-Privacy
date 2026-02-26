@@ -1,0 +1,70 @@
+# SpyDialer - Free Reverse Phone Lookup
+# Last verified: 2026-02-25
+
+[broker]
+id = "spydialer"
+name = "SpyDialer"
+url = "https://www.spydialer.com"
+domain = "spydialer.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["US"]
+
+[search]
+method = "web-form"
+url = "https://www.spydialer.com"
+requires_fields = ["phone"]
+
+[search.fields]
+phone = "{phone}"
+
+[search.result_selectors]
+results_container = "#search-results"
+result_item = ".result"
+name = ".owner-name"
+location = ".location"
+carrier = ".carrier-info"
+no_results_indicator = ".no-match"
+
+[removal]
+method = "email"
+email = "optout@spydialer.com"
+subject = "Removal Request - Phone Number {phone}"
+body = """
+I am requesting the removal of my phone number from SpyDialer.
+
+Phone Number: {phone}
+Name: {full_name}
+Email: {user_email}
+
+Please confirm when this number has been removed from your database.
+
+Thank you.
+"""
+response_days = 10
+notes = """
+SpyDialer opt-out process:
+
+1. EMAIL REQUEST:
+   - Send to: optout@spydialer.com
+   - Subject: "Removal Request - [Your Phone Number]"
+   - Include: Phone number, name, email
+   - Processing: 5-7 business days
+
+2. ALTERNATIVE - PHONE:
+   - Call the SpyDialer number using phone you want removed
+   - Leave voicemail requesting removal
+   - Include your name and callback number
+   - May take 7-10 days
+
+3. VERIFY REMOVAL:
+   - After 7-10 days, search for your number
+   - If still listed, send follow-up email
+   - Reference original request date
+
+Note: SpyDialer aggregates data from public sources and user submissions. Removal prevents display on SpyDialer but doesn't remove from source databases. May need to opt-out from source sites as well (Whitepages, Spokeo, etc.).
+"""

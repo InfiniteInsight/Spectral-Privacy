@@ -12,7 +12,7 @@
 //! # Platform Support
 //!
 //! - **Windows**: Windows Hello (face, fingerprint, PIN)
-//! - **macOS**: Touch ID via LocalAuthentication framework
+//! - **macOS**: Touch ID via `LocalAuthentication` framework
 //! - **Linux**: fprintd (fingerprint), polkit, PAM
 //!
 //! # Session Management
@@ -69,16 +69,19 @@ pub struct AuthState {
 
 impl AuthState {
     /// Create a new unauthenticated state
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Check if user is authenticated
+    #[must_use]
     pub fn is_authenticated(&self) -> bool {
         self.authenticated
     }
 
     /// Get the number of failed attempts
+    #[must_use]
     pub fn failed_attempts(&self) -> u32 {
         self.failed_attempts
     }

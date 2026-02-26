@@ -1,0 +1,109 @@
+# Adobe Audience Manager - Data Management Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "adobe-audience-manager"
+name = "Adobe Audience Manager"
+url = "https://www.adobe.com/analytics/audience-manager.html"
+domain = "adobe.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 45
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "none"
+url = "https://www.adobe.com/analytics/audience-manager.html"
+instructions = "Adobe Audience Manager is a data management platform (DMP) used by companies to unify customer data. Cannot search directly - data held by companies using Adobe."
+
+[removal]
+method = "email"
+email = "privacy@adobe.com"
+subject = "CCPA/GDPR Data Subject Request - Audience Manager Deletion"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Deletion of all personal data in Adobe Audience Manager
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Any associated tracking identifiers
+
+Please delete from:
+- Adobe Audience Manager databases
+- All client company instances tracking me
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 45
+notes = """
+Adobe Audience Manager privacy (COMPLEX):
+
+1. WHAT IS AUDIENCE MANAGER:
+   - Data management platform (DMP) used by enterprises
+   - Companies use it to unify customer data from:
+     * Website visits
+     * Mobile app usage
+     * CRM systems
+     * Email engagement
+     * Offline purchases
+   - Creates unified customer profiles across touchpoints
+   - You're tracked by companies using Adobe, not Adobe directly
+
+2. THE COMPLEXITY:
+   - Adobe Audience Manager is infrastructure (like Salesforce)
+   - Data is owned/controlled by client companies
+   - No centralized "search for yourself" function
+   - Must request deletion from each company using Adobe
+
+3. REQUEST FROM COMPANIES:
+   - Identify companies that may use Adobe Audience Manager
+   - Look for Adobe tracking pixels on their websites
+   - Check domains: *.demdex.net, *.dpm.demdex.net
+   - Email each company's privacy contact with CCPA/GDPR request
+
+4. ADOBE DIRECT REQUEST:
+   - Email: privacy@adobe.com
+   - Adobe will attempt to facilitate deletion
+   - May require cooperation from client companies
+   - Processing: 30-45 days
+
+5. OPT OUT OF ADOBE TRACKING:
+   - Visit https://www.adobe.com/privacy/opt-out.html
+   - Opt out of Adobe Experience Cloud tracking
+   - Sets opt-out cookie (demdex with d_optout=1)
+   - Must repeat on each browser/device
+
+6. BROWSER-LEVEL BLOCKING:
+   - Use ad blockers: Privacy Badger, uBlock Origin
+   - Block domains: *.demdex.net, *.dpm.demdex.net, *.everesttech.net
+   - Prevents tracking across all Adobe-powered sites
+
+7. COOKIE REMOVAL:
+   - Clear Adobe tracking cookies
+   - Cookie names: demdex, dextp, dst, _dp
+   - Domains: .demdex.net, .dpm.demdex.net
+
+REALITY:
+- Adobe Audience Manager is used by Fortune 500 companies
+- Data is highly fragmented (each company's instance separate)
+- No way to know which companies have your data
+- Best approach: Block tracking + request from known companies
+- This infrastructure model shows need for better privacy laws
+
+TECHNICAL DETAILS:
+- Primary tracking domain: demdex.net
+- Cookie: demdex (Adobe unique user ID)
+- Also uses: dpm.demdex.net (data processing module)
+- Integration with Adobe Analytics, Adobe Target, etc.
+"""
+
+[removal.cookies]
+patterns = ["demdex", "dextp", "dst", "_dp", "AMCV_*", "AMCVS_*", "s_*"]
+domains = [".demdex.net", ".dpm.demdex.net", ".everesttech.net", ".omtrdc.net"]

@@ -1,0 +1,74 @@
+# GoodHire - Employment Screening Services
+# Last verified: 2026-02-25
+
+[broker]
+id = "goodhire"
+name = "GoodHire"
+url = "https://www.goodhire.com"
+domain = "goodhire.com"
+category = "background-check"
+difficulty = "Medium"
+typical_removal_days = 14
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.goodhire.com"
+instructions = "GoodHire provides employment background checks to employers. Your data is only visible to employers who run a background check on you. Not a public search site. Data includes: criminal records, employment verification, education verification, credit reports, and driving records."
+
+[removal]
+method = "email"
+email = "privacy@goodhire.com"
+subject = "Consumer Rights Request - {full_name}"
+body = """
+I am writing to exercise my consumer rights under the Fair Credit Reporting Act (FCRA).
+
+Request Type: [Choose one: Access to my consumer file / Dispute inaccurate information / Opt-out of marketing]
+
+Full Name: {full_name}
+Date of Birth: {date_of_birth}
+Social Security Number (last 4 digits): [XXX-XX-####]
+Current Address: {address}, {city}, {state} {zip_code}
+Email: {user_email}
+
+[If disputing information]:
+I dispute the following information in my background check report:
+- [Describe inaccurate information]
+- [Provide correct information]
+- [Attach supporting documentation if available]
+
+Please investigate and correct this information within 30 days as required by FCRA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+GoodHire consumer rights (FCRA):
+
+1. DISCLOSURE REQUEST:
+   - Email privacy@goodhire.com requesting your consumer file
+   - Must provide: Name, DOB, SSN (last 4), address
+   - Free disclosure once per 12 months
+   - Receive within 5 business days
+
+2. DISPUTE INACCURATE INFO:
+   - If background check contains errors, file dispute
+   - GoodHire must investigate within 30 days
+   - Can correct or remove inaccurate information
+
+3. EMPLOYER REQUIREMENTS:
+   - Employers must notify you before running check
+   - Must get your written consent
+   - Must provide copy if adverse action taken
+
+4. CCPA RIGHTS (California residents):
+   - Right to know what data is collected
+   - Right to delete personal information
+   - Right to opt-out of data sales
+   - Submit CCPA request to privacy@goodhire.com
+
+Note: Cannot "opt-out" of employment screening entirely - employers have legal right to conduct background checks with your consent. Focus on ensuring accuracy of information.
+"""

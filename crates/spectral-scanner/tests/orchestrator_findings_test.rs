@@ -17,9 +17,9 @@ fn create_test_broker_with_selectors(
     BrokerDefinition {
         broker: BrokerMetadata {
             id: BrokerId::new(broker_id).expect("valid broker ID"),
-            name: format!("Test Broker {}", broker_id),
-            url: format!("https://{}.example.com", broker_id),
-            domain: format!("{}.example.com", broker_id),
+            name: format!("Test Broker {broker_id}"),
+            url: format!("https://{broker_id}.example.com"),
+            domain: format!("{broker_id}.example.com"),
             category: BrokerCategory::PeopleSearch,
             difficulty: RemovalDifficulty::Easy,
             typical_removal_days: 7,
@@ -29,10 +29,7 @@ fn create_test_broker_with_selectors(
             region_relevance: vec!["Global".to_string()],
         },
         search: SearchMethod::UrlTemplate {
-            template: format!(
-                "https://{}.example.com/search?name={{first}}-{{last}}",
-                broker_id
-            ),
+            template: format!("https://{broker_id}.example.com/search?name={{first}}-{{last}}"),
             requires_fields: vec![PiiField::FirstName, PiiField::LastName],
             result_selectors,
         },

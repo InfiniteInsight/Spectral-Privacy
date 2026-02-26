@@ -96,12 +96,12 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
     // Clone the pool for background task
     let pool = db.pool().clone();
@@ -186,17 +186,17 @@ pub async fn get_discovery_findings(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
     // Query findings
     let findings = spectral_db::discovery_findings::get_discovery_findings(db.pool(), &vault_id)
         .await
-        .map_err(|e| format!("Failed to get discovery findings: {}", e))?;
+        .map_err(|e| format!("Failed to get discovery findings: {e}"))?;
 
     // Convert to response format
     let response: Vec<DiscoveryFinding> = findings
@@ -233,17 +233,17 @@ pub async fn mark_finding_remediated(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to get vault database: {}", e))?;
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
     // Update finding
     spectral_db::discovery_findings::update_finding_remediated(db.pool(), &finding_id, true)
         .await
-        .map_err(|e| format!("Failed to mark finding as remediated: {}", e))?;
+        .map_err(|e| format!("Failed to mark finding as remediated: {e}"))?;
 
     Ok(())
 }

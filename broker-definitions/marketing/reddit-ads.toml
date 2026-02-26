@@ -1,0 +1,81 @@
+# Reddit Ads - Social Media Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "reddit-ads"
+name = "Reddit Advertising"
+url = "https://advertising.reddithelp.com"
+domain = "reddit.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://www.reddit.com/settings/privacy"
+instructions = "Reddit tracks subreddit visits, upvotes, comments, and external site visits (via Reddit Pixel) to personalize ads. Privacy settings require account login."
+
+[removal]
+method = "account-required"
+url = "https://www.reddit.com/settings/privacy"
+notes = """
+Reddit advertising privacy controls:
+
+1. DISABLE PERSONALIZED ADS:
+   - User Settings → Privacy → Personalized Advertising
+   - Toggle OFF "Personalize ads based on activity from our partners"
+   - Toggle OFF "Personalize ads based on your Reddit activity"
+   - This limits ad targeting but Reddit still collects data
+
+2. REVIEW AD PREFERENCES:
+   - User Settings → Safety & Privacy → Manage third-party data
+   - See which advertisers have matched your data
+   - Cannot delete individual entries, only disable all personalization
+
+3. OPT OUT OF DATA SALES (CCPA):
+   - User Settings → Privacy → Opt out of sale of personal information
+   - California residents: Reddit must honor this
+   - Non-California: May not have legal force
+
+4. DELETE ACCOUNT DATA:
+   - User Settings → Account → Deactivate Account
+   - All posts/comments remain but username shows as [deleted]
+   - To fully remove content: Delete posts/comments manually first, then deactivate
+   - Account deletion is permanent after 14 days
+
+5. EXTERNAL TRACKING OPT-OUT:
+   - Reddit Pixel tracks you on external websites
+   - Use browser ad blockers to block: *.redditmedia.com, *.reddit.com/ads
+   - NAI/DAA opt-out: https://optout.aboutads.info
+
+6. CCPA/GDPR DATA REQUEST:
+   - Visit https://www.reddit.com/settings/data-request
+   - Request data download, deletion, or opt-out
+   - Reddit must comply within legal timeframe
+
+REALITY:
+- Reddit personalized ads can be disabled in settings
+- External Reddit Pixel still tracks across websites
+- Subreddit activity reveals detailed interests
+- Account deletion doesn't remove past posts/comments automatically
+- Reddit sells aggregated data to advertisers even with opt-outs
+
+UNIQUE CHALLENGES:
+- Community-driven content: Your posts/comments persist even after account deletion
+- Must manually delete all content before deactivating account
+- Reddit's "Do Not Track" support is limited
+- Desktop + mobile apps both track separately
+
+COOKIE-BASED LIMITATION:
+- Reddit opt-outs stored in account settings (better than cookies)
+- But Reddit Pixel on external sites uses cookies
+- Clearing cookies loses external tracking opt-outs
+"""
+
+[removal.cookies]
+patterns = ["reddit_session", "token*", "loid", "edgebucket", "csv", "session_tracker", "pc", "recent_srs"]
+domains = [".reddit.com", ".redditmedia.com", ".redd.it"]

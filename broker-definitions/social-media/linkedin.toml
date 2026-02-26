@@ -1,0 +1,62 @@
+# LinkedIn - Professional Networking Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "linkedin"
+name = "LinkedIn"
+url = "https://www.linkedin.com"
+domain = "linkedin.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://www.linkedin.com"
+instructions = "LinkedIn profiles are semi-public. Search requires LinkedIn account. Data includes: work history, education, skills, endorsements, connections, and activity."
+
+[removal]
+method = "account-required"
+url = "https://www.linkedin.com/psettings/data-privacy"
+confirmation = "automatic"
+notes = """
+LinkedIn privacy controls:
+
+1. MANAGE PROFILE VISIBILITY:
+   - Visit Settings & Privacy > Visibility > Profile viewing options
+   - Choose "Private mode" to browse anonymously
+   - Edit public profile to control what non-connections see
+   - URL: https://www.linkedin.com/public-profile/settings
+
+2. CONTROL DATA SHARING:
+   - Settings & Privacy > Data privacy > Manage your data and activity
+   - Turn off "Data for personalization of ads"
+   - Turn off "Social actions on ads"
+   - Opt-out of profile discovery from uploaded contacts
+   - URL: https://www.linkedin.com/psettings/data-privacy
+
+3. DOWNLOAD YOUR DATA:
+   - Request archive of all your LinkedIn data
+   - URL: https://www.linkedin.com/psettings/member-data
+
+4. DELETE ACCOUNT (Nuclear Option):
+   - Settings > Account preferences > Account management > Close account
+   - WARNING: Deletes professional network, recommendations, connections
+   - Cannot undo after 20 days
+   - URL: https://www.linkedin.com/psettings/account-management
+
+5. LIMIT RECRUITER VISIBILITY:
+   - Settings > Visibility > Sharing profile when you click "apply"
+   - Turn off "Store and share your job application data with future employers"
+
+6. AD PREFERENCES:
+   - LinkedIn Ads Settings: https://www.linkedin.com/psettings/advertising
+   - Opt-out of interest-based advertising
+   - Manage categories LinkedIn uses for targeting
+
+NOTE: LinkedIn is a professional networking platform. Deleting eliminates career opportunities, networking, and professional visibility. Instead, focus on privacy controls to limit data sharing while maintaining profile.
+"""

@@ -1,0 +1,82 @@
+# Foursquare - Location Intelligence and Foot Traffic Analytics
+# Last verified: 2026-02-25
+
+[broker]
+id = "foursquare"
+name = "Foursquare (Factual)"
+url = "https://foursquare.com"
+domain = "foursquare.com"
+category = "location-data"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://foursquare.com"
+instructions = "Foursquare transitioned from social check-in app to location data company. Tracks where users go via app partnerships. Sells foot traffic patterns, visit frequency, dwell time to businesses and researchers."
+
+[removal]
+method = "email"
+email = "privacy@foursquare.com"
+subject = "Privacy Rights Request - Data Deletion"
+body = """
+I am exercising my privacy rights under applicable law (CCPA/GDPR).
+
+Request Type: Deletion of Personal Data
+
+Please delete all location data associated with:
+- Email: {user_email}
+- Device IDs: [Include iOS IDFA and/or Android AAID if known]
+
+Confirm deletion of all historical location tracking data.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Foursquare location data opt-out:
+
+1. DELETE FOURSQUARE APP:
+   - If you still have Foursquare or Swarm installed, delete it
+   - This stops future location collection
+
+2. DELETE FOURSQUARE ACCOUNT:
+   - Visit https://foursquare.com/settings/privacy
+   - Scroll to bottom: "Delete Your Account"
+   - Confirm deletion
+   - Account and check-in history deleted
+
+3. OPT-OUT OF SDK TRACKING:
+   - Foursquare embeds SDK in other apps (like SafeGraph)
+   - Email privacy@foursquare.com with advertising IDs:
+     * iPhone: Settings > Privacy > Tracking > [View Advertising ID]
+     * Android: Settings > Google > Ads > [View Advertising ID]
+   - Request deletion of all location data
+
+4. CCPA/GDPR REQUESTS:
+   - California residents: CCPA right to deletion
+   - EU residents: GDPR right to erasure
+   - Email: privacy@foursquare.com
+   - Include: Email, device IDs, request type
+
+5. LIMIT AD TRACKING:
+   - iPhone: Settings > Privacy > Tracking > Turn OFF tracking
+   - Android: Settings > Google > Ads > Opt out of personalization
+   - Reduces (doesn't eliminate) tracking
+
+6. RESET ADVERTISING ID:
+   - iPhone: Settings > Privacy > Tracking > Reset Advertising Identifier
+   - Android: Settings > Google > Ads > Reset advertising ID
+   - Do monthly to break tracking
+
+7. APP LOCATION PERMISSIONS:
+   - Review all apps with location access
+   - Set to "Never" or "While Using App" only
+   - NEVER grant "Always" permission
+
+NOTE: Foursquare merged with Factual (another location data company). Even if you never used Foursquare app, you may be tracked via SDK in other apps. Focus on app permissions and advertising ID management.
+"""

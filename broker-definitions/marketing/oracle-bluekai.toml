@@ -1,0 +1,62 @@
+# Oracle BlueKai - Data Management Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "oracle-bluekai"
+name = "Oracle BlueKai"
+url = "https://www.oracle.com/cx/advertising/data-cloud/"
+domain = "oracle.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.bluekai.com/registry"
+instructions = "BlueKai creates marketing profiles by tracking browsing behavior across websites. Visit the BlueKai Registry to see categories associated with your browser. Profiles are cookie-based and anonymous (not directly tied to name)."
+
+[removal]
+method = "web-form"
+url = "https://www.bluekai.com/consumers.php"
+confirmation = "automatic"
+notes = """
+Oracle BlueKai opt-out process:
+
+1. VIEW YOUR PROFILE:
+   - Visit https://www.bluekai.com/registry
+   - See categories BlueKai has associated with your browser
+   - Categories based on browsing history across partner sites
+
+2. OPT-OUT:
+   - Visit https://www.bluekai.com/consumers.php
+   - Click "Opt-Out" button
+   - Sets an opt-out cookie in your browser
+   - Must repeat per browser/device
+
+3. BROWSER-BASED OPT-OUT:
+   - Clearing cookies removes opt-out - must re-opt-out
+   - Consider using browser privacy features:
+     * Safari: Intelligent Tracking Prevention
+     * Firefox: Enhanced Tracking Protection
+     * Chrome: Privacy Sandbox
+
+4. NAI OPT-OUT:
+   - Visit https://optout.networkadvertising.org
+   - Oracle/BlueKai is an NAI member
+   - Use NAI tool to opt-out from multiple ad networks at once
+
+5. DAA OPT-OUT:
+   - Visit https://optout.aboutads.info
+   - Digital Advertising Alliance opt-out tool
+   - Covers BlueKai and other platforms
+
+Note: Opt-out is cookie-based, not account-based. Must repeat per device/browser. Clearing cookies removes opt-out status.
+"""
+
+[removal.form_selectors]
+optout_button = "button.optout, a[href*='optout']"
+success_indicator = ".optout-confirmation"

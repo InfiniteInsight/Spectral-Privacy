@@ -1,0 +1,110 @@
+# CoStar - Commercial Real Estate Information
+# Last verified: 2026-02-25
+
+[broker]
+id = "costar"
+name = "CoStar Group"
+url = "https://www.costar.com"
+domain = "costar.com"
+category = "property-records"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "UK", "Canada"]
+
+[search]
+method = "account-required"
+url = "https://www.costar.com"
+instructions = "CoStar is commercial real estate database (office buildings, retail, industrial). Subscription required to access. Also owns LoopNet, Apartments.com, Homes.com."
+
+[removal]
+method = "email"
+email = "privacy@costar.com"
+subject = "Property Owner Privacy Request - {address}"
+body = """
+I am the commercial property owner requesting privacy controls.
+
+Property Address: {address}, {city}, {state} {zip_code}
+Owner/Entity Name: {full_name}
+Email: {user_email}
+
+Request Type: [Choose one]
+- Remove owner information from listing
+- Correct inaccurate property information
+- Privacy under CCPA/applicable law
+
+Under CCPA/applicable privacy laws, I request confirmation of this action.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+CoStar privacy controls (COMMERCIAL REAL ESTATE):
+
+1. WHAT IS COSTAR:
+   - Leading commercial real estate database
+   - Tracks: Office, retail, industrial, multifamily properties
+   - Includes: Ownership, sales history, lease rates, tenant lists
+   - Used by: Brokers, investors, lenders, appraisers
+   - Subscription required ($3,000-30,000/year)
+
+2. COSTAR GROUP BRANDS:
+   - CoStar (commercial real estate database)
+   - LoopNet (commercial listings)
+   - Apartments.com (apartment rentals)
+   - Homes.com (residential for sale)
+   - Ten-X (online real estate auctions)
+   - BizBuySell (business for sale)
+
+3. DATA SOURCES:
+   - Public records (deeds, tax assessments)
+   - CoStar field researchers (physically verify properties)
+   - Broker submissions
+   - Direct from property owners/managers
+   - Court records, liens, foreclosures
+
+4. OWNER INFORMATION REMOVAL:
+   - Email: privacy@costar.com
+   - CoStar may comply for owner name removal
+   - Property details likely remain (address, size, use)
+   - Data sourced from public records
+
+5. CORRECT INACCURATE DATA:
+   - Email: privacy@costar.com or use "Report an Error" in CoStar
+   - Include: Property address, current error, correct info
+   - CoStar values accuracy (reputation at stake)
+   - Field researchers may verify correction
+
+6. IF YOU'RE A PROPERTY OWNER:
+   - CoStar may contact you to verify property details
+   - You can request to be removed from contact lists
+   - But cannot prevent listing of property itself
+   - Commercial ownership is public record
+
+7. CCPA/GDPR RIGHTS:
+   - Email: privacy@costar.com
+   - Request: Data access, deletion, opt-out
+   - Applies to personal data (owner info)
+   - Does not apply to public property records themselves
+
+REALITY CHECK:
+- CoStar is THE commercial real estate database
+- Used by entire CRE industry
+- Even with removal, property data remains in public records
+- Other platforms (Reonomy, CommercialEdge) also track
+- Commercial property ownership is extremely public
+
+COMMERCIAL VS RESIDENTIAL:
+- Commercial ownership often via LLC/corporation anyway
+- Public disclosure is part of commercial real estate
+- Investors, tenants need this information to make decisions
+- Privacy expectations lower for commercial property
+
+IF YOU WANT PRIVACY:
+- Own via multi-layered LLC structure
+- Use nominee/agent on public documents
+- Accept that true privacy in CRE is very difficult
+- Focus on: Protecting personal contact info (phone, email)
+"""

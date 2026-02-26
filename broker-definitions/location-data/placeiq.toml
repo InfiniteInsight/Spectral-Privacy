@@ -1,0 +1,106 @@
+# PlaceIQ - Location Intelligence Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "placeiq"
+name = "PlaceIQ"
+url = "https://www.placeiq.com"
+domain = "placeiq.com"
+category = "location-data"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "none"
+url = "https://www.placeiq.com"
+instructions = "PlaceIQ tracks mobile device locations via apps and aggregates movement patterns for advertising/analytics. Cannot search for individual tracking - operates at audience segment level."
+
+[removal]
+method = "web-form"
+url = "https://www.placeiq.com/privacy"
+notes = """
+PlaceIQ location tracking privacy controls:
+
+1. WHAT IS PLACEIQ:
+   - Location intelligence platform
+   - Tracks mobile device locations via:
+     * Mobile apps with location permissions
+     * Wi-Fi triangulation
+     * GPS coordinates
+     * Bluetooth beacons
+   - Aggregates movement patterns:
+     * Store visits
+     * Commute patterns
+     * Cross-shopping behavior
+     * Foot traffic analysis
+   - Sold to advertisers, retailers, commercial real estate
+
+2. HOW PLACEIQ GETS YOUR DATA:
+   - Free mobile apps sell location data to PlaceIQ
+   - Weather apps, flashlight apps, games
+   - You granted location permission → app sells data
+   - PlaceIQ aggregates across millions of devices
+   - Creates audience segments: "People who visit Starbucks"
+
+3. OPT OUT OF PLACEIQ:
+   - Visit: https://www.placeiq.com/privacy
+   - Look for "Opt-Out" or "Do Not Sell" option
+   - May require mobile advertising ID
+   - Or email: privacy@placeiq.com
+
+4. MOBILE ADVERTISING ID OPT-OUT:
+   - iOS: Settings → Privacy & Security → Apple Advertising → Turn OFF "Personalized Ads"
+   - Also: Settings → Privacy & Security → Tracking → Disallow tracking requests
+   - Android: Settings → Google → Ads → Opt out of Ads Personalization
+   - This limits (not eliminates) location tracking
+
+5. RESET MOBILE ADVERTISING ID:
+   - iOS: Settings → Privacy → Apple Advertising → Reset Identifier
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Breaks PlaceIQ's ability to link old data to new tracking
+   - Do this periodically (monthly/quarterly)
+
+6. REVIEW APP PERMISSIONS:
+   - iOS: Settings → Privacy → Location Services
+   - Android: Settings → Apps → Permissions → Location
+   - Remove location permission from apps that don't need it
+   - Set to "While Using App" instead of "Always"
+
+7. CCPA/GDPR RIGHTS:
+   - Email: privacy@placeiq.com
+   - Request: Data deletion, opt-out of sale
+   - Include: Mobile advertising ID (IDFA or AAID)
+   - Response within 30-45 days
+
+REALITY:
+- PlaceIQ operates invisibly (you never see their brand)
+- Dozens of apps selling your location data
+- Even "de-identified" data can reveal home/work addresses
+- Opt-out only works if apps honor advertising ID preferences
+- Best protection: Deny location permissions to most apps
+
+FINDING YOUR MOBILE AD ID:
+- iOS IDFA: Settings → Privacy → Apple Advertising → Advertising Identifier
+- Android AAID: Settings → Google → Ads → Your advertising ID
+- Include in privacy requests to PlaceIQ
+
+LOCATION DATA RISKS:
+- Reveals home and work addresses
+- Shows store visits (can reveal health, religion, politics)
+- Tracks visits to: Clinics, places of worship, political rallies
+- "Anonymous" data often re-identifiable
+
+PREVENTION:
+- Minimize location permissions
+- Use "While Using App" not "Always Allow"
+- Prefer web versions over apps when possible
+- Disable background location for non-essential apps
+"""
+
+[removal.cookies]
+patterns = ["_ga*", "_gid"]
+domains = [".placeiq.com"]

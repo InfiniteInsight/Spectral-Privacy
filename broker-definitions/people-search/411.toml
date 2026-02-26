@@ -1,0 +1,67 @@
+# 411.com - People Search and Reverse Phone Lookup
+# Last verified: 2026-02-25
+
+[broker]
+id = "411"
+name = "411.com"
+url = "https://www.411.com"
+domain = "411.com"
+category = "people-search"
+difficulty = "Easy"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.411.com/name/{first}-{last}/{state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".people-results"
+result_item = ".person-card"
+listing_url = "a.profile-link"
+name = ".person-name"
+age = ".age"
+location = ".location"
+phones = ".phone-numbers .phone"
+no_results_indicator = ".no-results"
+captcha_required = "iframe[src*='recaptcha']"
+
+[removal]
+method = "web-form"
+url = "https://www.411.com/manage"
+confirmation = "email-verification"
+notes = """
+411.com opt-out process:
+
+1. FIND YOUR LISTING:
+   - Search for yourself at https://www.411.com
+   - Note the exact URL of your listing
+
+2. OPT-OUT FORM:
+   - Visit https://www.411.com/manage
+   - Enter listing URL
+   - Enter email address
+   - Complete reCAPTCHA
+
+3. EMAIL VERIFICATION:
+   - Check email for verification link
+   - Click link to confirm removal
+   - Processing takes 24-48 hours
+
+4. VERIFY REMOVAL:
+   - After 3-5 business days, search again
+   - If still listed, submit another request
+
+NOTE: 411.com is owned by Whitepages and shares data with InfoSpace, Addresses.com, and other properties. May need to opt-out from each separately.
+"""
+
+[removal.form_selectors]
+listing_url_input = "#listing-url"
+email_input = "#email"
+submit_button = "button[type='submit']"
+captcha_frame = "iframe[src*='recaptcha']"
+success_indicator = ".confirmation"

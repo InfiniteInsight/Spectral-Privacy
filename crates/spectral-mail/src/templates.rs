@@ -7,6 +7,7 @@ pub struct EmailTemplate {
 }
 
 /// Substitutes `{{field_name}}` placeholders in template with profile values.
+#[must_use]
 pub fn render_template(
     template: &str,
     email: &str,

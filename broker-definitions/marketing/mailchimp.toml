@@ -1,0 +1,110 @@
+# Mailchimp - Email Marketing Platform (Intuit)
+# Last verified: 2026-02-25
+
+[broker]
+id = "mailchimp"
+name = "Mailchimp (Intuit)"
+url = "https://mailchimp.com"
+domain = "mailchimp.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://mailchimp.com"
+instructions = "Mailchimp (owned by Intuit) is email marketing platform used by millions of companies. Tracks: email opens, clicks, website visits via connected pixels. Data controlled by companies using Mailchimp."
+
+[removal]
+method = "email"
+email = "privacy@mailchimp.com"
+subject = "CCPA/GDPR Data Deletion Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Deletion of all personal data held by Mailchimp
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+
+Please delete from:
+- Mailchimp platform databases
+- All customer company mailing lists tracking me
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Mailchimp privacy controls:
+
+1. HOW MAILCHIMP WORKS:
+   - Email marketing platform for businesses
+   - Tracks: email opens (via pixels), link clicks, bounces
+   - Website tracking via connected pixels
+   - Builds subscriber profiles with engagement history
+   - Data owned by companies using Mailchimp, not Mailchimp itself
+
+2. UNSUBSCRIBE FROM EMAILS:
+   - Every Mailchimp email has "Unsubscribe" link at bottom
+   - Removes you from that specific company's list
+   - Required by CAN-SPAM Act
+   - Doesn't delete existing data
+
+3. UPDATE YOUR PREFERENCES:
+   - Click "Update Preferences" in email footer
+   - Some companies let you choose email frequency/topics
+   - May allow opting out without full unsubscribe
+
+4. REQUEST FROM COMPANIES:
+   - Email the company's privacy/support contact
+   - Request deletion under GDPR (EU) or CCPA (California)
+   - Must comply within 30-45 days
+   - More effective than contacting Mailchimp
+
+5. MAILCHIMP DIRECT REQUEST:
+   - Email: privacy@mailchimp.com
+   - Visit: https://mailchimp.com/contact/privacy
+   - Mailchimp will facilitate deletion from customer lists
+   - May require company cooperation
+
+6. WEB TRACKING OPT-OUT:
+   - Mailchimp uses website tracking pixels (like Facebook Pixel)
+   - Look for: *.list-manage.com domains in website code
+   - Block via Privacy Badger or uBlock Origin
+   - Prevents behavioral tracking on Mailchimp-integrated sites
+
+7. COOKIE REMOVAL:
+   - Clear Mailchimp tracking cookies
+   - Cookie domains: .mailchimp.com, .list-manage.com
+   - Use Spectral cookie scanner
+
+REALITY:
+- Mailchimp is infrastructure used by millions of businesses
+- Your email may be in hundreds of Mailchimp-powered lists
+- Must unsubscribe from each company separately
+- Mailchimp cannot unsubscribe you from customer lists
+- Best approach: Unsubscribe aggressively + use email filters
+
+MANDRILL (TRANSACTIONAL EMAIL):
+- Mailchimp owns Mandrill (transactional email service)
+- Sends order confirmations, password resets, receipts
+- Cannot unsubscribe from transactional emails
+- Privacy requests cover both Mailchimp and Mandrill
+
+TECHNICAL DETAILS:
+- Email tracking pixel: 1x1 transparent image
+- Cookie: mc_tcoo (tracks consent status)
+- Website tracking: *.list-manage.com
+- Landing pages: *.mailchi.mp
+"""
+
+[removal.cookies]
+patterns = ["mc_tcoo", "_ga*", "_gcl*", "ak_bmsc"]
+domains = [".mailchimp.com", ".list-manage.com", ".mailchi.mp"]

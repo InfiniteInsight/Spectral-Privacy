@@ -11,6 +11,7 @@ pub struct FingerprintConfig {
 
 impl FingerprintConfig {
     /// Generate a randomized fingerprint configuration
+    #[must_use]
     pub fn randomized() -> Self {
         let mut rng = rand::thread_rng();
 

@@ -1,0 +1,73 @@
+# ChexSystems - Banking and Checking Account Reporting
+# Last verified: 2026-02-25
+
+[broker]
+id = "chexsystems"
+name = "ChexSystems"
+url = "https://www.chexsystems.com"
+domain = "chexsystems.com"
+category = "financial"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.chexsystems.com/web/chexsystems/consumerdebit/page/requestreports/consumerdisclosure"
+instructions = "ChexSystems tracks checking account history: closures, overdrafts, fraud, bounced checks. Banks check ChexSystems when you apply for new accounts. Bad ChexSystems report can block you from opening accounts."
+
+[removal]
+method = "mail"
+address = "Chex Systems, Inc., Attn: Consumer Relations, 7805 Hudson Road, Suite 100, Woodbury, MN 55125"
+notes = """
+ChexSystems consumer rights:
+
+1. REQUEST FREE REPORT:
+   - Online: https://www.chexsystems.com/web/chexsystems/consumerdebit/page/requestreports
+   - Phone: 1-800-428-9623
+   - Mail: Include name, address, SSN, DOB
+   - Free once per 12 months
+
+2. DISPUTE INACCURATE INFORMATION:
+   - Review report for errors
+   - Dispute online: https://www.chexsystems.com/web/chexsystems/consumerdebit/page/disputecenter
+   - Or mail: ChexSystems Consumer Relations, 7805 Hudson Road, Suite 100, Woodbury, MN 55125
+   - Include:
+     * Name, address, SSN, DOB
+     * Specific items being disputed
+     * Explanation of why information is wrong
+     * Supporting documentation
+   - Investigation required within 30 days (FCRA)
+
+3. SECURITY FREEZE:
+   - Prevents identity thieves from opening accounts in your name
+   - Online: https://www.chexsystems.com/security-freeze
+   - Phone: 1-800-887-7092
+   - Mail to address above
+   - FREE by federal law
+
+4. OPT-OUT OF MARKETING:
+   - Phone: 1-800-428-9623
+   - Stops ChexSystems from selling your name for marketing
+   - Or visit OptOutPrescreen.com (also opts out credit bureaus)
+
+5. WHAT STAYS ON REPORT:
+   - Negative items: 5 years from date reported
+   - Inquiries: 3 years
+   - Fraud alerts: 7 years
+   - Cannot remove accurate information before expiration
+
+6. SECOND CHANCE BANKING:
+   - If you're in ChexSystems and can't open regular account
+   - Look for "second chance" checking accounts
+   - Pay off debts to banks to clean record faster
+
+REALITY:
+- ChexSystems is like a credit bureau for bank accounts
+- Cannot remove accurate negative history
+- Focus on: disputing errors, security freeze, paying off debts
+- Negative items automatically removed after 5 years
+"""

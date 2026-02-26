@@ -38,13 +38,13 @@ fn get_vault_key(vault: &spectral_vault::Vault) -> Result<&[u8; 32], String> {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum ScanTier {
-    /// Top ~10 brokers (AutoScanTier1)
+    /// Top ~10 brokers (`AutoScanTier1`)
     Tier1,
-    /// Top ~30 brokers (AutoScanTier1 + AutoScanTier2)
+    /// Top ~30 brokers (`AutoScanTier1` + `AutoScanTier2`)
     Tier2,
-    /// All brokers except ManualOnly
+    /// All brokers except `ManualOnly`
     All,
-    /// Custom broker selection (use broker_ids parameter)
+    /// Custom broker selection (use `broker_ids` parameter)
     Custom,
 }
 
@@ -118,7 +118,7 @@ fn finding_to_response(finding: spectral_db::findings::Finding) -> FindingRespon
         .extracted_data
         .get("age")
         .and_then(|v| v.as_u64())
-        .map(|a| a as u32);
+        .and_then(|a| u32::try_from(a).ok());
 
     let addresses = finding
         .extracted_data
@@ -193,16 +193,15 @@ pub async fn start_scan(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the profile from the vault
-    let profile_id =
-        ProfileId::new(&profile_id).map_err(|e| format!("Invalid profile ID: {}", e))?;
+    let profile_id = ProfileId::new(&profile_id).map_err(|e| format!("Invalid profile ID: {e}"))?;
 
     let profile = vault
         .load_profile(&profile_id)
         .await
-        .map_err(|e| format!("Failed to load profile: {}", e))?;
+        .map_err(|e| format!("Failed to load profile: {e}"))?;
 
     // Get the vault's encryption key
     let vault_key = get_vault_key(&vault)?;
@@ -220,7 +219,7 @@ pub async fn start_scan(
     let browser_engine = Arc::new(
         BrowserEngine::new()
             .await
-            .map_err(|e| format!("Failed to create browser engine: {}", e))?,
+            .map_err(|e| format!("Failed to create browser engine: {e}"))?,
     );
 
     // Get the underlying Pool<Sqlite> which can be cloned
@@ -302,7 +301,24 @@ pub async fn start_scan(
     let job_id = orchestrator
         .start_scan(&profile, filter, vault_key)
         .await
-        .map_err(|e| format!("Failed to start scan: {}", e))?;
+        .map_err(|e| format!("Failed to start scan: {e}"))?;
+
+    // Log scan start to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "ScanStarted".to_string(),
+        format!(
+            "Started scan job {} for profile {} with {} brokers",
+            job_id,
+            profile_id,
+            selected_brokers.len()
+        ),
+        Some(vec!["name".to_string(), "address".to_string()]),
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
 
     // Log scan start to audit log
     let _ = spectral_db::audit_log::insert_audit_entry(
@@ -328,13 +344,13 @@ pub async fn start_scan(
     .bind(&job_id)
     .fetch_one(db.pool())
     .await
-    .map_err(|e| format!("Failed to get scan status: {}", e))?;
+    .map_err(|e| format!("Failed to get scan status: {e}"))?;
 
     Ok(ScanJobResponse {
         id: job.0,
         status: job.1,
-        completed_brokers: job.2 as u32,
-        total_brokers: job.3 as u32,
+        completed_brokers: job.2.clamp(0, i64::from(u32::MAX)) as u32,
+        total_brokers: job.3.clamp(0, i64::from(u32::MAX)) as u32,
         current_broker_name: job.4,
     })
 }
@@ -348,7 +364,7 @@ pub async fn get_scan_status(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = get_db(&vault)?;
@@ -360,13 +376,13 @@ pub async fn get_scan_status(
     .bind(scan_job_id)
     .fetch_one(db.pool())
     .await
-    .map_err(|e| format!("Failed to get scan status: {}", e))?;
+    .map_err(|e| format!("Failed to get scan status: {e}"))?;
 
     Ok(ScanJobResponse {
         id: job.0,
         status: job.1,
-        completed_brokers: job.2 as u32,
-        total_brokers: job.3 as u32,
+        completed_brokers: job.2.clamp(0, i64::from(u32::MAX)) as u32,
+        total_brokers: job.3.clamp(0, i64::from(u32::MAX)) as u32,
         current_broker_name: job.4,
     })
 }
@@ -382,7 +398,7 @@ pub async fn get_findings(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = get_db(&vault)?;
@@ -390,7 +406,7 @@ pub async fn get_findings(
     // Get all findings for this scan job
     let mut findings = spectral_db::findings::get_by_scan_job(db.pool(), &scan_job_id)
         .await
-        .map_err(|e| format!("Failed to get findings: {}", e))?;
+        .map_err(|e| format!("Failed to get findings: {e}"))?;
 
     // Filter by verification status if requested
     if let Some(filter_status) = filter {
@@ -414,7 +430,7 @@ pub async fn verify_finding(
     // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get the vault's database
     let db = get_db(&vault)?;
@@ -427,7 +443,79 @@ pub async fn verify_finding(
         true, // verified_by_user = true
     )
     .await
-    .map_err(|e| format!("Failed to verify finding: {}", e))?;
+    .map_err(|e| format!("Failed to verify finding: {e}"))?;
+
+    // If confirmed as a match, generate Google removal URL
+    if is_match {
+        // Get the finding to extract data
+        let finding = spectral_db::findings::get_by_id(db.pool(), &finding_id)
+            .await
+            .map_err(|e| format!("Failed to get finding: {e}"))?;
+
+        if let Some(finding) = finding {
+            // Extract name, address, and phone from finding
+            let name = finding
+                .extracted_data
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown");
+
+            let address = finding
+                .extracted_data
+                .get("addresses")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            let phone = finding
+                .extracted_data
+                .get("phone_numbers")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.as_str());
+
+            // Generate Google removal URL
+            let google_url =
+                spectral_db::google_removal::generate_removal_url(name, address, phone);
+
+            // Create Google removal request
+            let _ = spectral_db::google_removal::create_request(
+                db.pool(),
+                finding_id.clone(),
+                google_url,
+            )
+            .await
+            .map_err(|e| format!("Failed to create Google removal request: {e}"))?;
+
+            // Log to audit log
+            let _ = spectral_db::audit_log::insert_audit_entry(
+                db.pool(),
+                vault_id.clone(),
+                "GoogleRemovalURLGenerated".to_string(),
+                format!("Generated Google removal URL for finding {finding_id}"),
+                None,
+                "LocalOnly".to_string(),
+                "Allowed".to_string(),
+            )
+            .await;
+        }
+    }
+
+    // Log finding verification to audit log
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "FindingVerified".to_string(),
+        format!(
+            "User {} finding {}",
+            if is_match { "confirmed" } else { "rejected" },
+            finding_id
+        ),
+        None,
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
 
     // If confirmed as a match, generate Google removal URL
     if is_match {
@@ -549,8 +637,8 @@ pub async fn submit_removals_for_confirmed(
 
 /// Process a batch of removal attempts with parallel workers.
 ///
-/// Spawns async worker tasks for each removal_attempt_id (max 3 concurrent).
-/// Returns immediately with a job_id. Real-time events are emitted as tasks complete.
+/// Spawns async worker tasks for each `removal_attempt_id` (max 3 concurrent).
+/// Returns immediately with a `job_id`. Real-time events are emitted as tasks complete.
 ///
 /// # Events
 /// - `removal:started`: When task begins processing
@@ -698,7 +786,7 @@ pub async fn get_captcha_queue(
     // Get unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get database
     let db = get_db(&vault)?;
@@ -706,7 +794,7 @@ pub async fn get_captcha_queue(
     // Get CAPTCHA queue
     spectral_db::removal_attempts::get_captcha_queue(db.pool())
         .await
-        .map_err(|e| format!("Failed to get CAPTCHA queue: {}", e))
+        .map_err(|e| format!("Failed to get CAPTCHA queue: {e}"))
 }
 
 /// Get all removal attempts in the failed queue.
@@ -720,7 +808,7 @@ pub async fn get_failed_queue(
     // Get unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get database
     let db = get_db(&vault)?;
@@ -728,7 +816,7 @@ pub async fn get_failed_queue(
     // Get failed queue
     spectral_db::removal_attempts::get_failed_queue(db.pool())
         .await
-        .map_err(|e| format!("Failed to get failed queue: {}", e))
+        .map_err(|e| format!("Failed to get failed queue: {e}"))
 }
 
 /// Get all removal attempts for a scan job.
@@ -746,11 +834,11 @@ pub async fn get_removal_attempts_by_scan_job(
 
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to access database: {}", e))?;
+        .map_err(|e| format!("Failed to access database: {e}"))?;
 
     spectral_db::removal_attempts::get_by_scan_job_id(db.pool(), &scan_job_id)
         .await
-        .map_err(|e| format!("Failed to query removal attempts: {}", e))
+        .map_err(|e| format!("Failed to query removal attempts: {e}"))
 }
 
 /// Get job history: removal attempts grouped by scan job, newest first.
@@ -764,7 +852,7 @@ pub async fn get_removal_job_history(
     // Get unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get database
     let db = get_db(&vault)?;
@@ -772,7 +860,7 @@ pub async fn get_removal_job_history(
     // Get job history
     spectral_db::removal_attempts::get_job_history(db.pool())
         .await
-        .map_err(|e| format!("Failed to get job history: {}", e))
+        .map_err(|e| format!("Failed to get job history: {e}"))
 }
 
 /// Retry a failed removal attempt.
@@ -795,7 +883,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
     // Get unlocked vault
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
     // Get database
     let db = get_db(&vault)?;
@@ -810,7 +898,7 @@ pub async fn retry_removal<R: tauri::Runtime>(
         None, // Clear error_message
     )
     .await
-    .map_err(|e| format!("Failed to reset removal attempt: {}", e))?;
+    .map_err(|e| format!("Failed to reset removal attempt: {e}"))?;
 
     // Get the underlying Pool<Sqlite> which can be cloned
     let pool = db.pool().clone();
@@ -937,7 +1025,7 @@ pub struct DashboardSummary {
 /// - Removal attempt counts by status
 /// - Up to 10 recent activity events (last 5 scans + last 5 removals)
 ///
-/// All queries are pool-scoped; no vault_id WHERE clause is needed.
+/// All queries are pool-scoped; no `vault_id` WHERE clause is needed.
 #[tauri::command]
 pub async fn get_dashboard_summary(
     state: State<'_, AppState>,
@@ -946,7 +1034,7 @@ pub async fn get_dashboard_summary(
     info!("get_dashboard_summary: vault_id={}", vault_id);
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
     let db = get_db(&vault)?;
     let pool = db.pool();
 
@@ -954,45 +1042,45 @@ pub async fn get_dashboard_summary(
     let brokers_scanned: i64 = sqlx::query_scalar("SELECT COUNT(DISTINCT broker_id) FROM findings")
         .fetch_one(pool)
         .await
-        .map_err(|e| format!("Failed to count brokers scanned: {}", e))?;
+        .map_err(|e| format!("Failed to count brokers scanned: {e}"))?;
 
     // Timestamp of the most recently started scan job.
     let last_scan_at: Option<String> = sqlx::query_scalar("SELECT MAX(started_at) FROM scan_jobs")
         .fetch_one(pool)
         .await
-        .map_err(|e| format!("Failed to get last scan timestamp: {}", e))?;
+        .map_err(|e| format!("Failed to get last scan timestamp: {e}"))?;
 
     // Removal counts by status.
     let submitted: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+            .map_err(|e| format!("Failed to count submitted removals: {e}"))?;
 
     let pending: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Pending'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count pending removals: {}", e))?;
+            .map_err(|e| format!("Failed to count pending removals: {e}"))?;
 
     let failed: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+            .map_err(|e| format!("Failed to count failed removals: {e}"))?;
 
     // Unresolved = confirmed findings with no removal yet.
     let unresolved: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count confirmed findings: {}", e))?;
+            .map_err(|e| format!("Failed to count confirmed findings: {e}"))?;
 
     // Always calculate privacy score for consistency with score page
     let privacy_score = Some(calculate_privacy_score(
-        unresolved as u32,
-        submitted as u32,
-        failed as u32,
+        unresolved.clamp(0, i64::from(u32::MAX)) as u32,
+        submitted.clamp(0, i64::from(u32::MAX)) as u32,
+        failed.clamp(0, i64::from(u32::MAX)) as u32,
         0,
     ));
 
@@ -1002,7 +1090,7 @@ pub async fn get_dashboard_summary(
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("Failed to fetch recent scan jobs: {}", e))?;
+    .map_err(|e| format!("Failed to fetch recent scan jobs: {e}"))?;
 
     let mut events: Vec<ActivityEvent> = scan_rows
         .into_iter()
@@ -1020,7 +1108,7 @@ pub async fn get_dashboard_summary(
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| format!("Failed to fetch recent removal attempts: {}", e))?;
+    .map_err(|e| format!("Failed to fetch recent removal attempts: {e}"))?;
 
     for (id, broker_id, created_at, status) in removal_rows {
         events.push(ActivityEvent {
@@ -1100,7 +1188,7 @@ pub struct PrivacyScoreResult {
 /// Return the current privacy score for the given vault.
 ///
 /// The score is derived from:
-/// - Unresolved findings (verification_status = 'Confirmed' but not yet removed)
+/// - Unresolved findings (`verification_status` = 'Confirmed' but not yet removed)
 /// - Submitted removal attempts (status = 'Submitted')
 /// - Failed removal attempts (status = 'Failed')
 ///
@@ -1115,7 +1203,7 @@ pub async fn get_privacy_score(
     info!("get_privacy_score: vault_id={}", vault_id);
     let vault = state
         .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{}' is not unlocked", vault_id))?;
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
     let db = get_db(&vault)?;
     let pool = db.pool();
 
@@ -1126,26 +1214,26 @@ pub async fn get_privacy_score(
         sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE verification_status = 'Confirmed'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count unresolved findings: {}", e))?;
+            .map_err(|e| format!("Failed to count unresolved findings: {e}"))?;
 
     // Count submitted removal attempts via JOIN (removal_attempts has no vault_id).
     let confirmed: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Submitted'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count submitted removals: {}", e))?;
+            .map_err(|e| format!("Failed to count submitted removals: {e}"))?;
 
     // Count failed removal attempts.
     let failed: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM removal_attempts WHERE status = 'Failed'")
             .fetch_one(pool)
             .await
-            .map_err(|e| format!("Failed to count failed removals: {}", e))?;
+            .map_err(|e| format!("Failed to count failed removals: {e}"))?;
 
     let score = calculate_privacy_score(
-        unresolved as u32,
-        confirmed as u32,
-        failed as u32,
+        unresolved.clamp(0, i64::from(u32::MAX)) as u32,
+        confirmed.clamp(0, i64::from(u32::MAX)) as u32,
+        failed.clamp(0, i64::from(u32::MAX)) as u32,
         0, // reappeared — tracked in Phase 6 Task 19
     );
 
@@ -1201,7 +1289,7 @@ pub async fn get_removal_evidence(
     }))
 }
 
-/// Decrypt all profile fields into a HashMap for template rendering.
+/// Decrypt all profile fields into a `HashMap` for template rendering.
 fn decrypt_profile_fields(
     profile: &spectral_vault::UserProfile,
     vault_key: &[u8; 32],
@@ -1303,7 +1391,7 @@ async fn load_removal_context(
     let profile = vault
         .load_profile(&profile_id)
         .await
-        .map_err(|e| format!("Failed to load profile: {}", e))?;
+        .map_err(|e| format!("Failed to load profile: {e}"))?;
 
     Ok(RemovalEmailContext {
         email_address,
@@ -1358,7 +1446,7 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     #[allow(deprecated)]
     _app.shell()
         .open(&mailto_url, None)
-        .map_err(|e| format!("Failed to open email client: {}", e))?;
+        .map_err(|e| format!("Failed to open email client: {e}"))?;
 
     info!(
         "Opened mailto: for attempt {} to {}",
@@ -1564,10 +1652,7 @@ pub async fn mark_google_removal_submitted(
         db.pool(),
         vault_id,
         "GoogleRemovalSubmitted".to_string(),
-        format!(
-            "User marked Google removal request {} as submitted",
-            request_id
-        ),
+        format!("User marked Google removal request {request_id} as submitted"),
         None,
         "ExternalSite:google.com".to_string(),
         "Allowed".to_string(),

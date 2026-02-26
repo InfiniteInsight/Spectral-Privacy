@@ -12,7 +12,7 @@ use tauri::{Manager, State};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-/// Helper to create test app with AppState and temporary directory.
+/// Helper to create test app with `AppState` and temporary directory.
 fn create_test_app() -> (tauri::App<tauri::test::MockRuntime>, TempDir) {
     let temp_dir = TempDir::new().expect("create temp dir");
     let vaults_dir = temp_dir.path().join("vaults");
@@ -383,7 +383,7 @@ async fn test_full_findings_workflow() {
     println!("✅ Full findings workflow test completed successfully!");
 }
 
-/// Test get_findings command with invalid vault.
+/// Test `get_findings` command with invalid vault.
 #[tokio::test]
 async fn test_get_findings_invalid_vault() {
     let (app, _temp_dir) = create_test_app();
@@ -400,7 +400,7 @@ async fn test_get_findings_invalid_vault() {
     assert!(result.is_err());
 }
 
-/// Test verify_finding command with invalid vault.
+/// Test `verify_finding` command with invalid vault.
 #[tokio::test]
 async fn test_verify_finding_invalid_vault() {
     let (app, _temp_dir) = create_test_app();
@@ -417,7 +417,7 @@ async fn test_verify_finding_invalid_vault() {
     assert!(result.is_err());
 }
 
-/// Test that get_findings works correctly with no findings.
+/// Test that `get_findings` works correctly with no findings.
 #[tokio::test]
 async fn test_get_findings_empty() {
     let (app, _temp_dir) = create_test_app();
@@ -498,7 +498,7 @@ async fn test_findings_status_filtering() {
             broker_scan_id.to_string(),
             "test-broker".to_string(),
             profile_id.to_string(),
-            format!("https://broker.example.com/person/{}", i),
+            format!("https://broker.example.com/person/{i}"),
             serde_json::json!({"name": format!("Person {}", i)}),
         )
         .await

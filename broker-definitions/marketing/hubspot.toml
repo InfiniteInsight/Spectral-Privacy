@@ -1,0 +1,92 @@
+# HubSpot - Marketing Automation and CRM
+# Last verified: 2026-02-25
+
+[broker]
+id = "hubspot"
+name = "HubSpot"
+url = "https://www.hubspot.com"
+domain = "hubspot.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.hubspot.com"
+instructions = "HubSpot is marketing/sales platform used by companies to track prospects and customers. Tracks: website visits, form submissions, email engagement, chat conversations, downloads. Data held by companies using HubSpot."
+
+[removal]
+method = "email"
+email = "privacy@hubspot.com"
+subject = "GDPR/CCPA Data Subject Request - Deletion"
+body = """
+I am exercising my data subject rights under GDPR/CCPA.
+
+Request Type: Deletion of all personal data
+
+Information to delete:
+- Email: {user_email}
+- Name: {full_name}
+- Any associated website tracking data
+
+Please delete from:
+- HubSpot's own databases
+- All customer instances where I am tracked
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+HubSpot privacy controls:
+
+1. HOW HUBSPOT WORKS:
+   - Used by companies for marketing automation
+   - Tracks website visitors, form fills, email clicks
+   - Builds profiles of prospects and customers
+   - You're tracked on company websites using HubSpot
+
+2. IDENTIFY HUBSPOT TRACKING:
+   - Look for HubSpot tracking code on websites
+   - Check URLs: *.hs-analytics.net, *.hubspot.com
+   - Form submissions often go through HubSpot
+   - Live chat widgets powered by HubSpot
+
+3. REQUEST FROM COMPANIES:
+   - Email the company's privacy/support contact
+   - Request deletion under GDPR (EU) or CCPA (California)
+   - Companies must comply within 30-45 days
+   - More effective than contacting HubSpot directly
+
+4. HUBSPOT DIRECT REQUEST:
+   - Email: privacy@hubspot.com
+   - HubSpot will attempt to delete from customer databases
+   - May require cooperation from customer companies
+   - GDPR/CCPA rights still apply
+
+5. COOKIE OPT-OUT:
+   - Visit https://www.hubspot.com/privacy-policy#track
+   - Enable "Do Not Track" in your browser
+   - HubSpot honors DNT signals (rare among companies)
+
+6. COOKIE REMOVAL:
+   - Clear HubSpot tracking cookies
+   - Cookie names: hubspotutk, __hstc, __hssc, __hssrc
+   - Use Spectral cookie scanner
+
+7. BROWSER-LEVEL BLOCKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block domains: *.hs-analytics.net, *.hubspot.com
+   - Prevents tracking across all HubSpot-powered sites
+
+NOTE: HubSpot is widely used by B2B companies. If you fill out forms on company websites, you're likely in HubSpot databases.
+"""
+
+[removal.cookies]
+patterns = ["hubspotutk", "__hstc", "__hssc", "__hssrc", "messagesUtk", "hs-*"]
+domains = [".hubspot.com", ".hs-analytics.net", ".hs-banner.com", ".hs-scripts.com"]

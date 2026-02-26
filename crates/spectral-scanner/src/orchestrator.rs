@@ -212,6 +212,41 @@ impl ScanOrchestrator {
         Ok(())
     }
 
+    /// Helper to handle scan result and update progress.
+    async fn process_scan_result(
+        &self,
+        scan_job_id: &str,
+        result: Result<BrokerScanResult>,
+        results: &mut Vec<BrokerScanResult>,
+    ) {
+        match result {
+            Ok(broker_result) => {
+                // Get broker display name
+                let broker_name = self
+                    .broker_registry
+                    .get(&broker_result.broker_id)
+                    .ok()
+                    .map_or("Unknown".to_string(), |b| b.broker.name.clone());
+
+                results.push(broker_result);
+                // Increment progress counter
+                if let Err(e) = self
+                    .increment_scan_progress(scan_job_id, &broker_name)
+                    .await
+                {
+                    tracing::warn!("Failed to increment scan progress: {}", e);
+                }
+            }
+            Err(e) => {
+                tracing::error!("Scan failed: {}", e);
+                // Increment even on error (failure counts as completion)
+                if let Err(e) = self.increment_scan_progress(scan_job_id, "Unknown").await {
+                    tracing::warn!("Failed to increment scan progress: {}", e);
+                }
+            }
+        }
+    }
+
     /// Execute a scan job across multiple brokers.
     ///
     /// This scans all specified brokers concurrently (up to `max_concurrent_scans`)
@@ -251,68 +286,16 @@ impl ScanOrchestrator {
             // Respect concurrency limit
             while futures.len() >= self.max_concurrent_scans {
                 if let Some(result) = futures.next().await {
-                    match result {
-                        Ok(broker_result) => {
-                            // Get broker display name
-                            let broker_name = self
-                                .broker_registry
-                                .get(&broker_result.broker_id)
-                                .ok()
-                                .map_or("Unknown".to_string(), |b| b.broker.name.clone());
-
-                            results.push(broker_result);
-                            // Increment progress counter
-                            if let Err(e) = self
-                                .increment_scan_progress(&scan_job_id, &broker_name)
-                                .await
-                            {
-                                tracing::warn!("Failed to increment scan progress: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!("Scan failed: {}", e);
-                            // Increment even on error (failure counts as completion)
-                            // Use "Unknown" since we don't have broker info from error
-                            if let Err(e) =
-                                self.increment_scan_progress(&scan_job_id, "Unknown").await
-                            {
-                                tracing::warn!("Failed to increment scan progress: {}", e);
-                            }
-                        }
-                    }
+                    self.process_scan_result(&scan_job_id, result, &mut results)
+                        .await;
                 }
             }
         }
 
         // Collect remaining results
         while let Some(result) = futures.next().await {
-            match result {
-                Ok(broker_result) => {
-                    // Get broker display name
-                    let broker_name = self
-                        .broker_registry
-                        .get(&broker_result.broker_id)
-                        .ok()
-                        .map_or("Unknown".to_string(), |b| b.broker.name.clone());
-
-                    results.push(broker_result);
-                    // Increment progress counter
-                    if let Err(e) = self
-                        .increment_scan_progress(&scan_job_id, &broker_name)
-                        .await
-                    {
-                        tracing::warn!("Failed to increment scan progress: {}", e);
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Scan failed: {}", e);
-                    // Increment even on error (failure counts as completion)
-                    // Use "Unknown" since we don't have broker info from error
-                    if let Err(e) = self.increment_scan_progress(&scan_job_id, "Unknown").await {
-                        tracing::warn!("Failed to increment scan progress: {}", e);
-                    }
-                }
-            }
+            self.process_scan_result(&scan_job_id, result, &mut results)
+                .await;
         }
 
         Ok(results)

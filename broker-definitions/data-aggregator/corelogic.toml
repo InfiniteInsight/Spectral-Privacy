@@ -1,0 +1,52 @@
+# CoreLogic - Property and Tenant Screening Data
+# Last verified: 2026-02-25
+
+[broker]
+id = "corelogic"
+name = "CoreLogic"
+url = "https://www.corelogic.com"
+domain = "corelogic.com"
+category = "data-aggregator"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US"]
+
+[search]
+method = "manual"
+url = "https://www.corelogic.com"
+instructions = "CoreLogic provides property data, tenant screening, and risk assessment to real estate and financial institutions. Databases are not publicly searchable. Data includes property ownership, mortgage history, rental payment history, and tenant screening reports."
+
+[removal]
+method = "phone"
+phone = "1-877-333-2267"
+notes = """
+CoreLogic data management process:
+
+1. CONSUMER DISCLOSURE REQUEST:
+   - CoreLogic SafeRent (tenant screening): https://www.corelogic.com/saferent
+   - Call 1-877-333-2267 to request disclosure
+   - Or mail: CoreLogic Credco, LLC, P.O. Box 509124, San Diego, CA 92150
+   - Include: Full name, current address, previous addresses (7 years), DOB, SSN
+
+2. DISPUTE INACCURATE RENTAL HISTORY:
+   - If tenant screening report contains errors, file dispute
+   - Call 1-877-333-2267
+   - Or online: https://www.corelogic.com/saferent-dispute
+   - Must be investigated within 30 days
+
+3. OPT-OUT OF MARKETING:
+   - Mail request to: CoreLogic Privacy Office, P.O. Box 509000, San Diego, CA 92150
+   - Include: Name, address, signature
+   - Or email: privacy@corelogic.com
+   - Subject: "Marketing Opt-Out Request"
+
+4. CALIFORNIA RESIDENTS (CCPA):
+   - Submit CCPA request: https://www.corelogic.com/ccpa
+   - Right to know, delete, and opt-out of data sales
+   - Verify identity with government ID
+
+Note: Property records are public data and cannot be completely removed. Focus on accuracy corrections and marketing opt-outs.
+"""

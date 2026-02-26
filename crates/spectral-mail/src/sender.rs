@@ -9,6 +9,7 @@ pub struct SmtpConfig {
 }
 
 /// Returns a `mailto:` URL for the given email.
+#[must_use]
 pub fn to_mailto_url(email: &EmailTemplate) -> String {
     let subject = urlencoding::encode(&email.subject);
     let body = urlencoding::encode(&email.body);
@@ -48,6 +49,7 @@ pub async fn send_smtp(
 }
 
 /// Returns SHA-256 hex of email body (for logging — never store the body itself).
+#[must_use]
 pub fn body_hash(body: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(body.as_bytes());

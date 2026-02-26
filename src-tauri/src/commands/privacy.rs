@@ -68,17 +68,11 @@ pub async fn get_privacy_settings(
 
     // Get settings
     let privacy_level = engine.get_privacy_level().await.map_err(|e| {
-        CommandError::new(
-            "PRIVACY_ERROR",
-            format!("Failed to get privacy level: {}", e),
-        )
+        CommandError::new("PRIVACY_ERROR", format!("Failed to get privacy level: {e}"))
     })?;
 
     let feature_flags = engine.get_feature_flags().await.map_err(|e| {
-        CommandError::new(
-            "PRIVACY_ERROR",
-            format!("Failed to get feature flags: {}", e),
-        )
+        CommandError::new("PRIVACY_ERROR", format!("Failed to get feature flags: {e}"))
     })?;
 
     Ok(PrivacySettings {
@@ -106,20 +100,14 @@ pub async fn set_privacy_level(
 
     // Set privacy level
     engine.set_privacy_level(level).await.map_err(|e| {
-        CommandError::new(
-            "PRIVACY_ERROR",
-            format!("Failed to set privacy level: {}", e),
-        )
+        CommandError::new("PRIVACY_ERROR", format!("Failed to set privacy level: {e}"))
     })?;
 
     // If not Custom, also set the feature flags to match the level
     if level != PrivacyLevel::Custom {
         let flags = level.to_feature_flags();
         engine.set_feature_flags(flags).await.map_err(|e| {
-            CommandError::new(
-                "PRIVACY_ERROR",
-                format!("Failed to set feature flags: {}", e),
-            )
+            CommandError::new("PRIVACY_ERROR", format!("Failed to set feature flags: {e}"))
         })?;
     }
 
@@ -142,10 +130,7 @@ pub async fn set_custom_feature_flags(
 
     // Set feature flags
     engine.set_feature_flags(flags).await.map_err(|e| {
-        CommandError::new(
-            "PRIVACY_ERROR",
-            format!("Failed to set feature flags: {}", e),
-        )
+        CommandError::new("PRIVACY_ERROR", format!("Failed to set feature flags: {e}"))
     })?;
 
     Ok(())
@@ -169,7 +154,7 @@ pub async fn get_llm_provider_settings(
         .map_err(|e| {
             CommandError::new(
                 "PRIVACY_ERROR",
-                format!("Failed to get primary provider: {}", e),
+                format!("Failed to get primary provider: {e}"),
             )
         })?;
 
@@ -180,7 +165,7 @@ pub async fn get_llm_provider_settings(
             .map_err(|e| {
                 CommandError::new(
                     "PRIVACY_ERROR",
-                    format!("Failed to get email draft provider: {}", e),
+                    format!("Failed to get email draft provider: {e}"),
                 )
             })?;
 
@@ -189,7 +174,7 @@ pub async fn get_llm_provider_settings(
         .map_err(|e| {
             CommandError::new(
                 "PRIVACY_ERROR",
-                format!("Failed to get form fill provider: {}", e),
+                format!("Failed to get form fill provider: {e}"),
             )
         })?;
 
@@ -197,30 +182,21 @@ pub async fn get_llm_provider_settings(
     let has_openai_key = spectral_privacy::get_api_key(&pool, LlmProvider::OpenAi)
         .await
         .map_err(|e| {
-            CommandError::new(
-                "PRIVACY_ERROR",
-                format!("Failed to check OpenAI key: {}", e),
-            )
+            CommandError::new("PRIVACY_ERROR", format!("Failed to check OpenAI key: {e}"))
         })?
         .is_some();
 
     let has_gemini_key = spectral_privacy::get_api_key(&pool, LlmProvider::Gemini)
         .await
         .map_err(|e| {
-            CommandError::new(
-                "PRIVACY_ERROR",
-                format!("Failed to check Gemini key: {}", e),
-            )
+            CommandError::new("PRIVACY_ERROR", format!("Failed to check Gemini key: {e}"))
         })?
         .is_some();
 
     let has_claude_key = spectral_privacy::get_api_key(&pool, LlmProvider::Claude)
         .await
         .map_err(|e| {
-            CommandError::new(
-                "PRIVACY_ERROR",
-                format!("Failed to check Claude key: {}", e),
-            )
+            CommandError::new("PRIVACY_ERROR", format!("Failed to check Claude key: {e}"))
         })?
         .is_some();
 
@@ -256,7 +232,7 @@ pub async fn set_llm_primary_provider(
         .map_err(|e| {
             CommandError::new(
                 "PRIVACY_ERROR",
-                format!("Failed to set primary provider: {}", e),
+                format!("Failed to set primary provider: {e}"),
             )
         })?;
 
@@ -284,10 +260,7 @@ pub async fn set_llm_task_provider(
     spectral_privacy::set_provider_preference(&pool, task_type, provider)
         .await
         .map_err(|e| {
-            CommandError::new(
-                "PRIVACY_ERROR",
-                format!("Failed to set task provider: {}", e),
-            )
+            CommandError::new("PRIVACY_ERROR", format!("Failed to set task provider: {e}"))
         })?;
 
     Ok(())
@@ -313,7 +286,7 @@ pub async fn set_llm_api_key(
     // Set API key
     spectral_privacy::set_api_key(&pool, provider, &api_key)
         .await
-        .map_err(|e| CommandError::new("PRIVACY_ERROR", format!("Failed to set API key: {}", e)))?;
+        .map_err(|e| CommandError::new("PRIVACY_ERROR", format!("Failed to set API key: {e}")))?;
 
     Ok(())
 }
@@ -345,7 +318,7 @@ pub async fn test_llm_provider(
             let ollama = OllamaProvider::new().map_err(|e| {
                 CommandError::new(
                     "PROVIDER_ERROR",
-                    format!("Failed to create Ollama provider: {}", e),
+                    format!("Failed to create Ollama provider: {e}"),
                 )
             })?;
 
@@ -355,7 +328,7 @@ pub async fn test_llm_provider(
                 .map_err(|e| {
                     CommandError::new(
                         "CONNECTION_ERROR",
-                        format!("Ollama connection test failed: {}", e),
+                        format!("Ollama connection test failed: {e}"),
                     )
                 })?;
 
@@ -366,7 +339,7 @@ pub async fn test_llm_provider(
             let lm_studio = LmStudioProvider::new().map_err(|e| {
                 CommandError::new(
                     "PROVIDER_ERROR",
-                    format!("Failed to create LM Studio provider: {}", e),
+                    format!("Failed to create LM Studio provider: {e}"),
                 )
             })?;
 
@@ -376,7 +349,7 @@ pub async fn test_llm_provider(
                 .map_err(|e| {
                     CommandError::new(
                         "CONNECTION_ERROR",
-                        format!("LM Studio connection test failed: {}", e),
+                        format!("LM Studio connection test failed: {e}"),
                     )
                 })?;
 
@@ -387,7 +360,7 @@ pub async fn test_llm_provider(
             let api_key = spectral_privacy::get_api_key(&pool, provider)
                 .await
                 .map_err(|e| {
-                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {e}"))
                 })?
                 .ok_or_else(|| {
                     CommandError::new(
@@ -400,7 +373,7 @@ pub async fn test_llm_provider(
             let openai = OpenAiProvider::new(api_key).map_err(|e| {
                 CommandError::new(
                     "PROVIDER_ERROR",
-                    format!("Failed to create OpenAI provider: {}", e),
+                    format!("Failed to create OpenAI provider: {e}"),
                 )
             })?;
 
@@ -410,7 +383,7 @@ pub async fn test_llm_provider(
                 .map_err(|e| {
                     CommandError::new(
                         "CONNECTION_ERROR",
-                        format!("OpenAI connection test failed: {}", e),
+                        format!("OpenAI connection test failed: {e}"),
                     )
                 })?;
 
@@ -421,7 +394,7 @@ pub async fn test_llm_provider(
             let api_key = spectral_privacy::get_api_key(&pool, provider)
                 .await
                 .map_err(|e| {
-                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {e}"))
                 })?
                 .ok_or_else(|| {
                     CommandError::new(
@@ -434,7 +407,7 @@ pub async fn test_llm_provider(
             let gemini = GeminiProvider::new(api_key).map_err(|e| {
                 CommandError::new(
                     "PROVIDER_ERROR",
-                    format!("Failed to create Gemini provider: {}", e),
+                    format!("Failed to create Gemini provider: {e}"),
                 )
             })?;
 
@@ -444,7 +417,7 @@ pub async fn test_llm_provider(
                 .map_err(|e| {
                     CommandError::new(
                         "CONNECTION_ERROR",
-                        format!("Gemini connection test failed: {}", e),
+                        format!("Gemini connection test failed: {e}"),
                     )
                 })?;
 
@@ -455,7 +428,7 @@ pub async fn test_llm_provider(
             let api_key = spectral_privacy::get_api_key(&pool, provider)
                 .await
                 .map_err(|e| {
-                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {}", e))
+                    CommandError::new("PRIVACY_ERROR", format!("Failed to get API key: {e}"))
                 })?
                 .ok_or_else(|| {
                     CommandError::new(
@@ -468,7 +441,7 @@ pub async fn test_llm_provider(
             let claude = AnthropicProvider::new(api_key).map_err(|e| {
                 CommandError::new(
                     "PROVIDER_ERROR",
-                    format!("Failed to create Claude provider: {}", e),
+                    format!("Failed to create Claude provider: {e}"),
                 )
             })?;
 
@@ -478,7 +451,7 @@ pub async fn test_llm_provider(
                 .map_err(|e| {
                     CommandError::new(
                         "CONNECTION_ERROR",
-                        format!("Claude connection test failed: {}", e),
+                        format!("Claude connection test failed: {e}"),
                     )
                 })?;
 

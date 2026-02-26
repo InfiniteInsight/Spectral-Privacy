@@ -44,7 +44,7 @@ pub fn map_fields_for_submission(
         .as_ref()
         .ok_or("Missing required field: email")?
         .decrypt(key)
-        .map_err(|e| format!("Failed to decrypt email: {}", e))?;
+        .map_err(|e| format!("Failed to decrypt email: {e}"))?;
     fields.insert("email".to_string(), email);
 
     // First name (required)
@@ -53,7 +53,7 @@ pub fn map_fields_for_submission(
         .as_ref()
         .ok_or("Missing required field: first_name")?
         .decrypt(key)
-        .map_err(|e| format!("Failed to decrypt first_name: {}", e))?;
+        .map_err(|e| format!("Failed to decrypt first_name: {e}"))?;
     fields.insert("first_name".to_string(), first_name);
 
     // Last name (required)
@@ -62,7 +62,7 @@ pub fn map_fields_for_submission(
         .as_ref()
         .ok_or("Missing required field: last_name")?
         .decrypt(key)
-        .map_err(|e| format!("Failed to decrypt last_name: {}", e))?;
+        .map_err(|e| format!("Failed to decrypt last_name: {e}"))?;
     fields.insert("last_name".to_string(), last_name);
 
     Ok(fields)
@@ -123,11 +123,11 @@ where
 /// Submit a removal using browser automation for JS-heavy opt-out flows.
 ///
 /// Initializes the browser engine on first call, navigates to the form URL,
-/// fills fields based on the BrowserForm configuration, clicks submit, and
+/// fills fields based on the `BrowserForm` configuration, clicks submit, and
 /// captures a screenshot as evidence stored in the database.
 ///
 /// # Arguments
-/// * `broker_def` - Broker definition with BrowserForm removal config
+/// * `broker_def` - Broker definition with `BrowserForm` removal config
 /// * `attempt_id` - ID of the removal attempt (for evidence FK)
 /// * `field_values` - Decrypted field values mapped from the user profile
 /// * `browser_engine_mutex` - Shared lazy-initialized browser engine
@@ -155,7 +155,7 @@ pub async fn submit_via_browser(
         let engine = Arc::new(
             BrowserEngine::new()
                 .await
-                .map_err(|e| format!("Failed to initialize browser engine: {}", e))?,
+                .map_err(|e| format!("Failed to initialize browser engine: {e}"))?,
         );
         *engine_guard = Some(engine);
     }
@@ -173,7 +173,7 @@ pub async fn submit_via_browser(
     engine
         .navigate(url)
         .await
-        .map_err(|e| format!("Navigation failed: {}", e))?;
+        .map_err(|e| format!("Navigation failed: {e}"))?;
 
     // Fill listing URL field if selector and value present
     if let (Some(selector), Some(value)) = (
@@ -183,7 +183,7 @@ pub async fn submit_via_browser(
         engine
             .fill_field(selector, value)
             .await
-            .map_err(|e| format!("Failed to fill listing_url field: {}", e))?;
+            .map_err(|e| format!("Failed to fill listing_url field: {e}"))?;
     }
 
     // Fill email field
@@ -192,7 +192,7 @@ pub async fn submit_via_browser(
         engine
             .fill_field(selector, value)
             .await
-            .map_err(|e| format!("Failed to fill email field: {}", e))?;
+            .map_err(|e| format!("Failed to fill email field: {e}"))?;
     }
 
     // Fill first name field
@@ -203,7 +203,7 @@ pub async fn submit_via_browser(
         engine
             .fill_field(selector, value)
             .await
-            .map_err(|e| format!("Failed to fill first_name field: {}", e))?;
+            .map_err(|e| format!("Failed to fill first_name field: {e}"))?;
     }
 
     // Fill last name field
@@ -214,7 +214,7 @@ pub async fn submit_via_browser(
         engine
             .fill_field(selector, value)
             .await
-            .map_err(|e| format!("Failed to fill last_name field: {}", e))?;
+            .map_err(|e| format!("Failed to fill last_name field: {e}"))?;
     }
 
     // Fill full name field (if separate from first/last)
@@ -223,11 +223,11 @@ pub async fn submit_via_browser(
         field_values.get("first_name"),
         field_values.get("last_name"),
     ) {
-        let full_name = format!("{} {}", first, last);
+        let full_name = format!("{first} {last}");
         engine
             .fill_field(selector, &full_name)
             .await
-            .map_err(|e| format!("Failed to fill full_name field: {}", e))?;
+            .map_err(|e| format!("Failed to fill full_name field: {e}"))?;
     }
 
     // Check for CAPTCHA before submitting
@@ -261,7 +261,7 @@ pub async fn submit_via_browser(
         engine
             .click(&form_selectors.submit_button)
             .await
-            .map_err(|e| format!("Failed to click submit button: {}", e))?;
+            .map_err(|e| format!("Failed to click submit button: {e}"))?;
     }
 
     // Wait briefly for page response and check for success/error indicators
@@ -283,7 +283,7 @@ pub async fn submit_via_browser(
             });
             store_screenshot_evidence(db, attempt_id, screenshot).await?;
             return Ok(RemovalOutcome::Failed {
-                reason: format!("Form error: {}", error_text),
+                reason: format!("Form error: {error_text}"),
                 error_details: None,
             });
         }
@@ -325,7 +325,7 @@ async fn store_screenshot_evidence(
     .bind(&captured_at)
     .execute(db.pool())
     .await
-    .map_err(|e| format!("Failed to store screenshot evidence: {}", e))?;
+    .map_err(|e| format!("Failed to store screenshot evidence: {e}"))?;
 
     info!(
         "Stored screenshot evidence {} for attempt {}",
@@ -339,7 +339,7 @@ async fn store_screenshot_evidence(
 ///
 /// Renders the email template with profile data, then either:
 /// - Sends via SMTP if config is available
-/// - Logs the mailto: URL for manual sending (stored in error_message field)
+/// - Logs the mailto: URL for manual sending (stored in `error_message` field)
 ///
 /// Logs the attempt to the `email_removals` table.
 ///
@@ -401,7 +401,7 @@ pub async fn submit_via_email(
         );
         spectral_mail::sender::send_smtp(&email_template, user_email, config)
             .await
-            .map_err(|e| format!("SMTP send failed: {}", e))?;
+            .map_err(|e| format!("SMTP send failed: {e}"))?;
     } else {
         info!(
             "submit_via_email: email ready for manual sending for attempt {}",
@@ -430,7 +430,7 @@ pub async fn submit_via_email(
     .bind(&body_hash)
     .execute(db.pool())
     .await
-    .map_err(|e| format!("Failed to log email removal: {}", e))?;
+    .map_err(|e| format!("Failed to log email removal: {e}"))?;
 
     info!(
         "Logged email removal {} for attempt {}",
@@ -468,7 +468,7 @@ pub async fn submit_removal_task(
     let _permit = semaphore
         .acquire()
         .await
-        .map_err(|e| format!("Failed to acquire semaphore: {}", e))?;
+        .map_err(|e| format!("Failed to acquire semaphore: {e}"))?;
 
     info!(
         "Worker acquired permit for removal attempt: {}",
@@ -478,39 +478,39 @@ pub async fn submit_removal_task(
     // Load removal attempt from database
     let removal_attempt = removal_attempts::get_by_id(db.pool(), &removal_attempt_id)
         .await
-        .map_err(|e| format!("Failed to load removal attempt: {}", e))?
-        .ok_or_else(|| format!("Removal attempt not found: {}", removal_attempt_id))?;
+        .map_err(|e| format!("Failed to load removal attempt: {e}"))?
+        .ok_or_else(|| format!("Removal attempt not found: {removal_attempt_id}"))?;
 
     // Load associated finding
     let finding = spectral_db::findings::get_by_id(db.pool(), &removal_attempt.finding_id)
         .await
-        .map_err(|e| format!("Failed to load finding: {}", e))?
+        .map_err(|e| format!("Failed to load finding: {e}"))?
         .ok_or_else(|| format!("Finding not found: {}", removal_attempt.finding_id))?;
 
     // Load profile
     let profile_id = spectral_core::types::ProfileId::new(&finding.profile_id)
-        .map_err(|e| format!("Invalid profile ID: {}", e))?;
+        .map_err(|e| format!("Invalid profile ID: {e}"))?;
 
     let profile = vault
         .load_profile(&profile_id)
         .await
-        .map_err(|e| format!("Failed to load profile: {}", e))?;
+        .map_err(|e| format!("Failed to load profile: {e}"))?;
 
     // Get encryption key from vault
     let key = vault
         .encryption_key()
-        .map_err(|e| format!("Failed to get encryption key: {}", e))?;
+        .map_err(|e| format!("Failed to get encryption key: {e}"))?;
 
     // Map fields for submission
     let field_values = map_fields_for_submission(&profile, &finding.listing_url, key)?;
 
     // Load broker definition
-    let broker_id = BrokerId::new(&removal_attempt.broker_id)
-        .map_err(|e| format!("Invalid broker ID: {}", e))?;
+    let broker_id =
+        BrokerId::new(&removal_attempt.broker_id).map_err(|e| format!("Invalid broker ID: {e}"))?;
 
     let broker_def = broker_registry
         .get(&broker_id)
-        .map_err(|e| format!("Failed to get broker definition: {}", e))?;
+        .map_err(|e| format!("Failed to get broker definition: {e}"))?;
 
     // Route submission based on broker removal method
     let outcome = match &broker_def.removal {
@@ -561,14 +561,14 @@ pub async fn submit_removal_task(
             // Create WebFormSubmitter (creates its own browser engine)
             let submitter = WebFormSubmitter::new()
                 .await
-                .map_err(|e| format!("Failed to create submitter: {}", e))?;
+                .map_err(|e| format!("Failed to create submitter: {e}"))?;
 
             retry_with_backoff(
                 || async {
                     submitter
                         .submit(&broker_def, field_values.clone())
                         .await
-                        .map_err(|e| format!("Submission failed: {}", e))
+                        .map_err(|e| format!("Submission failed: {e}"))
                 },
                 3,
             )
@@ -589,7 +589,7 @@ pub async fn submit_removal_task(
                 None,
             )
             .await
-            .map_err(|e| format!("Failed to update status to Submitted: {}", e))?;
+            .map_err(|e| format!("Failed to update status to Submitted: {e}"))?;
 
             info!("Removal submitted successfully: {}", removal_attempt_id);
         }
@@ -601,10 +601,10 @@ pub async fn submit_removal_task(
                 RemovalStatus::Pending,
                 None,
                 None,
-                Some(format!("CAPTCHA_REQUIRED:{}", captcha_url)),
+                Some(format!("CAPTCHA_REQUIRED:{captcha_url}")),
             )
             .await
-            .map_err(|e| format!("Failed to update for CAPTCHA: {}", e))?;
+            .map_err(|e| format!("Failed to update for CAPTCHA: {e}"))?;
 
             warn!("CAPTCHA required for removal: {}", removal_attempt_id);
         }
@@ -619,7 +619,7 @@ pub async fn submit_removal_task(
                 Some(reason.clone()),
             )
             .await
-            .map_err(|e| format!("Failed to update status to Failed: {}", e))?;
+            .map_err(|e| format!("Failed to update status to Failed: {e}"))?;
 
             error!("Removal failed: {} - {}", removal_attempt_id, reason);
         }
@@ -634,7 +634,7 @@ pub async fn submit_removal_task(
                 Some("Account creation required (not supported)".to_string()),
             )
             .await
-            .map_err(|e| format!("Failed to update for account creation: {}", e))?;
+            .map_err(|e| format!("Failed to update for account creation: {e}"))?;
 
             warn!(
                 "Account creation required (unsupported): {}",

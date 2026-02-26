@@ -116,7 +116,7 @@ fn get_profile_name(profile: &UserProfile, vault_key: &[u8; 32]) -> Option<Strin
 
     if let (Some(first), Some(last)) = (&profile.first_name, &profile.last_name) {
         if let (Ok(f), Ok(l)) = (first.decrypt(vault_key), last.decrypt(vault_key)) {
-            return Some(format!("{} {}", f, l));
+            return Some(format!("{f} {l}"));
         }
     }
 
@@ -202,7 +202,7 @@ pub async fn find_possible_matches(
     // Get zero-result brokers
     let zero_result_scans = broker_scans::get_zero_result_scans(db.pool(), scan_job_id)
         .await
-        .map_err(|e| format!("Failed to get zero-result scans: {}", e))?;
+        .map_err(|e| format!("Failed to get zero-result scans: {e}"))?;
 
     if zero_result_scans.is_empty() {
         return Ok(HashMap::new());
@@ -217,7 +217,7 @@ pub async fn find_possible_matches(
     let other_findings =
         matching::get_findings_from_other_brokers(db.pool(), scan_job_id, &exclude_ids)
             .await
-            .map_err(|e| format!("Failed to get findings: {}", e))?;
+            .map_err(|e| format!("Failed to get findings: {e}"))?;
 
     if other_findings.is_empty() {
         return Ok(HashMap::new());

@@ -5,6 +5,7 @@
 
 pub mod commands;
 mod error;
+mod geocoding;
 mod matching_service;
 mod metadata;
 pub mod removal_worker;
@@ -147,6 +148,10 @@ pub fn run() {
             commands::privacy::set_privacy_level,
             commands::privacy::set_custom_feature_flags,
             commands::privacy::get_llm_provider_settings,
+            commands::cookies::scan_cookies,
+            commands::cookies::get_cookies_for_broker,
+            commands::cookies::remove_cookies_for_broker,
+            commands::cookies::get_recent_cookie_scans,
             commands::privacy::set_llm_primary_provider,
             commands::privacy::set_llm_task_provider,
             commands::privacy::set_llm_api_key,
@@ -157,6 +162,9 @@ pub fn run() {
             commands::audit::get_audit_log_by_type,
             commands::audit::create_audit_entry,
             commands::audit::clear_audit_log,
+            commands::map_blur::generate_map_blur_requests,
+            commands::map_blur::get_map_blur_requests,
+            commands::map_blur::mark_map_blur_submitted,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

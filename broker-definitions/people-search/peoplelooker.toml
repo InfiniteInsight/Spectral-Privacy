@@ -1,0 +1,68 @@
+# PeopleLooker - Background Check and People Search
+# Last verified: 2026-02-25
+
+[broker]
+id = "peoplelooker"
+name = "PeopleLooker"
+url = "https://www.peoplelooker.com"
+domain = "peoplelooker.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.peoplelooker.com/search?full_name={first}+{last}&state={state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".search-results"
+result_item = ".result-card"
+listing_url = "a.view-report"
+name = ".person-name"
+age = ".age"
+location = ".location"
+no_results_indicator = ".no-matches"
+
+[removal]
+method = "email"
+email = "opt-out@peoplelooker.com"
+subject = "Opt-Out Request - {full_name}"
+body = """
+I am requesting the removal of my personal information from PeopleLooker.
+
+Full Name: {full_name}
+Age: [Your age or age range]
+State: {state}
+City: {city}
+Email: {user_email}
+
+Please confirm when my information has been removed.
+
+Thank you.
+"""
+response_days = 10
+notes = """
+PeopleLooker opt-out:
+
+1. EMAIL REQUEST:
+   - Send to: opt-out@peoplelooker.com
+   - Include: Name, age, city, state
+   - Processing: 5-10 business days
+
+2. ALTERNATIVE - ONLINE FORM:
+   - Some success reported with online contact form
+   - Visit: https://www.peoplelooker.com/contact
+   - Select "Privacy/Opt-Out Request"
+
+3. FOLLOW-UP:
+   - No confirmation email sent automatically
+   - Search again after 10 days to verify
+   - May need multiple requests
+
+NOTE: PeopleLooker aggregates from multiple sources. Removal only affects PeopleLooker display - not source databases.
+"""

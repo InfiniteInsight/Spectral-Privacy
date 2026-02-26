@@ -33,7 +33,7 @@ pub async fn test_imap_connection(
     let result =
         tokio::task::spawn_blocking(move || poll_for_verifications(&config, &HashMap::new()))
             .await
-            .map_err(|e| CommandError::new("TASK_JOIN_ERROR", format!("Task join error: {}", e)))?;
+            .map_err(|e| CommandError::new("TASK_JOIN_ERROR", format!("Task join error: {e}")))?;
 
     if let Some(err) = result.errors.first() {
         return Err(CommandError::new("IMAP_CONNECTION_ERROR", err.clone()));

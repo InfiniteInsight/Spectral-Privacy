@@ -1,0 +1,61 @@
+# Meta Ads - Facebook/Instagram Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "meta-ads"
+name = "Meta Ads (Facebook/Instagram)"
+url = "https://www.facebook.com/ads/preferences"
+domain = "facebook.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.facebook.com/ads/preferences"
+instructions = "Log into Facebook and visit Ad Preferences. Review 'Your Information' to see what Meta knows about you, including: advertisers who uploaded your info, your interests, and inferred categories."
+
+[removal]
+method = "web-form"
+url = "https://www.facebook.com/ads/preferences"
+confirmation = "automatic"
+notes = """
+Limit Meta advertising data collection:
+
+1. AD PREFERENCES:
+   - Visit https://www.facebook.com/ads/preferences
+   - Under "Ad Settings", turn off:
+     * "Ads based on data from partners"
+     * "Ads based on your activity on Facebook Company Products"
+     * "Ads that include your social actions"
+
+2. HIDE ALL AD TOPICS:
+   - Click "Hide" on all ad topics/interests
+   - Or visit each category and select "See fewer"
+
+3. ADVERTISERS WITH YOUR INFO:
+   - Go to "Advertisers" section
+   - Review advertisers who uploaded contact lists containing you
+   - Cannot fully remove but can see who has your data
+
+4. OFF-FACEBOOK ACTIVITY:
+   - Visit https://www.facebook.com/off_facebook_activity
+   - Click "Clear History"
+   - Turn off "Future Off-Facebook Activity"
+
+5. PIXEL TRACKING OPT-OUT:
+   - Install browser extensions like Privacy Badger or uBlock Origin
+   - Or use Facebook Container (Firefox)
+
+Note: Opt-outs don't delete data, just limit ad targeting. To delete data, must delete Facebook account entirely.
+"""
+
+[removal.form_selectors]
+toggle_partner_data = "input[aria-label*='partner' i]"
+toggle_activity_data = "input[aria-label*='activity' i]"
+clear_history_button = "button[aria-label*='clear' i]"
+success_indicator = ".settings-saved, .confirmation"

@@ -1,0 +1,77 @@
+# Twitter/X Ads - Social Media Advertising Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "twitter-ads"
+name = "Twitter/X Ads (formerly Twitter Advertising)"
+url = "https://ads.x.com"
+domain = "x.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "account-required"
+url = "https://twitter.com/settings/personalization"
+instructions = "Twitter/X (formerly Twitter) uses website visits, app usage, and interactions to personalize ads. Check Privacy → Personalization and Data for tracking settings."
+
+[removal]
+method = "account-required"
+url = "https://twitter.com/settings/ads_preferences"
+notes = """
+Twitter/X advertising privacy controls:
+
+1. DISABLE PERSONALIZED ADS:
+   - Go to Settings → Privacy and safety → Ads preferences
+   - Toggle OFF "Personalized ads"
+   - Toggle OFF "Allow sharing of additional data with business partners"
+   - This limits (but doesn't eliminate) ad tracking
+
+2. OPT OUT OF DATA SHARING:
+   - Settings → Privacy and safety → Data sharing with business partners
+   - Review and disable all data sharing options
+   - This prevents Twitter/X from sharing your data with advertisers
+
+3. LIMIT INTERESTS AND ADVERTISERS:
+   - Settings → Privacy and safety → Interests
+   - Remove all inferred interests
+   - Settings → Your advertiser list
+   - See which advertisers have your data
+
+4. ACCOUNT DELETION (NUCLEAR OPTION):
+   - Settings → Your account → Deactivate your account
+   - Account stays deactivated for 30 days, then permanently deleted
+   - All tweets, likes, follows deleted
+   - Profile data removed from search engines eventually
+
+5. WEB TRACKING OPT-OUT:
+   - Visit https://optout.aboutads.info (NAI/DAA)
+   - Opt out of Twitter/X web tracking outside the platform
+   - Uses cookie-based opt-out (clear cookies = lost opt-out)
+
+6. CCPA/GDPR RIGHTS:
+   - California/EU residents: privacy.twitter.com
+   - Request data download, deletion, or opt-out of sale
+   - Twitter/X must comply within legal timeframe
+
+REALITY:
+- Twitter/X personalized ads can be disabled, but tracking continues
+- Even with opt-outs, Twitter/X collects basic usage data
+- Embedded tweets on websites track you (via syndication.twitter.com)
+- Account deletion is the only way to fully remove profile data
+- Browser-level blocking is more effective than platform settings
+
+COOKIE-BASED LIMITATION:
+- Twitter/X opt-outs use cookies to remember your preference
+- If you clear browser cookies/cache, opt-out is lost
+- Must re-submit opt-out after clearing cookies
+- Use cookie scanner to preserve opt-out cookies if using Spectral
+"""
+
+[removal.cookies]
+patterns = ["auth_token", "ct0", "personalization_id", "guest_id*", "twid", "kdt", "remember_checked_on", "muc_ads"]
+domains = [".twitter.com", ".x.com", ".twimg.com", ".ads-twitter.com"]

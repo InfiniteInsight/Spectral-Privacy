@@ -12,6 +12,7 @@
 	let loading = $state(true);
 	let scanning = $state(false);
 	let error = $state<string | null>(null);
+	let successMessage = $state<string | null>(null);
 	let currentDirectory = $state<string | null>(null);
 
 	// Filter state
@@ -114,6 +115,11 @@
 			await markFindingRemediated(vid, findingId);
 			// Reload findings
 			await loadFindings();
+			// Show success message
+			successMessage = 'Finding marked as remediated';
+			setTimeout(() => {
+				successMessage = null;
+			}, 3000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -200,6 +206,10 @@
 
 	{#if error}
 		<div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>
+	{/if}
+
+	{#if successMessage}
+		<div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-700">{successMessage}</div>
 	{/if}
 
 	{#if !loading && findings.length > 0}

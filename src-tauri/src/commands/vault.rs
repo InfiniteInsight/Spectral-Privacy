@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tauri::State;
 use tracing::{info, warn};
 
-/// Response for vault_status command.
+/// Response for `vault_status` command.
 #[derive(Debug, Serialize)]
 pub struct VaultStatus {
     pub exists: bool,
@@ -17,7 +17,7 @@ pub struct VaultStatus {
     pub display_name: Option<String>,
 }
 
-/// Response for list_vaults command.
+/// Response for `list_vaults` command.
 #[derive(Debug, Serialize)]
 pub struct VaultInfo {
     pub vault_id: String,
@@ -44,7 +44,7 @@ pub async fn vault_create(
         warn!("Vault already exists: {}", vault_id);
         return Err(CommandError::new(
             "VAULT_ALREADY_EXISTS",
-            format!("Vault '{}' already exists", vault_id),
+            format!("Vault '{vault_id}' already exists"),
         ));
     }
 
@@ -96,7 +96,7 @@ pub async fn vault_unlock(
         warn!("Vault not found: {}", vault_id);
         return Err(CommandError::new(
             "VAULT_NOT_FOUND",
-            format!("Vault '{}' does not exist", vault_id),
+            format!("Vault '{vault_id}' does not exist"),
         ));
     }
 
@@ -127,7 +127,7 @@ pub async fn vault_unlock(
             db.pool(),
             vault_id.clone(),
             "VaultUnlocked".to_string(),
-            format!("Vault {} unlocked", vault_id),
+            format!("Vault {vault_id} unlocked"),
             None,
             "LocalOnly".to_string(),
             "Allowed".to_string(),
@@ -254,7 +254,7 @@ pub async fn rename_vault(
     if !state.vault_exists(&vault_id) {
         return Err(CommandError::new(
             "VAULT_NOT_FOUND",
-            format!("Vault '{}' does not exist", vault_id),
+            format!("Vault '{vault_id}' does not exist"),
         ));
     }
 
@@ -296,7 +296,7 @@ pub async fn change_vault_password(
 
     // Get the vault before locking it
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
-        CommandError::new("VAULT_NOT_FOUND", format!("Vault '{}' not found", vault_id))
+        CommandError::new("VAULT_NOT_FOUND", format!("Vault '{vault_id}' not found"))
     })?;
 
     // Get database path
@@ -309,20 +309,20 @@ pub async fn change_vault_password(
     // Read current salt
     let current_salt = tokio::fs::read(&salt_path)
         .await
-        .map_err(|e| CommandError::new("FILE_ERROR", format!("Failed to read salt file: {}", e)))?;
+        .map_err(|e| CommandError::new("FILE_ERROR", format!("Failed to read salt file: {e}")))?;
 
     // Verify old password by deriving key and comparing to current vault key
     use spectral_vault::kdf;
     let old_key = kdf::derive_key(&old_password, &current_salt).map_err(|e| {
         CommandError::new(
             "KEY_DERIVATION_ERROR",
-            format!("Failed to derive key from old password: {}", e),
+            format!("Failed to derive key from old password: {e}"),
         )
     })?;
 
     let vault_key = vault
         .encryption_key()
-        .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {}", e)))?;
+        .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {e}")))?;
 
     if old_key.as_ref() != vault_key.as_ref() {
         return Err(CommandError::new(
@@ -340,7 +340,7 @@ pub async fn change_vault_password(
     let new_key = kdf::derive_key(&new_password, &new_salt).map_err(|e| {
         CommandError::new(
             "KEY_DERIVATION_ERROR",
-            format!("Failed to derive new key: {}", e),
+            format!("Failed to derive new key: {e}"),
         )
     })?;
 
@@ -357,10 +357,7 @@ pub async fn change_vault_password(
 
     let connect_options = SqliteConnectOptions::from_str(db_path_str)
         .map_err(|e| {
-            CommandError::new(
-                "DATABASE_ERROR",
-                format!("Invalid connection string: {}", e),
-            )
+            CommandError::new("DATABASE_ERROR", format!("Invalid connection string: {e}"))
         })?
         .pragma("key", old_key_hex)
         .pragma("cipher_page_size", "4096")
@@ -375,18 +372,18 @@ pub async fn change_vault_password(
         .map_err(|e| {
             CommandError::new(
                 "DATABASE_ERROR",
-                format!("Failed to connect to database: {}", e),
+                format!("Failed to connect to database: {e}"),
             )
         })?;
 
     // Re-encrypt database with new key
-    sqlx::query(&format!("PRAGMA rekey = {}", new_key_hex))
+    sqlx::query(&format!("PRAGMA rekey = {new_key_hex}"))
         .execute(&pool)
         .await
         .map_err(|e| {
             CommandError::new(
                 "DATABASE_ERROR",
-                format!("Failed to re-encrypt database: {}", e),
+                format!("Failed to re-encrypt database: {e}"),
             )
         })?;
 
@@ -394,9 +391,9 @@ pub async fn change_vault_password(
     pool.close().await;
 
     // Write new salt to file
-    tokio::fs::write(&salt_path, new_salt).await.map_err(|e| {
-        CommandError::new("FILE_ERROR", format!("Failed to write salt file: {}", e))
-    })?;
+    tokio::fs::write(&salt_path, new_salt)
+        .await
+        .map_err(|e| CommandError::new("FILE_ERROR", format!("Failed to write salt file: {e}")))?;
 
     // Unlock vault with new password (this will verify the rekey worked)
     let new_vault = Vault::unlock(&new_password, &db_path).await.map_err(|e| {
@@ -404,10 +401,7 @@ pub async fn change_vault_password(
         warn!("Failed to unlock vault with new password: {}", e);
         CommandError::new(
             "VAULT_ERROR",
-            format!(
-                "Password change failed - could not unlock with new password: {}",
-                e
-            ),
+            format!("Password change failed - could not unlock with new password: {e}"),
         )
     })?;
 
@@ -432,7 +426,7 @@ pub async fn delete_vault(
     if !state.vault_exists(&vault_id) {
         return Err(CommandError::new(
             "VAULT_NOT_FOUND",
-            format!("Vault '{}' does not exist", vault_id),
+            format!("Vault '{vault_id}' does not exist"),
         ));
     }
 

@@ -1,0 +1,70 @@
+# Quantcast - Audience Measurement and Real-Time Advertising
+# Last verified: 2026-02-25
+
+[broker]
+id = "quantcast"
+name = "Quantcast"
+url = "https://www.quantcast.com"
+domain = "quantcast.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.quantcast.com"
+instructions = "Quantcast tracks browsing behavior across millions of websites to create audience segments for advertisers. Uses cookies and device fingerprinting. Not publicly searchable - operates behind the scenes."
+
+[removal]
+method = "web-form"
+url = "https://www.quantcast.com/opt-out"
+confirmation = "automatic"
+notes = """
+Quantcast opt-out:
+
+1. OPT-OUT PAGE:
+   - Visit https://www.quantcast.com/opt-out
+   - Click "Opt Out" button
+   - Sets opt-out cookie in your browser
+   - Must repeat per browser/device
+
+2. COOKIE-BASED LIMITATION:
+   - Opt-out uses cookie - clearing cookies removes opt-out
+   - Must opt-out again after clearing browser data
+   - Consider using browser privacy features instead
+
+3. NAI OPT-OUT:
+   - Visit https://optout.networkadvertising.org
+   - Quantcast is an NAI member
+   - Opt-out from multiple ad networks at once
+
+4. DAA OPT-OUT:
+   - Visit https://optout.aboutads.info
+   - Digital Advertising Alliance opt-out tool
+   - Covers Quantcast and other platforms
+
+5. GDPR/CCPA REQUESTS:
+   - Email: privacy@quantcast.com
+   - California: Right to opt-out of data sale
+   - EU: Right to erasure under GDPR
+
+6. COOKIE REMOVAL:
+   - Clear Quantcast tracking cookies
+   - Cookie names: mc, d, __qca
+   - Use Spectral cookie scanner
+
+7. BROWSER-LEVEL BLOCKING:
+   - Use Privacy Badger, uBlock Origin, or similar
+   - Safari: Intelligent Tracking Prevention blocks automatically
+   - Firefox: Enhanced Tracking Protection
+
+NOTE: Quantcast powers measurement and ads across 100M+ websites. Cookie-based opt-outs are fragile. Browser extensions provide better protection.
+"""
+
+[removal.cookies]
+patterns = ["mc", "d", "__qca", "qc_*"]
+domains = [".quantcast.com", ".quantserve.com"]

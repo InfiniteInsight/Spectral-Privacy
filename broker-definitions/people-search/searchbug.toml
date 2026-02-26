@@ -1,0 +1,143 @@
+# SearchBug - People Search and Public Records
+# Last verified: 2026-02-25
+
+[broker]
+id = "searchbug"
+name = "SearchBug"
+url = "https://www.searchbug.com"
+domain = "searchbug.com"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 10
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "Standard"
+region_relevance = ["US"]
+
+[search]
+method = "web-form"
+url = "https://www.searchbug.com/peoplefinder"
+requires_fields = ["first_name", "last_name"]
+
+[removal]
+method = "email"
+email = "privacy@searchbug.com"
+subject = "Privacy Opt-Out Request - {full_name}"
+body = """
+I am requesting removal from SearchBug databases under privacy laws.
+
+Personal Information:
+- Name: {full_name}
+- State: {state}
+- City: {city}
+- Additional identifying info: [If needed for precise match]
+
+Request: Complete removal from all SearchBug products including:
+- People search
+- Phone lookup
+- Address lookup
+- Email lookup
+
+Please confirm removal within 7-10 business days.
+
+Thank you.
+"""
+response_days = 10
+notes = """
+SearchBug opt-out process:
+
+1. WHAT IS SEARCHBUG:
+   - Public records search engine
+   - Focus: People search, phone lookup, address search
+   - B2B service (used by investigators, marketers, employers)
+   - Aggregates: Phone directories, property records, court records
+   - More professional/investigative than consumer sites
+
+2. SEARCH FOR YOURSELF:
+   - Visit https://www.searchbug.com/peoplefinder
+   - Enter name, state
+   - Note what information appears
+   - SearchBug may require account/payment for full details
+
+3. OPT-OUT VIA EMAIL (PRIMARY METHOD):
+   - Email: privacy@searchbug.com
+   - Subject: "Privacy Opt-Out Request"
+   - Include:
+     * Full name
+     * State, city
+     * Any other identifying info
+   - Request removal from all SearchBug databases
+
+4. ALTERNATIVE: PHONE
+   - Call SearchBug customer service (check website)
+   - Request opt-out/removal
+   - Ask for confirmation email
+
+5. PROCESSING TIME:
+   - Initial response: 3-5 business days
+   - Complete removal: 7-10 business days
+   - Verify removal after 10 days
+
+6. VERIFY REMOVAL:
+   - Search for yourself again after 10 days
+   - If still listed, follow up via email
+   - Reference original opt-out request
+
+7. CCPA/GDPR RIGHTS:
+   - California: Right to deletion, opt-out of sale
+   - Email: privacy@searchbug.com
+   - Request: Data access, deletion, correction
+   - Response: 30-45 days
+
+8. B2B vs CONSUMER:
+   - SearchBug targets business customers (investigators, skip tracers)
+   - Less visible than consumer sites (Spokeo, Whitepages)
+   - But same data sources (public records)
+   - Opt-out still available
+
+DATA SOURCES:
+- Phone directories (white pages, yellow pages)
+- Property records (ownership, sales)
+- Court records (civil, criminal)
+- Voter registration
+- Business registrations
+- Professional licenses
+
+SEARCHBUG PRODUCTS:
+- PeopleFinder: Name → Details
+- Phone Lookup: Number → Owner
+- Reverse Address: Address → Residents
+- Email Lookup: Email → Person
+- Opt-out should cover ALL products
+
+RE-LISTING RISK:
+- SearchBug re-scrapes public sources
+- May re-add after opt-out
+- Check every 30-60 days
+- Re-submit opt-out if needed
+
+REALITY:
+- SearchBug is "white label" service (powers other search tools)
+- Your data may appear on sites using SearchBug API
+- Opt-out from SearchBug may not remove from client sites
+- Focus: Remove from most visible sources
+
+ALTERNATIVE CONTACT:
+- Web form: https://www.searchbug.com/contact
+- Include opt-out request in message
+- Reference CCPA if California resident
+
+WHO USES SEARCHBUG:
+- Private investigators
+- Skip tracers (debt collection)
+- Background check companies
+- Marketing/sales teams
+- Legal professionals
+- Employers
+
+PREVENTION:
+- Use unlisted phone numbers
+- Limit public directory listings
+- Opt out of data broker sales (where possible)
+- Minimize footprint in public records
+"""

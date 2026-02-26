@@ -1,0 +1,109 @@
+# PrivateRecords - People Search and Public Records Database
+# Last verified: 2026-02-25
+
+[broker]
+id = "privaterecords"
+name = "PrivateRecords"
+url = "https://www.privaterecords.net"
+domain = "privaterecords.net"
+category = "people-search"
+difficulty = "Medium"
+typical_removal_days = 5
+recheck_interval_days = 30
+last_verified = "2026-02-25"
+scan_priority = "Standard"
+region_relevance = ["US"]
+
+[search]
+method = "url-template"
+template = "https://www.privaterecords.net/search/people?firstName={first_name}&lastName={last_name}&state={state}"
+requires_fields = ["first_name", "last_name", "state"]
+
+[search.result_selectors]
+results_container = ".results-list"
+result_item = ".person-entry"
+no_results_indicator = ".no-data-found"
+
+[removal]
+method = "web-form"
+url = "https://www.privaterecords.net/opt-out"
+notes = """
+PrivateRecords opt-out process:
+
+1. LOCATE YOUR LISTING:
+   - Visit https://www.privaterecords.net
+   - Search using: Name, state, city (optional)
+   - Find your specific profile
+   - Note the listing URL
+
+2. OPT-OUT FORM:
+   - Visit https://www.privaterecords.net/opt-out
+   - Enter your listing URL
+   - Provide email for verification
+   - Complete security check (CAPTCHA)
+
+3. EMAIL CONFIRMATION:
+   - Check inbox for verification email
+   - Click confirmation link
+   - Opt-out request activated
+
+4. REMOVAL TIMELINE:
+   - Processing: 3-5 business days
+   - Complete removal: Up to 7 days
+   - Search engine caches may persist longer
+
+5. VERIFY REMOVAL:
+   - Search for yourself after 5-7 days
+   - If still listed, contact support
+   - Email: support@privaterecords.net
+
+6. MULTIPLE LISTINGS:
+   - You may have multiple profiles (different states, ages)
+   - Must opt out each listing separately
+   - Use same email for all opt-outs
+
+7. RE-SCRAPING:
+   - PrivateRecords aggregates from public sources
+   - Data may be re-added after opt-out
+   - Monitor every 30 days
+   - Re-submit opt-out if needed
+
+8. CCPA/GDPR RIGHTS:
+   - California residents: Right to deletion, opt-out of sale
+   - Email: privacy@privaterecords.net
+   - Request: Data access, deletion, correction
+   - Response within 30-45 days
+
+DATA DISPLAYED:
+- Name, age, birth month/year
+- Current and past addresses
+- Phone numbers
+- Email addresses (possible)
+- Relatives and associates
+- Property ownership
+- Criminal records (if any)
+- Court judgments, liens
+
+OWNERSHIP & NETWORK:
+- PrivateRecords operates in people search network
+- Likely shares data with affiliated sites
+- Opt-out here doesn't affect other sites
+
+ALTERNATIVE REMOVAL:
+- If web form fails:
+  * Email: support@privaterecords.net or privacy@privaterecords.net
+  * Subject: "Opt-Out Request - CCPA"
+  * Include: Name, listing URL, state
+  * Reference CCPA if California resident
+
+REALITY CHECK:
+- Public records are just that: public
+- Opt-out removes from PrivateRecords display
+- Original sources (DMV, courts, property records) still public
+- Competing sites (Whitepages, Spokeo, etc.) may still list you
+
+TIP: Prevention
+- Use PO Box or mail forwarding for voter registration
+- Consider address confidentiality programs (if eligible)
+- Minimize public records footprint when possible
+"""

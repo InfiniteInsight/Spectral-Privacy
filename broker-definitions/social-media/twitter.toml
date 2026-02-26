@@ -1,0 +1,68 @@
+# Twitter/X - Microblogging Platform
+# Last verified: 2026-02-25
+
+[broker]
+id = "twitter"
+name = "Twitter (X)"
+url = "https://twitter.com"
+domain = "twitter.com"
+category = "social-media"
+difficulty = "Easy"
+typical_removal_days = 1
+recheck_interval_days = 90
+last_verified = "2026-02-25"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "web-form"
+url = "https://twitter.com/search"
+requires_fields = []
+
+[search.result_selectors]
+results_container = "[data-testid='primaryColumn']"
+result_item = "[data-testid='tweet']"
+no_results_indicator = "[data-testid='emptyState']"
+
+[removal]
+method = "account-required"
+url = "https://twitter.com/settings/privacy"
+confirmation = "automatic"
+notes = """
+Twitter/X privacy controls:
+
+1. PROTECT YOUR ACCOUNT:
+   - Settings > Privacy and safety > Audience and tagging
+   - Enable "Protect your posts" (makes tweets private)
+   - Only approved followers can see your tweets
+
+2. DISCOVERABILITY:
+   - Settings > Privacy and safety > Discoverability
+   - Turn OFF "Let others find you by your email"
+   - Turn OFF "Let others find you by your phone number"
+
+3. DATA SHARING:
+   - Settings > Privacy and safety > Data sharing with business partners
+   - Turn OFF "Allow additional information sharing with business partners"
+
+4. PERSONALIZED ADS:
+   - Settings > Privacy and safety > Ads preferences
+   - Turn OFF all personalization and data sharing options
+   - Visit https://twitter.com/settings/ads_preferences
+
+5. DOWNLOAD YOUR DATA:
+   - Settings > Your account > Download an archive of your data
+   - Request takes 24-48 hours to process
+
+6. DELETE ACCOUNT:
+   - Settings > Your account > Deactivate your account
+   - Account deactivated for 30 days (can reactivate)
+   - Permanently deleted after 30 days
+   - URL: https://twitter.com/settings/deactivate
+
+7. OFF-TWITTER ACTIVITY:
+   - Settings > Privacy and safety > Off-Twitter activity
+   - Disconnect third-party apps
+
+NOTE: Public tweets are archived by third parties and web archives even after deletion. Protect tweets or delete account to stop future collection.
+"""

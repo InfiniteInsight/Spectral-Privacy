@@ -1,0 +1,113 @@
+# Equifax - Consumer Credit Bureau
+# Last verified: 2026-02-25
+# NOTE: This is a CREDIT BUREAU - you cannot and should not remove legitimate credit data.
+# This definition focuses on privacy controls: freezes, opt-outs, and accuracy.
+
+[broker]
+id = "equifax"
+name = "Equifax"
+url = "https://www.equifax.com"
+domain = "equifax.com"
+category = "data-aggregator"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 180
+last_verified = "2026-02-25"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://www.equifax.com/personal/credit-report-services/"
+instructions = """
+⚠️ IMPORTANT: Equifax is a credit bureau regulated by the Fair Credit Reporting Act (FCRA).
+
+Your credit report is NOT public data that should be "removed." It's a financial tool that:
+- Enables you to get loans, mortgages, apartments at fair rates
+- Proves creditworthiness to lenders
+- Protects you from fraud through monitoring
+- Cannot be deleted without serious financial consequences
+
+To access your credit report:
+1. Free annual report: AnnualCreditReport.com (federally mandated)
+2. Create myEquifax account for monitoring
+3. Verify identity with SSN, DOB, address verification
+
+Your report shows: credit accounts, balances, payment history, inquiries, collections.
+"""
+
+[removal]
+method = "account-required"
+url = "https://www.equifax.com/personal/credit-report-services/credit-freeze/"
+notes = """
+CREDIT PRIVACY CONTROLS (not data removal):
+
+✅ RECOMMENDED PRIVACY ACTIONS:
+
+1. SECURITY FREEZE (Most Important):
+   - FREE by federal law
+   - Prevents criminals from opening accounts in your name
+   - Does NOT affect your credit score
+   - Does NOT hurt existing accounts or employment checks
+   - Online: https://www.equifax.com/personal/credit-report-services/credit-freeze/
+   - Phone: 1-800-349-9960
+   - Mail: Equifax Security Freeze, P.O. Box 105788, Atlanta, GA 30348
+   - Lift temporarily when you apply for credit (instant online)
+
+2. OPT-OUT OF PRE-APPROVED CREDIT OFFERS:
+   - Stops pre-screened credit card/insurance offers
+   - OptOutPrescreen.com or call 1-888-567-8688
+   - 5-year opt-out (online) or permanent (mail with signature)
+   - Applies to Equifax, Experian, TransUnion, Innovis
+
+3. OPT-OUT OF EQUIFAX MARKETING:
+   - Prevents Equifax from selling your info for marketing
+   - Phone: 1-888-567-8688
+   - Mail: Equifax Options, P.O. Box 740123, Atlanta, GA 30374
+   - Include: Full name, address, SSN, DOB, signature
+   - Processing: 30 days
+
+4. DISPUTE INACCURATE INFORMATION:
+   - You have FCRA right to correct errors
+   - Online: https://www.equifax.com/personal/credit-report-services/credit-dispute/
+   - Phone: 1-866-349-5191
+   - Mail: Equifax Disputes, P.O. Box 740256, Atlanta, GA 30374
+   - Must investigate within 30 days
+   - Removes unverifiable or incorrect information
+   - Accurate negative info stays (per FCRA)
+
+5. FRAUD ALERTS:
+   - If you're an identity theft victim
+   - Requires lenders to verify your identity before credit
+   - Free, lasts 1 year (renewable)
+   - Phone: 1-800-525-6285
+
+❌ WHAT YOU SHOULD NOT DO:
+
+- Attempt to "delete" your credit file (financial suicide)
+- Remove legitimate accounts (lowers score, hurts creditworthiness)
+- Try to erase accurate negative info before it expires naturally
+- Close your credit history (makes you un-lendable)
+
+⚖️ POST-BREACH RIGHTS (2017 Equifax Breach):
+- Free credit monitoring available
+- Extended fraud alert options
+- If affected, visit https://www.equifaxbreachsettlement.com
+
+📋 NEGATIVE INFORMATION EXPIRATION:
+- Most negative items: 7 years (then auto-deleted)
+- Chapter 7 bankruptcy: 10 years
+- Chapter 13 bankruptcy: 7 years
+- Hard inquiries: 2 years
+- Positive history: Remains indefinitely (helps your score!)
+
+🎯 BEST PRIVACY PRACTICES:
+1. ✅ Place security freeze on all 3 bureaus (Equifax, Experian, TransUnion)
+2. ✅ Opt-out of pre-screened offers
+3. ✅ Monitor credit reports annually (free)
+4. ✅ Dispute inaccuracies immediately
+5. ✅ Set up fraud alerts if identity theft victim
+6. ❌ Do NOT try to "delete" legitimate credit data
+
+For help: 1-866-349-5191 or https://www.equifax.com/help/
+"""

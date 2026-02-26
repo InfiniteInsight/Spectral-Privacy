@@ -52,12 +52,12 @@ pub async fn mark_attempt_verified(
 
     let db = vault
         .database()
-        .map_err(|e| format!("Failed to access database: {}", e))?;
+        .map_err(|e| format!("Failed to access database: {e}"))?;
 
     // Get removal attempt to retrieve broker_id
     let removal_attempt = spectral_db::removal_attempts::get_by_id(db.pool(), &attempt_id)
         .await
-        .map_err(|e| format!("Failed to get removal attempt: {}", e))?
+        .map_err(|e| format!("Failed to get removal attempt: {e}"))?
         .ok_or_else(|| "Removal attempt not found".to_string())?;
 
     // Update status to Completed
@@ -70,7 +70,7 @@ pub async fn mark_attempt_verified(
         None,
     )
     .await
-    .map_err(|e| format!("Failed to update status: {}", e))?;
+    .map_err(|e| format!("Failed to update status: {e}"))?;
 
     // Emit removal:verified event
     app_handle
@@ -81,7 +81,7 @@ pub async fn mark_attempt_verified(
                 "broker_id": removal_attempt.broker_id
             }),
         )
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     info!("Marked attempt {} as verified", attempt_id);
     Ok(())

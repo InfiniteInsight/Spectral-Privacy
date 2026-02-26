@@ -71,15 +71,15 @@ fn build_email_prompt(request: &EmailDraftRequest) -> String {
     parts.push(format!("Instructions: {}", request.prompt));
 
     if let Some(recipient) = &request.recipient {
-        parts.push(format!("Recipient: {}", recipient));
+        parts.push(format!("Recipient: {recipient}"));
     }
 
     if let Some(subject) = &request.subject {
-        parts.push(format!("Subject hint: {}", subject));
+        parts.push(format!("Subject hint: {subject}"));
     }
 
     if let Some(tone) = &request.tone {
-        parts.push(format!("Tone: {}", tone));
+        parts.push(format!("Tone: {tone}"));
     }
 
     parts.push("\nProvide the response in the following format:".to_string());
@@ -149,10 +149,7 @@ pub async fn draft_email(
         .route(TaskType::EmailDraft, completion_request)
         .await
         .map_err(|e| {
-            CommandError::new(
-                "LLM_ERROR",
-                format!("Failed to generate email draft: {}", e),
-            )
+            CommandError::new("LLM_ERROR", format!("Failed to generate email draft: {e}"))
         })?;
 
     // Parse response
@@ -222,7 +219,7 @@ fn build_form_prompt(request: &FormFillingRequest) -> String {
     let mut parts = vec!["Fill the following form fields with appropriate values:".to_string()];
 
     if let Some(context) = &request.context {
-        parts.push(format!("Context: {}", context));
+        parts.push(format!("Context: {context}"));
     }
 
     parts.push("\nFields:".to_string());
@@ -306,7 +303,7 @@ pub async fn fill_form(
     let response = router
         .route(TaskType::FormFill, completion_request)
         .await
-        .map_err(|e| CommandError::new("LLM_ERROR", format!("Failed to fill form: {}", e)))?;
+        .map_err(|e| CommandError::new("LLM_ERROR", format!("Failed to fill form: {e}")))?;
 
     // Parse response
     let values = parse_form_response(&response.content, &request.fields)?;
