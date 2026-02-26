@@ -69,6 +69,45 @@ export interface ScanJobHistory {
 	removal_requests: number;
 }
 
+export type ScanHistoryEntry =
+	| {
+			scan_type: 'DataBroker';
+			id: string;
+			profile_id: string;
+			started_at: string;
+			completed_at?: string;
+			status: 'InProgress' | 'Completed' | 'Failed' | 'Cancelled';
+			total_brokers: number;
+			completed_brokers: number;
+			total_findings: number;
+			confirmed_findings: number;
+			rejected_findings: number;
+			removal_requests: number;
+			error_message?: string;
+	  }
+	| {
+			scan_type: 'Cookie';
+			id: string;
+			vault_id: string;
+			started_at: string;
+			completed_at?: string;
+			status: string;
+			total_cookies_found: number;
+			matched_cookies: number;
+			browsers_scanned: string[];
+			brokers_matched: string[];
+			error_message?: string;
+	  }
+	| {
+			scan_type: 'Discovery';
+			vault_id: string;
+			started_at: string;
+			total_findings: number;
+			critical_findings: number;
+			medium_findings: number;
+			informational_findings: number;
+	  };
+
 export const scanAPI = {
 	/**
 	 * Start a new scan job
@@ -204,6 +243,16 @@ export const scanAPI = {
 		return await invoke<ScanJobHistory[]>('get_scan_job_history', {
 			vaultId,
 			profileId
+		});
+	},
+
+	/**
+	 * Get unified scan history for all scan types
+	 */
+	async getUnifiedScanHistory(vaultId: string, profileId?: string): Promise<ScanHistoryEntry[]> {
+		return await invoke<ScanHistoryEntry[]>('get_unified_scan_history', {
+			vaultId,
+			profileId: profileId || null
 		});
 	}
 };
