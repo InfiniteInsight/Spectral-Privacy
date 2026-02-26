@@ -11,8 +11,26 @@
 	let startingDiscoveryScan = $state(false);
 	let error = $state<string | null>(null);
 
+	// Get current profile from store
+	const currentProfile = $derived(profileStore.currentProfile);
+
+	// Load profile when vault changes
+	$effect(() => {
+		if (vaultStore.currentVaultId && profileStore.profiles.length > 0) {
+			// Load full profile data (ProfileSummary doesn't have address fields)
+			profileStore.loadProfile(vaultStore.currentVaultId, profileStore.profiles[0].id);
+		}
+	});
+
+	// Load profiles list when vault changes
+	$effect(() => {
+		if (vaultStore.currentVaultId) {
+			profileStore.loadProfiles(vaultStore.currentVaultId);
+		}
+	});
+
 	async function handleStartBrokerScan() {
-		if (!vaultStore.currentVaultId || !profileStore.currentProfile?.id) {
+		if (!vaultStore.currentVaultId || !currentProfile?.id) {
 			error = 'Please select a vault and create a profile first';
 			return;
 		}
@@ -20,7 +38,7 @@
 		try {
 			startingBrokerScan = true;
 			error = null;
-			await scanAPI.start(vaultStore.currentVaultId, profileStore.currentProfile.id);
+			await scanAPI.start(vaultStore.currentVaultId, currentProfile.id);
 			// Navigate to brokers page where scan progress is shown
 			goto('/brokers');
 		} catch (err) {
@@ -115,7 +133,7 @@
 					</ul>
 				</div>
 
-				{#if !profileStore.currentProfile}
+				{#if !currentProfile}
 					<div
 						class="mb-3 rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700"
 					>
@@ -126,7 +144,7 @@
 
 				<button
 					onclick={handleStartBrokerScan}
-					disabled={startingBrokerScan || !profileStore.currentProfile}
+					disabled={startingBrokerScan || !currentProfile}
 					class="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{#if startingBrokerScan}

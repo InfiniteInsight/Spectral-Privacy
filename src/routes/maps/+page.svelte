@@ -9,31 +9,50 @@
 	let mapBlurError = $state<string | null>(null);
 	let generatingRequests = $state(false);
 
-	// Load map blur requests when page loads
+	// Get current profile from store
+	const currentProfile = $derived(profileStore.currentProfile);
+
+	// Load profile when vault changes
 	$effect(() => {
-		if (vaultStore.currentVaultId && profileStore.currentProfile?.id) {
+		if (vaultStore.currentVaultId && profileStore.profiles.length > 0) {
+			// Load full profile data (ProfileSummary doesn't have address fields)
+			profileStore.loadProfile(vaultStore.currentVaultId, profileStore.profiles[0].id);
+		}
+	});
+
+	// Load profiles list when vault changes
+	$effect(() => {
+		if (vaultStore.currentVaultId) {
+			profileStore.loadProfiles(vaultStore.currentVaultId);
+		}
+	});
+
+	// Load map blur requests when profile is available
+	$effect(() => {
+		if (vaultStore.currentVaultId && currentProfile?.id) {
 			loadMapBlurRequests();
 		}
 	});
 
 	// Check if current profile has a complete address
 	const hasCompleteAddress = $derived(() => {
-		const profile = profileStore.currentProfile;
-		if (!profile) return false;
-		return !!(profile.address_line1 && profile.city && profile.state && profile.zip_code);
+		if (!currentProfile) return false;
+		return !!(
+			currentProfile.address_line1 &&
+			currentProfile.city &&
+			currentProfile.state &&
+			currentProfile.zip_code
+		);
 	});
 
 	async function loadMapBlurRequests() {
-		if (!vaultStore.currentVaultId || !profileStore.currentProfile?.id) return;
+		if (!vaultStore.currentVaultId || !currentProfile?.id) return;
 
 		loadingMapBlur = true;
 		mapBlurError = null;
 
 		try {
-			mapBlurRequests = await mapBlurAPI.getRequests(
-				vaultStore.currentVaultId,
-				profileStore.currentProfile.id
-			);
+			mapBlurRequests = await mapBlurAPI.getRequests(vaultStore.currentVaultId, currentProfile.id);
 		} catch (err) {
 			mapBlurError = err instanceof Error ? err.message : String(err);
 			console.error('Failed to load map blur requests:', err);
@@ -43,7 +62,7 @@
 	}
 
 	async function handleGenerateMapBlurRequests() {
-		if (!vaultStore.currentVaultId || !profileStore.currentProfile?.id) return;
+		if (!vaultStore.currentVaultId || !currentProfile?.id) return;
 
 		generatingRequests = true;
 		mapBlurError = null;
@@ -51,7 +70,7 @@
 		try {
 			mapBlurRequests = await mapBlurAPI.generateRequests(
 				vaultStore.currentVaultId,
-				profileStore.currentProfile.id
+				currentProfile.id
 			);
 		} catch (err) {
 			mapBlurError = err instanceof Error ? err.message : String(err);
@@ -118,7 +137,7 @@
 		</div>
 	{/if}
 
-	{#if !profileStore.currentProfile}
+	{#if !currentProfile}
 		<div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
 			<p class="text-sm text-blue-700">
 				Create a profile to request map blurring. <a href="/people" class="underline"
