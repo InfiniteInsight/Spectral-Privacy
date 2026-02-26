@@ -8,6 +8,7 @@
 			<a href="/" class="text-lg font-bold text-primary-700">Spectral</a>
 			<a href="/people" class="text-sm text-gray-600 hover:text-gray-900">People</a>
 			<a href="/removals" class="text-sm text-gray-600 hover:text-gray-900">History</a>
+			<a href="/maps" class="text-sm text-gray-600 hover:text-gray-900">Maps</a>
 			<a href="/score" class="text-sm text-gray-600 hover:text-gray-900">Score</a>
 			<a href="/brokers" class="text-sm text-gray-600 hover:text-gray-900">Brokers</a>
 			<a href="/discovery" class="text-sm text-gray-600 hover:text-gray-900">Discovery</a>
