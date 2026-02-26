@@ -1662,6 +1662,36 @@ pub async fn mark_google_removal_submitted(
     Ok(())
 }
 
+/// Get scan job history for a profile with statistics.
+#[tauri::command]
+pub async fn get_scan_job_history(
+    state: State<'_, AppState>,
+    vault_id: String,
+    profile_id: String,
+) -> Result<Vec<spectral_db::scan_jobs::ScanJobHistory>, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    spectral_db::scan_jobs::get_scan_job_history(db.pool(), &profile_id)
+        .await
+        .map_err(|e| format!("Failed to get scan job history: {e}"))
+}
+
+/// Get unified scan history for all scan types.
+#[tauri::command]
+pub async fn get_unified_scan_history(
+    state: State<'_, AppState>,
+    vault_id: String,
+    profile_id: Option<String>,
+) -> Result<Vec<spectral_db::scan_jobs::ScanHistoryEntry>, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    spectral_db::scan_jobs::get_unified_scan_history(db.pool(), &vault_id, profile_id.as_deref())
+        .await
+        .map_err(|e| format!("Failed to get unified scan history: {e}"))
+}
+
 #[cfg(test)]
 mod score_tests {
     use super::calculate_privacy_score;

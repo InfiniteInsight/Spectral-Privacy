@@ -106,7 +106,7 @@
 				type="password"
 				bind:value={unlockPassword}
 				placeholder="Master password"
-				autocomplete="current-password"
+				autocomplete="off"
 				class="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 				onkeydown={(e) => e.key === 'Enter' && handleUnlock()}
 			/>
