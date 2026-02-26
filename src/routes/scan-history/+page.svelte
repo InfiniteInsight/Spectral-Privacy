@@ -132,9 +132,7 @@
 					<div class="mb-4 flex items-start justify-between">
 						<div>
 							<div class="mb-1 flex items-center gap-2">
-								<h3 class="text-lg font-semibold text-gray-900">
-									Scan #{item.scan_job.id.slice(0, 8)}
-								</h3>
+								<h3 class="text-lg font-semibold text-gray-900">Data Broker Scan</h3>
 								<span
 									class="inline-flex rounded-full px-2 py-1 text-xs font-medium {statusBadgeClass(
 										item.scan_job.status
