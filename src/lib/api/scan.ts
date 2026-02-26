@@ -50,6 +50,25 @@ export interface GoogleRemovalRequest {
 	completed_at?: string;
 }
 
+export interface ScanJob {
+	id: string;
+	profile_id: string;
+	started_at: string;
+	completed_at?: string;
+	status: 'InProgress' | 'Completed' | 'Failed' | 'Cancelled';
+	total_brokers: number;
+	completed_brokers: number;
+	error_message?: string;
+}
+
+export interface ScanJobHistory {
+	scan_job: ScanJob;
+	total_findings: number;
+	confirmed_findings: number;
+	rejected_findings: number;
+	removal_requests: number;
+}
+
 export const scanAPI = {
 	/**
 	 * Start a new scan job
@@ -175,6 +194,16 @@ export const scanAPI = {
 			vaultId,
 			requestId,
 			notes
+		});
+	},
+
+	/**
+	 * Get scan job history for a profile with statistics
+	 */
+	async getScanJobHistory(vaultId: string, profileId: string): Promise<ScanJobHistory[]> {
+		return await invoke<ScanJobHistory[]>('get_scan_job_history', {
+			vaultId,
+			profileId
 		});
 	}
 };
