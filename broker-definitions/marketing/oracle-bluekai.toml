@@ -23,6 +23,7 @@ instructions = "BlueKai creates marketing profiles by tracking browsing behavior
 method = "web-form"
 url = "https://www.bluekai.com/consumers.php"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Oracle BlueKai opt-out process:
 

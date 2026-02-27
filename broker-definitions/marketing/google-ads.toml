@@ -23,6 +23,7 @@ instructions = "Log into your Google account and visit Ad Settings (https://adss
 method = "web-form"
 url = "https://adssettings.google.com"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Disable Google ad personalization:
 

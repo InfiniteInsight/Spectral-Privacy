@@ -15,7 +15,7 @@ scan_priority = "OnRequest"
 region_relevance = ["US", "Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.zoominfo.com"
 instructions = "ZoomInfo aggregates professional data: work email, direct phone, job title, company, employment history. Used by sales/recruiting teams. Scrapes LinkedIn, company websites, SEC filings, social media."
 
@@ -23,6 +23,7 @@ instructions = "ZoomInfo aggregates professional data: work email, direct phone,
 method = "web-form"
 url = "https://www.zoominfo.com/about-zoominfo/privacy-center"
 confirmation = "manual"
+fields = { email = "{user_email}" }
 notes = """
 ZoomInfo opt-out (B2B professionals hate this one):
 

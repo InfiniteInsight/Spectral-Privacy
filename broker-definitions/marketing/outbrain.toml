@@ -23,6 +23,7 @@ instructions = "Outbrain powers content recommendation widgets ('Around the Web'
 method = "web-form"
 url = "https://my.outbrain.com/recommendations-settings/home"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Outbrain opt-out:
 

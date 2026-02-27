@@ -1,0 +1,112 @@
+# 6sense - B2B Intent Data and Account-Based Marketing Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "6sense"
+name = "6sense"
+url = "https://6sense.com"
+domain = "6sense.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 45
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["US", "Global"]
+
+[search]
+method = "manual"
+url = "https://6sense.com"
+instructions = "6sense tracks B2B buyer intent signals across the web. Cannot search directly - data is aggregated from web browsing behavior and sold to enterprise clients. Data is based on IP addresses and browsing patterns, not individual profiles."
+
+[removal]
+method = "email"
+email = "privacy@6sense.com"
+subject = "CCPA Data Deletion Request - 6sense Intent Data"
+body = """
+I am exercising my privacy rights under CCPA.
+
+Request: Delete all intent data and behavioral tracking associated with me
+
+Information to Remove:
+- IP Address: {ip_address}
+- Work Email: {user_email}
+- Company: {employer}
+- Any behavioral intent signals linked to my browsing
+
+Please:
+1. Delete all behavioral data associated with my IP/identity
+2. Stop tracking my web activity for intent data
+3. Remove my data from client company datasets
+4. Confirm deletion in writing
+
+I expect completion within 45 days as required by CCPA.
+
+Thank you.
+"""
+response_days = 45
+notes = """
+6sense tracking and removal (COMPLEX):
+
+WHAT 6SENSE DOES:
+- Tracks B2B website visitors via IP addresses
+- Monitors which companies visit client websites
+- Tracks topic/product research patterns
+- Sells "intent data" to B2B sales teams
+- Identifies companies showing buying signals
+
+HOW THEY TRACK YOU:
+- JavaScript tracking pixels on client websites
+- Reverse IP lookup to identify companies
+- Browser fingerprinting and tracking cookies
+- Integration with marketing automation platforms
+
+REMOVAL CHALLENGES:
+- 6sense is infrastructure (not consumer-facing)
+- Data aggregated from thousands of websites
+- Tracking is IP-based, not profile-based
+- No self-service opt-out portal
+- Must contact privacy@6sense.com
+
+REMOVAL STEPS:
+
+1. EMAIL 6SENSE PRIVACY:
+   - Address: privacy@6sense.com
+   - Include work email and IP address
+   - Reference CCPA deletion rights
+   - Request opt-out of behavioral tracking
+
+2. REQUEST FROM YOUR EMPLOYER:
+   - If your company uses 6sense, ask IT to exclude you
+   - They can configure 6sense to filter out employee IPs
+   - This prevents your activity from skewing client data
+
+3. BROWSER-LEVEL BLOCKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block 6sense.com and related domains
+   - Install Do Not Track extensions
+
+4. VPN FOR WORK BROWSING:
+   - Use VPN to obscure your IP address
+   - Prevents 6sense from linking browsing to your company
+   - Makes intent data less accurate
+
+5. CLEAR COOKIES:
+   - Delete cookies from .6sense.com
+   - Clear regularly to break tracking chains
+
+REALITY CHECK:
+- 6sense tracking is pervasive in B2B space
+- Used by thousands of enterprise companies
+- Blocking may impact functionality on some B2B sites
+- Best approach: VPN + ad blocker + regular cookie clearing
+
+TECHNICAL DETAILS:
+- Tracking domains: 6sense.com, j.6sc.co
+- Cookies: _6sense_visitor_id, _6sc_session
+- Also uses browser fingerprinting (hard to block)
+"""
+
+[removal.cookies]
+patterns = ["_6sense_*", "_6sc_*", "6s_*"]
+domains = [".6sense.com", ".j.6sc.co"]

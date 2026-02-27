@@ -1,0 +1,49 @@
+# DoubleClick (Google Ad Server) - Advertising and Analytics Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "doubleclick"
+name = "DoubleClick"
+url = "https://www.google.com/doubleclick"
+domain = "doubleclick.net"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 7
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://adssettings.google.com"
+instructions = "DoubleClick (now part of Google Marketing Platform) tracks users across websites through advertising cookies. Cannot search directly - controlled through Google account settings at adssettings.google.com."
+
+[removal]
+method = "manual"
+instructions = """
+Opt out of DoubleClick tracking:
+
+1. GOOGLE AD SETTINGS:
+   - Visit https://adssettings.google.com
+   - Turn off "Ad Personalization"
+   - This opts you out of DoubleClick tracking
+
+2. BROWSER OPT-OUT:
+   - Visit https://optout.aboutads.info
+   - Click "Opt Out of All" for DoubleClick and other ad networks
+
+3. CLEAR COOKIES:
+   - Delete cookies from .doubleclick.net domain
+   - Use browser's cookie management or privacy tools
+
+4. USE PRIVACY EXTENSIONS:
+   - Install Privacy Badger, uBlock Origin, or similar
+   - These block DoubleClick tracking automatically
+
+Note: DoubleClick is now part of Google Marketing Platform. Opting out affects Google's ad network tracking across the web.
+"""
+
+[removal.cookies]
+patterns = ["id", "IDE", "test_cookie", "_gads", "_gac_*"]
+domains = [".doubleclick.net", ".googlesyndication.com", ".googleadservices.com"]

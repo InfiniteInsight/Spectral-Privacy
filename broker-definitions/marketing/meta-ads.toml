@@ -23,6 +23,7 @@ instructions = "Log into Facebook and visit Ad Preferences. Review 'Your Informa
 method = "web-form"
 url = "https://www.facebook.com/ads/preferences"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Limit Meta advertising data collection:
 

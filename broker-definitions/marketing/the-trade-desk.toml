@@ -23,6 +23,7 @@ instructions = "The Trade Desk is a demand-side platform (DSP) for programmatic 
 method = "web-form"
 url = "https://www.adsrvr.org"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 The Trade Desk opt-out:
 

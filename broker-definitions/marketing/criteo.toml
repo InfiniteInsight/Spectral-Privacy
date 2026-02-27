@@ -23,6 +23,7 @@ instructions = "Criteo tracks browsing behavior to show retargeted ads (products
 method = "web-form"
 url = "https://www.criteo.com/privacy/"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Opt-out from Criteo retargeting:
 

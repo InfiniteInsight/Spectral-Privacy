@@ -15,13 +15,14 @@ scan_priority = "OnRequest"
 region_relevance = ["Global"]
 
 [search]
-method = "none"
+method = "manual"
 url = "https://www.mediamath.com"
 instructions = "MediaMath is a demand-side platform (DSP) for programmatic advertising. Operates invisibly via ad exchanges - you cannot search for your profile directly."
 
 [removal]
 method = "web-form"
 url = "https://www.mediamath.com/privacy-policy"
+fields = { email = "{user_email}" }
 notes = """
 MediaMath privacy controls:
 

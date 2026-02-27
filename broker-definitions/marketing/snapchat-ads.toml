@@ -15,13 +15,14 @@ scan_priority = "OnRequest"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://accounts.snapchat.com/accounts/privacy"
 instructions = "Snapchat tracks in-app behavior, camera usage, location data, and website visits (via Snap Pixel) to personalize ads. Must have account to access privacy settings."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://accounts.snapchat.com/accounts/privacy"
+instructions = "Open Snapchat app, go to Settings and disable ad personalization in Privacy Controls."
 notes = """
 Snapchat advertising privacy controls:
 

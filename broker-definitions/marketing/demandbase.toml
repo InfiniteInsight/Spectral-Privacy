@@ -1,0 +1,119 @@
+# Demandbase - Account-Based Marketing and B2B Advertising Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "demandbase"
+name = "Demandbase"
+url = "https://www.demandbase.com"
+domain = "demandbase.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 45
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.demandbase.com"
+instructions = "Demandbase tracks B2B website visitors via IP address to identify companies and personalize content. Cannot search directly - tracking is company/IP-based rather than individual profiles."
+
+[removal]
+method = "email"
+email = "privacy@demandbase.com"
+subject = "CCPA Data Deletion Request - Demandbase Tracking"
+body = """
+I am exercising my privacy rights under CCPA.
+
+Request: Delete behavioral tracking data and opt out of Demandbase
+
+Information:
+- IP Address: {ip_address}
+- Work Email: {user_email}
+- Company: {employer}
+- Any tracking data associated with my identity/IP
+
+Please:
+1. Delete all behavioral and firmographic data
+2. Opt out my IP/identity from future tracking
+3. Remove data shared with client companies
+4. Confirm deletion and opt-out in writing
+
+I expect completion within 45 days.
+
+Thank you.
+"""
+response_days = 45
+notes = """
+Demandbase tracking and removal:
+
+WHAT DEMANDBASE DOES:
+- Account-Based Marketing (ABM) platform
+- Identifies companies visiting B2B websites via IP
+- Personalizes website content based on company
+- Tracks buying intent signals
+- Powers targeted B2B advertising
+
+HOW THEY TRACK:
+- Reverse IP lookup to identify companies
+- JavaScript tracking pixels on client sites
+- Browser cookies and fingerprinting
+- Integrates with marketing automation
+- Matches company data with website behavior
+
+TRACKING EXAMPLE:
+1. You visit a B2B software company's website from work
+2. Demandbase identifies your company via IP address
+3. Website content personalizes based on your company size/industry
+4. Your browsing signals "intent" to B2B sales teams
+5. You see targeted ads for that company on LinkedIn
+
+REMOVAL STEPS:
+
+1. EMAIL DEMANDBASE PRIVACY:
+   - Address: privacy@demandbase.com
+   - Include work email and IP address
+   - Request deletion under CCPA
+   - Ask for opt-out from tracking
+
+2. BLOCK DEMANDBASE TRACKING:
+   - Use Privacy Badger, uBlock Origin
+   - Block domains: demandbase.com, company-target.com
+   - Prevents identification and personalization
+
+3. USE VPN WHEN RESEARCHING:
+   - VPN masks your company IP address
+   - Prevents Demandbase from identifying your employer
+   - Reduces intent signal accuracy
+
+4. CLEAR COOKIES:
+   - Delete Demandbase tracking cookies
+   - Cookie names: _db_*, company-target.com cookies
+   - Breaks cross-session tracking
+
+5. REQUEST FROM YOUR EMPLOYER:
+   - If your company uses Demandbase, ask IT to exclude you
+   - They can filter out employee IPs
+   - Prevents your research from triggering sales alerts
+
+REALITY CHECK:
+- Demandbase used by thousands of B2B companies
+- Tracking is primarily IP/company-based
+- Individual deletion has limited impact
+- Best approach: VPN + ad blocker for work research
+- This ABM model shows need for B2B privacy regulations
+
+TECHNICAL DETAILS:
+- Tracking domains: demandbase.com, company-target.com
+- Cookies: _db_id_, _db_visitor_id, ct_id
+- Also uses browser fingerprinting
+- Server-side tracking (harder to detect/block)
+
+Note: Demandbase acquired Engagio, Spiderbook, DemandMatrix, InsideView.
+Their tracking may appear under multiple brand names.
+"""
+
+[removal.cookies]
+patterns = ["_db_*", "ct_*", "demandbase_*"]
+domains = [".demandbase.com", ".company-target.com"]
