@@ -66,31 +66,62 @@ impl Browser {
         let mut profiles = Vec::new();
 
         // Chrome
-        if let Ok(chrome_profiles) = Self::detect_chrome() {
-            profiles.extend(chrome_profiles);
+        match Self::detect_chrome() {
+            Ok(chrome_profiles) => {
+                tracing::info!("Found {} Chrome profiles", chrome_profiles.len());
+                profiles.extend(chrome_profiles);
+            }
+            Err(e) => {
+                tracing::warn!("Chrome detection failed: {}", e);
+            }
         }
 
         // Firefox
-        if let Ok(firefox_profiles) = Self::detect_firefox() {
-            profiles.extend(firefox_profiles);
+        match Self::detect_firefox() {
+            Ok(firefox_profiles) => {
+                tracing::info!("Found {} Firefox profiles", firefox_profiles.len());
+                profiles.extend(firefox_profiles);
+            }
+            Err(e) => {
+                tracing::warn!("Firefox detection failed: {}", e);
+            }
         }
 
         // Safari (macOS only)
         #[cfg(target_os = "macos")]
-        if let Ok(safari_profile) = Self::detect_safari() {
-            profiles.push(safari_profile);
+        match Self::detect_safari() {
+            Ok(safari_profile) => {
+                tracing::info!("Found Safari profile");
+                profiles.push(safari_profile);
+            }
+            Err(e) => {
+                tracing::warn!("Safari detection failed: {}", e);
+            }
         }
 
         // Edge
-        if let Ok(edge_profiles) = Self::detect_edge() {
-            profiles.extend(edge_profiles);
+        match Self::detect_edge() {
+            Ok(edge_profiles) => {
+                tracing::info!("Found {} Edge profiles", edge_profiles.len());
+                profiles.extend(edge_profiles);
+            }
+            Err(e) => {
+                tracing::warn!("Edge detection failed: {}", e);
+            }
         }
 
         // Brave
-        if let Ok(brave_profiles) = Self::detect_brave() {
-            profiles.extend(brave_profiles);
+        match Self::detect_brave() {
+            Ok(brave_profiles) => {
+                tracing::info!("Found {} Brave profiles", brave_profiles.len());
+                profiles.extend(brave_profiles);
+            }
+            Err(e) => {
+                tracing::warn!("Brave detection failed: {}", e);
+            }
         }
 
+        tracing::info!("Total browser profiles detected: {}", profiles.len());
         Ok(profiles)
     }
 
@@ -100,8 +131,11 @@ impl Browser {
         let base_path = Self::chrome_base_path()?;
 
         if !base_path.exists() {
+            tracing::debug!("Chrome base path does not exist: {}", base_path.display());
             return Ok(profiles);
         }
+
+        tracing::debug!("Chrome base path exists: {}", base_path.display());
 
         // Default profile
         let default_cookies = base_path.join("Default").join("Cookies");
@@ -142,8 +176,11 @@ impl Browser {
         let base_path = Self::firefox_base_path()?;
 
         if !base_path.exists() {
+            tracing::debug!("Firefox base path does not exist: {}", base_path.display());
             return Ok(profiles);
         }
+
+        tracing::debug!("Firefox base path exists: {}", base_path.display());
 
         // Firefox stores cookies in cookies.sqlite in each profile directory
         for entry in std::fs::read_dir(&base_path).map_err(CookieError::IoError)? {
@@ -251,6 +288,7 @@ impl Browser {
         #[cfg(target_os = "windows")]
         let path = home.join("AppData/Local/Google/Chrome/User Data");
 
+        tracing::debug!("Chrome base path: {}", path.display());
         Ok(path)
     }
 
@@ -268,6 +306,7 @@ impl Browser {
         #[cfg(target_os = "windows")]
         let path = home.join("AppData/Roaming/Mozilla/Firefox/Profiles");
 
+        tracing::debug!("Firefox base path: {}", path.display());
         Ok(path)
     }
 
@@ -285,6 +324,7 @@ impl Browser {
         #[cfg(target_os = "windows")]
         let path = home.join("AppData/Local/Microsoft/Edge/User Data");
 
+        tracing::debug!("Edge base path: {}", path.display());
         Ok(path)
     }
 
