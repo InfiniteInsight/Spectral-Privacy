@@ -1,0 +1,302 @@
+<script lang="ts">
+	import { vaultStore } from '$lib/stores/vault.svelte';
+	import { cookiesAPI, type CookieScanResponse } from '$lib/api/cookies';
+	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
+	import { goto } from '$app/navigation';
+
+	let recentScans = $state<CookieScanResponse[]>([]);
+	let brokerMap = $state<Map<string, BrokerSummary>>(new Map());
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+	let removingBroker = $state<string | null>(null);
+
+	// Load data on mount
+	$effect(() => {
+		async function loadData() {
+			if (!vaultStore.currentVaultId) {
+				error = 'Please unlock a vault first';
+				loading = false;
+				return;
+			}
+
+			loading = true;
+			error = null;
+
+			try {
+				// Load recent cookie scans
+				const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+				recentScans = scans;
+
+				// Load all brokers to map IDs to names
+				const brokers = await brokerAPI.listBrokers();
+				brokerMap = new Map(brokers.map((b) => [b.id, b]));
+			} catch (err) {
+				error = err instanceof Error ? err.message : String(err);
+				console.error('Failed to load cookie data:', err);
+			} finally {
+				loading = false;
+			}
+		}
+
+		loadData();
+	});
+
+	// Get the most recent scan
+	const latestScan = $derived(recentScans.length > 0 ? recentScans[0] : null);
+
+	// Get brokers that have cookies in the latest scan
+	const brokersWithCookies = $derived.by(() => {
+		if (!latestScan) return [];
+
+		return Object.entries(latestScan.cookiesByBroker)
+			.map(([brokerId, count]) => ({
+				broker: brokerMap.get(brokerId),
+				brokerId,
+				count
+			}))
+			.filter((item) => item.broker !== undefined)
+			.sort((a, b) => b.count - a.count);
+	});
+
+	async function handleRemoveCookies(brokerId: string) {
+		if (!vaultStore.currentVaultId || !confirm('Remove all cookies for this broker?')) return;
+
+		removingBroker = brokerId;
+		try {
+			await cookiesAPI.removeCookiesForBroker(vaultStore.currentVaultId, brokerId);
+			// Reload scans to reflect changes
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove cookies:', err);
+		} finally {
+			removingBroker = null;
+		}
+	}
+
+	function formatDate(timestamp: string): string {
+		return new Date(timestamp).toLocaleString();
+	}
+</script>
+
+<div class="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-4">
+	<div class="mx-auto max-w-7xl">
+		<div class="rounded-lg bg-white p-8 shadow-xl">
+			<!-- Header -->
+			<div class="mb-8">
+				<div class="mb-4 flex items-center justify-between">
+					<div>
+						<h1 class="mb-2 text-3xl font-bold text-gray-900">Cookie Scanner Results</h1>
+						<p class="text-gray-600">View and manage tracking cookies from your browsers</p>
+					</div>
+					<div class="flex gap-2">
+						<button
+							onclick={() => goto('/scan')}
+							class="rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
+						>
+							Run New Scan
+						</button>
+						<button
+							onclick={() => goto('/')}
+							class="px-4 py-2 text-gray-600 transition-colors hover:text-gray-900"
+						>
+							← Back
+						</button>
+					</div>
+				</div>
+			</div>
+
+			{#if loading}
+				<div class="rounded-lg border border-gray-200 bg-white p-8 text-center">
+					<div
+						class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-purple-600"
+					></div>
+					<p class="mt-2 text-sm text-gray-500">Loading cookie scan results...</p>
+				</div>
+			{:else if error}
+				<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+					{error}
+				</div>
+			{:else if !latestScan}
+				<div class="rounded-lg border border-blue-200 bg-blue-50 p-8 text-center">
+					<h3 class="mb-2 text-lg font-semibold text-blue-900">No Cookie Scans Yet</h3>
+					<p class="mb-4 text-blue-700">
+						Run your first cookie scan to see which tracking cookies are on your system.
+					</p>
+					<button
+						onclick={() => goto('/scan')}
+						class="rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700"
+					>
+						Run Cookie Scan
+					</button>
+				</div>
+			{:else}
+				<!-- Latest Scan Summary -->
+				<div class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-6">
+					<div class="mb-4 flex items-center justify-between">
+						<h2 class="text-xl font-semibold text-purple-900">Latest Scan</h2>
+						<span class="text-sm text-purple-700">{formatDate(latestScan.timestamp)}</span>
+					</div>
+
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+						<div class="rounded-lg bg-white p-4">
+							<div class="text-2xl font-bold text-purple-600">{latestScan.totalCookies}</div>
+							<div class="text-sm text-gray-600">Total Cookies</div>
+						</div>
+						<div class="rounded-lg bg-white p-4">
+							<div class="text-2xl font-bold text-orange-600">{latestScan.matchedCookies}</div>
+							<div class="text-sm text-gray-600">Tracking Cookies</div>
+						</div>
+						<div class="rounded-lg bg-white p-4">
+							<div class="text-2xl font-bold text-blue-600">
+								{Object.keys(latestScan.cookiesByBroker).length}
+							</div>
+							<div class="text-sm text-gray-600">Brokers Detected</div>
+						</div>
+						<div class="rounded-lg bg-white p-4">
+							<div class="text-2xl font-bold text-green-600">
+								{latestScan.browsersScanned.length}
+							</div>
+							<div class="text-sm text-gray-600">Browsers Scanned</div>
+						</div>
+					</div>
+
+					{#if latestScan.browsersScanned.length > 0}
+						<div class="mt-4 text-sm text-purple-700">
+							Scanned: {latestScan.browsersScanned.join(', ')}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Brokers with Cookies -->
+				{#if brokersWithCookies.length > 0}
+					<div class="mb-6">
+						<h2 class="mb-4 text-xl font-semibold text-gray-900">Tracking Cookies by Broker</h2>
+						<div class="overflow-hidden rounded-lg border border-gray-200">
+							<table class="min-w-full divide-y divide-gray-200">
+								<thead class="bg-gray-50">
+									<tr>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Broker
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Domain
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Cookies Found
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Actions
+										</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-gray-200 bg-white">
+									{#each brokersWithCookies as { broker, brokerId, count }}
+										<tr class="hover:bg-gray-50">
+											<td class="whitespace-nowrap px-6 py-4">
+												<div class="font-medium text-gray-900">{broker?.name || brokerId}</div>
+											</td>
+											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+												{broker?.domain || 'Unknown'}
+											</td>
+											<td class="whitespace-nowrap px-6 py-4">
+												<span
+													class="inline-flex rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800"
+												>
+													{count}
+													{count === 1 ? 'cookie' : 'cookies'}
+												</span>
+											</td>
+											<td class="whitespace-nowrap px-6 py-4 text-sm">
+												<button
+													onclick={() => handleRemoveCookies(brokerId)}
+													disabled={removingBroker === brokerId}
+													class="text-red-600 hover:text-red-900 disabled:opacity-50"
+												>
+													{removingBroker === brokerId ? 'Removing...' : 'Remove Cookies'}
+												</button>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{:else}
+					<div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-6 text-center">
+						<h3 class="mb-2 text-lg font-semibold text-green-900">No Tracking Cookies Found</h3>
+						<p class="text-green-700">
+							Your browsers don't have any cookies from known data brokers.
+						</p>
+					</div>
+				{/if}
+
+				<!-- Scan History -->
+				{#if recentScans.length > 1}
+					<div>
+						<h2 class="mb-4 text-xl font-semibold text-gray-900">Recent Scans</h2>
+						<div class="overflow-hidden rounded-lg border border-gray-200">
+							<table class="min-w-full divide-y divide-gray-200">
+								<thead class="bg-gray-50">
+									<tr>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Date
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Total Cookies
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Tracking Cookies
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
+											Browsers
+										</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-gray-200 bg-white">
+									{#each recentScans as scan}
+										<tr class="hover:bg-gray-50">
+											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+												{formatDate(scan.timestamp)}
+											</td>
+											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+												{scan.totalCookies}
+											</td>
+											<td class="whitespace-nowrap px-6 py-4">
+												<span
+													class="inline-flex rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800"
+												>
+													{scan.matchedCookies}
+												</span>
+											</td>
+											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+												{scan.browsersScanned.length}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				{/if}
+			{/if}
+		</div>
+	</div>
+</div>
