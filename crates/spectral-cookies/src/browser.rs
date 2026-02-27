@@ -137,15 +137,59 @@ impl Browser {
 
         tracing::debug!("Chrome base path exists: {}", base_path.display());
 
-        // Default profile
-        let default_cookies = base_path.join("Default").join("Cookies");
-        if default_cookies.exists() {
+        // Default profile - check both old and new Chrome cookie locations
+        let default_profile_path = base_path.join("Default");
+        tracing::debug!(
+            "Checking Default profile at: {}",
+            default_profile_path.display()
+        );
+
+        if default_profile_path.exists() {
+            tracing::debug!("Default profile directory exists");
+
+            // Try new location first (Chrome 96+): Default/Network/Cookies
+            let new_cookies_path = default_profile_path.join("Network").join("Cookies");
+            tracing::debug!(
+                "Checking new cookie path: {} [exists: {}]",
+                new_cookies_path.display(),
+                new_cookies_path.exists()
+            );
+
+            // Try old location: Default/Cookies
+            let old_cookies_path = default_profile_path.join("Cookies");
+            tracing::debug!(
+                "Checking old cookie path: {} [exists: {}]",
+                old_cookies_path.display(),
+                old_cookies_path.exists()
+            );
+
+            let cookies_path = if new_cookies_path.exists() {
+                tracing::info!("Found Chrome Default profile (new location)");
+                new_cookies_path
+            } else if old_cookies_path.exists() {
+                tracing::info!("Found Chrome Default profile (old location)");
+                old_cookies_path
+            } else {
+                tracing::warn!("Chrome Default profile directory exists but no Cookies file found");
+                tracing::debug!(
+                    "Expected at: {} or {}",
+                    new_cookies_path.display(),
+                    old_cookies_path.display()
+                );
+                return Ok(profiles);
+            };
+
             profiles.push(BrowserProfile {
                 browser_type: BrowserType::Chrome,
                 profile_name: "Default".to_string(),
-                cookie_db_path: default_cookies,
+                cookie_db_path: cookies_path,
                 is_default: true,
             });
+        } else {
+            tracing::debug!(
+                "Default profile directory does not exist at: {}",
+                default_profile_path.display()
+            );
         }
 
         // Additional profiles (Profile 1, Profile 2, etc.)
@@ -155,15 +199,29 @@ impl Browser {
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             if name.starts_with("Profile ") {
-                let cookies_path = path.join("Cookies");
-                if cookies_path.exists() {
-                    profiles.push(BrowserProfile {
-                        browser_type: BrowserType::Chrome,
-                        profile_name: name.to_string(),
-                        cookie_db_path: cookies_path,
-                        is_default: false,
-                    });
-                }
+                tracing::debug!("Checking profile: {}", name);
+
+                // Try new location first (Chrome 96+)
+                let new_cookies_path = path.join("Network").join("Cookies");
+                let old_cookies_path = path.join("Cookies");
+
+                let cookies_path = if new_cookies_path.exists() {
+                    tracing::info!("Found Chrome {} (new location)", name);
+                    new_cookies_path
+                } else if old_cookies_path.exists() {
+                    tracing::info!("Found Chrome {} (old location)", name);
+                    old_cookies_path
+                } else {
+                    tracing::debug!("No Cookies file found for {}", name);
+                    continue;
+                };
+
+                profiles.push(BrowserProfile {
+                    browser_type: BrowserType::Chrome,
+                    profile_name: name.to_string(),
+                    cookie_db_path: cookies_path,
+                    is_default: false,
+                });
             }
         }
 
@@ -234,18 +292,65 @@ impl Browser {
         let base_path = Self::edge_base_path()?;
 
         if !base_path.exists() {
+            tracing::debug!("Edge base path does not exist: {}", base_path.display());
             return Ok(profiles);
         }
 
-        // Edge uses same structure as Chrome
-        let default_cookies = base_path.join("Default").join("Cookies");
-        if default_cookies.exists() {
+        tracing::debug!("Edge base path exists: {}", base_path.display());
+
+        // Edge uses same structure as Chrome - check both old and new cookie locations
+        let default_profile_path = base_path.join("Default");
+        tracing::debug!(
+            "Checking Default profile at: {}",
+            default_profile_path.display()
+        );
+
+        if default_profile_path.exists() {
+            tracing::debug!("Default profile directory exists");
+
+            // Try new location first (Edge 96+): Default/Network/Cookies
+            let new_cookies_path = default_profile_path.join("Network").join("Cookies");
+            tracing::debug!(
+                "Checking new cookie path: {} [exists: {}]",
+                new_cookies_path.display(),
+                new_cookies_path.exists()
+            );
+
+            // Try old location: Default/Cookies
+            let old_cookies_path = default_profile_path.join("Cookies");
+            tracing::debug!(
+                "Checking old cookie path: {} [exists: {}]",
+                old_cookies_path.display(),
+                old_cookies_path.exists()
+            );
+
+            let cookies_path = if new_cookies_path.exists() {
+                tracing::info!("Found Edge Default profile (new location)");
+                new_cookies_path
+            } else if old_cookies_path.exists() {
+                tracing::info!("Found Edge Default profile (old location)");
+                old_cookies_path
+            } else {
+                tracing::warn!("Edge Default profile directory exists but no Cookies file found");
+                tracing::debug!(
+                    "Expected at: {} or {}",
+                    new_cookies_path.display(),
+                    old_cookies_path.display()
+                );
+                return Ok(profiles);
+            };
+
             profiles.push(BrowserProfile {
                 browser_type: BrowserType::Edge,
                 profile_name: "Default".to_string(),
-                cookie_db_path: default_cookies,
+                cookie_db_path: cookies_path,
                 is_default: true,
             });
+        } else {
+            tracing::debug!(
+                "Default profile directory does not exist at: {}",
+                default_profile_path.display()
+            );
         }
 
         Ok(profiles)
@@ -257,16 +362,35 @@ impl Browser {
         let base_path = Self::brave_base_path()?;
 
         if !base_path.exists() {
+            tracing::debug!("Brave base path does not exist: {}", base_path.display());
             return Ok(profiles);
         }
 
-        // Brave uses same structure as Chrome
-        let default_cookies = base_path.join("Default").join("Cookies");
-        if default_cookies.exists() {
+        tracing::debug!("Brave base path exists: {}", base_path.display());
+
+        // Brave uses same structure as Chrome - check both old and new cookie locations
+        let default_profile_path = base_path.join("Default");
+
+        if default_profile_path.exists() {
+            // Try new location first (Brave 96+): Default/Network/Cookies
+            let new_cookies_path = default_profile_path.join("Network").join("Cookies");
+            let old_cookies_path = default_profile_path.join("Cookies");
+
+            let cookies_path = if new_cookies_path.exists() {
+                tracing::info!("Found Brave Default profile (new location)");
+                new_cookies_path
+            } else if old_cookies_path.exists() {
+                tracing::info!("Found Brave Default profile (old location)");
+                old_cookies_path
+            } else {
+                tracing::debug!("Brave Default profile directory exists but no Cookies file found");
+                return Ok(profiles);
+            };
+
             profiles.push(BrowserProfile {
                 browser_type: BrowserType::Brave,
                 profile_name: "Default".to_string(),
-                cookie_db_path: default_cookies,
+                cookie_db_path: cookies_path,
                 is_default: true,
             });
         }

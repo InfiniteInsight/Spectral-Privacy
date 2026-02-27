@@ -73,7 +73,7 @@
 			const result = await cookiesAPI.scanCookies(vaultStore.currentVaultId);
 			console.log('Cookie scan completed:', result);
 			// Navigate to settings cookies tab where results are shown
-			goto('/settings#cookies');
+			goto('/settings?tab=cookies');
 		} catch (err) {
 			console.error('Cookie scan error:', err);
 			error = err instanceof Error ? err.message : String(err);
