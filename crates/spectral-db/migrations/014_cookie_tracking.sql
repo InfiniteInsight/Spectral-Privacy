@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS browser_cookies (
     matched_broker_id TEXT,
     scan_timestamp TEXT NOT NULL,
     removal_status TEXT NOT NULL DEFAULT 'Pending' CHECK(removal_status IN ('Pending', 'Removed', 'Failed', 'Protected')),
-    removed_at TEXT
+    removed_at TEXT,
+    FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_cookies_vault ON browser_cookies(vault_id);
@@ -39,7 +40,8 @@ CREATE TABLE IF NOT EXISTS cookie_scans (
     brokers_matched TEXT, -- JSON array of broker IDs
     scan_status TEXT NOT NULL CHECK(scan_status IN ('InProgress', 'Completed', 'Failed')),
     error_message TEXT,
-    completed_at TEXT
+    completed_at TEXT,
+    FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_cookie_scans_vault ON cookie_scans(vault_id);
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS cookie_removals (
     status TEXT NOT NULL CHECK(status IN ('Pending', 'InProgress', 'Completed', 'Failed', 'PartialSuccess')),
     error_message TEXT,
     backup_path TEXT,
+    FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE,
     FOREIGN KEY (scan_id) REFERENCES cookie_scans(id) ON DELETE SET NULL
 );
 
