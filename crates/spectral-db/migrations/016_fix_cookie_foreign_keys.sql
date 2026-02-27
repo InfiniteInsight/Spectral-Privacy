@@ -1,7 +1,13 @@
--- Cookie tracking and removal system
--- Tracks browser cookies matched against broker definitions for removal
+-- Fix foreign key constraints in cookie tables
+-- The original migration 014 had FOREIGN KEY constraints referencing a vaults table
+-- that doesn't exist in the per-vault database. This migration recreates the tables
+-- without the invalid constraints.
 
-CREATE TABLE IF NOT EXISTS browser_cookies (
+-- Recreate browser_cookies without vaults foreign key
+DROP TABLE IF EXISTS browser_cookies_old;
+ALTER TABLE browser_cookies RENAME TO browser_cookies_old;
+
+CREATE TABLE browser_cookies (
     id TEXT PRIMARY KEY NOT NULL,
     vault_id TEXT NOT NULL,
     browser_type TEXT NOT NULL CHECK(browser_type IN ('Chrome', 'Firefox', 'Safari', 'Edge', 'Brave', 'Other')),
@@ -22,31 +28,43 @@ CREATE TABLE IF NOT EXISTS browser_cookies (
     removed_at TEXT
 );
 
+INSERT INTO browser_cookies SELECT * FROM browser_cookies_old;
+DROP TABLE browser_cookies_old;
+
 CREATE INDEX IF NOT EXISTS idx_cookies_vault ON browser_cookies(vault_id);
 CREATE INDEX IF NOT EXISTS idx_cookies_browser ON browser_cookies(browser_type);
 CREATE INDEX IF NOT EXISTS idx_cookies_broker ON browser_cookies(matched_broker_id);
 CREATE INDEX IF NOT EXISTS idx_cookies_status ON browser_cookies(removal_status);
 CREATE INDEX IF NOT EXISTS idx_cookies_domain ON browser_cookies(cookie_domain);
 
--- Cookie scan sessions to track scan history
-CREATE TABLE IF NOT EXISTS cookie_scans (
+-- Recreate cookie_scans without vaults foreign key
+DROP TABLE IF EXISTS cookie_scans_old;
+ALTER TABLE cookie_scans RENAME TO cookie_scans_old;
+
+CREATE TABLE cookie_scans (
     id TEXT PRIMARY KEY NOT NULL,
     vault_id TEXT NOT NULL,
     scan_timestamp TEXT NOT NULL,
-    browsers_scanned TEXT NOT NULL, -- JSON array of browser types
+    browsers_scanned TEXT NOT NULL,
     total_cookies_found INTEGER NOT NULL DEFAULT 0,
     matched_cookies INTEGER NOT NULL DEFAULT 0,
-    brokers_matched TEXT, -- JSON array of broker IDs
+    brokers_matched TEXT,
     scan_status TEXT NOT NULL CHECK(scan_status IN ('InProgress', 'Completed', 'Failed')),
     error_message TEXT,
     completed_at TEXT
 );
 
+INSERT INTO cookie_scans SELECT * FROM cookie_scans_old;
+DROP TABLE cookie_scans_old;
+
 CREATE INDEX IF NOT EXISTS idx_cookie_scans_vault ON cookie_scans(vault_id);
 CREATE INDEX IF NOT EXISTS idx_cookie_scans_timestamp ON cookie_scans(scan_timestamp);
 
--- Cookie removal operations
-CREATE TABLE IF NOT EXISTS cookie_removals (
+-- Recreate cookie_removals without vaults foreign key
+DROP TABLE IF EXISTS cookie_removals_old;
+ALTER TABLE cookie_removals RENAME TO cookie_removals_old;
+
+CREATE TABLE cookie_removals (
     id TEXT PRIMARY KEY NOT NULL,
     vault_id TEXT NOT NULL,
     scan_id TEXT,
@@ -62,6 +80,9 @@ CREATE TABLE IF NOT EXISTS cookie_removals (
     backup_path TEXT,
     FOREIGN KEY (scan_id) REFERENCES cookie_scans(id) ON DELETE SET NULL
 );
+
+INSERT INTO cookie_removals SELECT * FROM cookie_removals_old;
+DROP TABLE cookie_removals_old;
 
 CREATE INDEX IF NOT EXISTS idx_cookie_removals_vault ON cookie_removals(vault_id);
 CREATE INDEX IF NOT EXISTS idx_cookie_removals_scan ON cookie_removals(scan_id);
