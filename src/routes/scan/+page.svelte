@@ -14,18 +14,16 @@
 	// Get current profile from store
 	const currentProfile = $derived(profileStore.currentProfile);
 
-	// Load profile when vault changes
+	// Load profiles and then load the first profile's full data
 	$effect(() => {
-		if (vaultStore.currentVaultId && profileStore.profiles.length > 0) {
-			// Load full profile data (ProfileSummary doesn't have address fields)
-			profileStore.loadProfile(vaultStore.currentVaultId, profileStore.profiles[0].id);
-		}
-	});
-
-	// Load profiles list when vault changes
-	$effect(() => {
-		if (vaultStore.currentVaultId) {
-			profileStore.loadProfiles(vaultStore.currentVaultId);
+		const vaultId = vaultStore.currentVaultId;
+		if (vaultId) {
+			// Load profiles list first, then load full profile data
+			profileStore.loadProfiles(vaultId).then(() => {
+				if (profileStore.profiles.length > 0) {
+					profileStore.loadProfile(vaultId, profileStore.profiles[0].id);
+				}
+			});
 		}
 	});
 
