@@ -13,6 +13,7 @@
 			<a href="/maps" class="text-sm text-gray-600 hover:text-gray-900">Maps</a>
 			<a href="/score" class="text-sm text-gray-600 hover:text-gray-900">Score</a>
 			<a href="/brokers" class="text-sm text-gray-600 hover:text-gray-900">Brokers</a>
+			<a href="/adtech" class="text-sm text-gray-600 hover:text-gray-900">AdTech</a>
 			<a href="/discovery" class="text-sm text-gray-600 hover:text-gray-900">Discovery</a>
 		</div>
 		<div class="flex items-center gap-3">
