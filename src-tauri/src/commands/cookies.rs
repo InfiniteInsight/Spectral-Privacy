@@ -61,8 +61,8 @@ pub async fn scan_cookies(
 
     let db = vault.database().map_err(|e| e.to_string())?;
 
-    // Load broker cookie patterns from TOML files
-    let broker_patterns = load_broker_cookie_patterns().await?;
+    // Load broker cookie patterns from the already-loaded broker registry
+    let broker_patterns = load_broker_cookie_patterns_from_registry(&state).await?;
 
     // Create matcher
     let matcher = CookieMatcher::new(broker_patterns).map_err(|e| e.to_string())?;
@@ -390,6 +390,68 @@ pub async fn get_recent_cookie_scans(
         .collect())
 }
 
+/// Find the broker-definitions directory using the same logic as BrokerLoader::with_default_dir().
+fn find_broker_definitions_dir() -> Result<std::path::PathBuf, String> {
+    use std::path::PathBuf;
+
+    // Find workspace root by looking for Cargo.toml with [workspace]
+    let mut current_dir = std::env::current_dir().map_err(|e| e.to_string())?;
+
+    loop {
+        let cargo_toml = current_dir.join("Cargo.toml");
+        if cargo_toml.exists() {
+            if let Ok(contents) = std::fs::read_to_string(&cargo_toml) {
+                if contents.contains("[workspace]") {
+                    let definitions_dir = current_dir.join("broker-definitions");
+                    if definitions_dir.exists() {
+                        return Ok(definitions_dir);
+                    }
+                }
+            }
+        }
+
+        if !current_dir.pop() {
+            break;
+        }
+    }
+
+    // Fallback: try relative path from current directory
+    let definitions_dir = PathBuf::from("broker-definitions");
+    if definitions_dir.exists() {
+        return Ok(definitions_dir);
+    }
+
+    Err("Broker definitions directory not found".to_string())
+}
+
+/// Load broker cookie patterns by parsing TOML files using the same loader as broker registry.
+async fn load_broker_cookie_patterns_from_registry(
+    _state: &AppState,
+) -> Result<Vec<BrokerCookiePattern>, String> {
+    // Find broker definitions directory using the same logic as BrokerLoader::with_default_dir()
+    let broker_defs_path = find_broker_definitions_dir()
+        .map_err(|e| format!("Failed to find broker definitions: {}", e))?;
+
+    let mut patterns = Vec::new();
+
+    // Recursively find all TOML files
+    for entry in walkdir::WalkDir::new(broker_defs_path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) == Some("toml")
+            && path.file_name().and_then(|s| s.to_str()) != Some("schema.toml")
+        {
+            if let Some(pattern) = parse_broker_cookie_patterns(path).await? {
+                patterns.push(pattern);
+            }
+        }
+    }
+
+    Ok(patterns)
+}
+
 /// Parse a single broker TOML file and extract cookie patterns.
 async fn parse_broker_cookie_patterns(
     path: &std::path::Path,
@@ -411,7 +473,7 @@ async fn parse_broker_cookie_patterns(
         .ok_or_else(|| format!("Missing broker.id in {}", path.display()))?
         .to_string();
 
-    // Check if this broker has cookie patterns
+    // Check if this broker has cookie patterns in [removal.cookies] section
     if let Some(removal) = toml_value.get("removal") {
         if let Some(cookies) = removal.get("cookies") {
             let cookie_patterns = cookies
@@ -445,32 +507,4 @@ async fn parse_broker_cookie_patterns(
     }
 
     Ok(None)
-}
-
-/// Load broker cookie patterns from TOML files.
-async fn load_broker_cookie_patterns() -> Result<Vec<BrokerCookiePattern>, String> {
-    let broker_defs_path = std::path::PathBuf::from("broker-definitions");
-
-    if !broker_defs_path.exists() {
-        return Err("Broker definitions directory not found".to_string());
-    }
-
-    let mut patterns = Vec::new();
-
-    // Recursively find all TOML files
-    for entry in walkdir::WalkDir::new(&broker_defs_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) == Some("toml")
-            && path.file_name().and_then(|s| s.to_str()) != Some("schema.toml")
-        {
-            if let Some(pattern) = parse_broker_cookie_patterns(path).await? {
-                patterns.push(pattern);
-            }
-        }
-    }
-
-    Ok(patterns)
 }
