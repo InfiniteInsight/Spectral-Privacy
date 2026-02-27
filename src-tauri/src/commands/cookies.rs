@@ -9,6 +9,9 @@ use spectral_cookies::{
 use std::collections::HashMap;
 use tauri::State;
 
+// External dependencies for diagnostics
+use dirs;
+
 /// Response for cookie scan operation.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,17 +64,74 @@ pub async fn scan_cookies(
 
     let db = vault.database().map_err(|e| e.to_string())?;
 
+    // Log diagnostic information about browser paths
+    if let Some(home) = dirs::home_dir() {
+        tracing::info!("Home directory: {}", home.display());
+
+        let chrome_path = home.join("AppData/Local/Google/Chrome/User Data");
+        tracing::info!(
+            "Chrome path: {} [exists: {}]",
+            chrome_path.display(),
+            chrome_path.exists()
+        );
+
+        let firefox_path = home.join("AppData/Roaming/Mozilla/Firefox/Profiles");
+        tracing::info!(
+            "Firefox path: {} [exists: {}]",
+            firefox_path.display(),
+            firefox_path.exists()
+        );
+
+        let edge_path = home.join("AppData/Local/Microsoft/Edge/User Data");
+        tracing::info!(
+            "Edge path: {} [exists: {}]",
+            edge_path.display(),
+            edge_path.exists()
+        );
+    } else {
+        tracing::error!("Could not determine home directory!");
+    }
+
     // Load broker cookie patterns from the already-loaded broker registry
     let broker_patterns = load_broker_cookie_patterns_from_registry(&state).await?;
+    tracing::info!("Loaded {} broker cookie patterns", broker_patterns.len());
 
     // Create matcher
     let matcher = CookieMatcher::new(broker_patterns).map_err(|e| e.to_string())?;
 
+    // Detect browsers first for diagnostic purposes
+    tracing::info!("Detecting installed browsers...");
+    match Browser::detect_installed() {
+        Ok(profiles) => {
+            tracing::info!("Browser detection found {} profiles", profiles.len());
+            for profile in &profiles {
+                tracing::info!(
+                    "  - {} {} at {} [exists: {}]",
+                    profile.browser_type,
+                    profile.profile_name,
+                    profile.cookie_db_path.display(),
+                    profile.cookie_db_path.exists()
+                );
+            }
+        }
+        Err(e) => {
+            tracing::error!("Browser detection failed: {}", e);
+        }
+    }
+
     // Scan cookies
     let scanner = CookieScanner::with_matcher(matcher);
+    tracing::info!("Starting cookie scan for vault: {}", vault_id);
     let scan_result = scanner
         .scan_all_browsers()
         .map_err(|e| format!("Cookie scan failed: {}", e))?;
+
+    tracing::info!(
+        "Cookie scan complete: {} total cookies, {} matched, {} browsers scanned",
+        scan_result.total_cookies,
+        scan_result.matched_cookies,
+        scan_result.cookies_by_browser.len()
+    );
 
     // Store scanned cookies in database
     let mut browser_cookies = Vec::new();
@@ -357,6 +417,76 @@ pub async fn remove_cookies_for_broker(
     .await;
 
     Ok(removal_responses)
+}
+
+/// Diagnostic: Get browser detection paths and status.
+#[tauri::command]
+pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>, String> {
+    use spectral_cookies::Browser;
+
+    let mut diagnostics = Vec::new();
+
+    // Check home directory
+    if let Some(home) = dirs::home_dir() {
+        diagnostics.push((
+            "Home Directory".to_string(),
+            home.display().to_string(),
+            true,
+        ));
+
+        // Chrome
+        let chrome_path = home.join("AppData/Local/Google/Chrome/User Data");
+        diagnostics.push((
+            "Chrome Path".to_string(),
+            chrome_path.display().to_string(),
+            chrome_path.exists(),
+        ));
+
+        // Firefox
+        let firefox_path = home.join("AppData/Roaming/Mozilla/Firefox/Profiles");
+        diagnostics.push((
+            "Firefox Path".to_string(),
+            firefox_path.display().to_string(),
+            firefox_path.exists(),
+        ));
+
+        // Edge
+        let edge_path = home.join("AppData/Local/Microsoft/Edge/User Data");
+        diagnostics.push((
+            "Edge Path".to_string(),
+            edge_path.display().to_string(),
+            edge_path.exists(),
+        ));
+    } else {
+        diagnostics.push((
+            "Error".to_string(),
+            "Could not determine home directory".to_string(),
+            false,
+        ));
+    }
+
+    // Try actual detection
+    match Browser::detect_installed() {
+        Ok(profiles) => {
+            diagnostics.push((
+                "Detected Profiles".to_string(),
+                format!("{} browser profiles found", profiles.len()),
+                !profiles.is_empty(),
+            ));
+            for profile in profiles {
+                diagnostics.push((
+                    format!("{} - {}", profile.browser_type, profile.profile_name),
+                    profile.cookie_db_path.display().to_string(),
+                    profile.cookie_db_path.exists(),
+                ));
+            }
+        }
+        Err(e) => {
+            diagnostics.push(("Detection Error".to_string(), e.to_string(), false));
+        }
+    }
+
+    Ok(diagnostics)
 }
 
 /// Get recent cookie scans.

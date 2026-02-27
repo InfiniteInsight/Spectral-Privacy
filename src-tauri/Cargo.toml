@@ -42,6 +42,7 @@ spectral-llm = { path = "../crates/spectral-llm" }
 spectral-privacy = { path = "../crates/spectral-privacy" }
 spectral-cookies = { path = "../crates/spectral-cookies" }
 # spectral-auth = { path = "../crates/spectral-auth" }
+dirs = "5.0"
 directories.workspace = true
 toml.workspace = true
 walkdir = "2.5"

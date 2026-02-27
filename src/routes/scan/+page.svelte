@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invoke } from '@tauri-apps/api/core';
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { profileStore } from '$lib/stores/profile.svelte';
 	import { scanAPI } from '$lib/api/scan';
@@ -56,6 +57,19 @@
 			startingCookieScan = true;
 			error = null;
 			console.log('Starting cookie scan for vault:', vaultStore.currentVaultId);
+
+			// Run diagnostics first
+			try {
+				const diagnostics = await invoke<[string, string, boolean][]>('diagnose_browser_detection');
+				console.log('=== BROWSER DETECTION DIAGNOSTICS ===');
+				diagnostics.forEach(([name, value, exists]) => {
+					console.log(`${name}: ${value} [${exists ? 'EXISTS' : 'NOT FOUND'}]`);
+				});
+				console.log('=== END DIAGNOSTICS ===');
+			} catch (diagErr) {
+				console.error('Diagnostics failed:', diagErr);
+			}
+
 			const result = await cookiesAPI.scanCookies(vaultStore.currentVaultId);
 			console.log('Cookie scan completed:', result);
 			// Navigate to settings cookies tab where results are shown
