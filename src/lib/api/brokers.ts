@@ -9,6 +9,14 @@ export interface BrokerSummary {
 	typical_removal_days: number;
 }
 
+export interface EmailTemplate {
+	email: string;
+	subject: string;
+	body: string;
+	response_days: number;
+	notes: string | null;
+}
+
 export interface BrokerDetail {
 	id: string;
 	name: string;
@@ -22,6 +30,7 @@ export interface BrokerDetail {
 	last_verified: string;
 	scan_status: string | null;
 	finding_count: number | null;
+	email_template: EmailTemplate | null;
 }
 
 export const brokerAPI = {

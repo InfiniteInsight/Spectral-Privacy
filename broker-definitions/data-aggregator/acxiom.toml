@@ -26,7 +26,7 @@ confirmation = "email-verification"
 notes = "Acxiom is one of the largest data brokers. Their opt-out process requires creating an account on AboutTheData.com to view your profile, then submitting opt-out through their portal. Email verification required. Process takes 7-10 business days. Note: This only opts you out of marketing - they may still maintain data for other purposes."
 
 [removal.fields]
-email = "{user_email}"
+email = "consumeradvo@acxiom.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 address = "{address}"

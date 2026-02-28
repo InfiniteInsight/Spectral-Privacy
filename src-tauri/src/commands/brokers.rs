@@ -31,6 +31,16 @@ impl From<&BrokerDefinition> for BrokerSummary {
     }
 }
 
+/// Email template information for removal.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmailTemplate {
+    pub email: String,
+    pub subject: String,
+    pub body: String,
+    pub response_days: u32,
+    pub notes: Option<String>,
+}
+
 /// Detailed information about a broker including user scan status.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BrokerDetail {
@@ -42,6 +52,7 @@ pub struct BrokerDetail {
     pub last_verified: String,
     pub scan_status: Option<String>,
     pub finding_count: Option<i64>,
+    pub email_template: Option<EmailTemplate>,
 }
 
 /// List all broker definitions.
@@ -95,6 +106,30 @@ pub async fn get_broker_detail(
         Err(_) => (None, None),
     };
 
+    // Extract email template if removal method is Email
+    let email_template = if let spectral_broker::definition::RemovalMethod::Email {
+        email,
+        subject,
+        body,
+        response_days,
+        notes,
+    } = &def.removal
+    {
+        Some(EmailTemplate {
+            email: email.clone(),
+            subject: subject.clone(),
+            body: body.clone(),
+            response_days: *response_days,
+            notes: if notes.is_empty() {
+                None
+            } else {
+                Some(notes.clone())
+            },
+        })
+    } else {
+        None
+    };
+
     Ok(BrokerDetail {
         summary: BrokerSummary::from(&def),
         removal_method: format!("{:?}", def.removal),
@@ -103,6 +138,7 @@ pub async fn get_broker_detail(
         last_verified: def.broker.last_verified.to_string(),
         scan_status,
         finding_count,
+        email_template,
     })
 }
 

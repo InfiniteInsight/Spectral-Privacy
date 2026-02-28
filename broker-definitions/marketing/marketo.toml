@@ -21,7 +21,7 @@ instructions = "Marketo (owned by Adobe) is B2B marketing automation platform. T
 
 [removal]
 method = "email"
-email = "privacy@marketo.com"
+email = "gdprsupport@adobe.com"
 subject = "CCPA/GDPR Data Deletion Request"
 body = """
 I am exercising my privacy rights under CCPA/GDPR.

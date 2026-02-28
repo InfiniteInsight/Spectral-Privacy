@@ -21,7 +21,7 @@ instructions = "Segment is a customer data platform (CDP) that companies use to 
 
 [removal]
 method = "email"
-email = "privacy@segment.com"
+email = "privacy@twilio.com"
 subject = "CCPA/GDPR Data Deletion Request - Segment CDP"
 body = """
 I am exercising my privacy rights under CCPA/GDPR.

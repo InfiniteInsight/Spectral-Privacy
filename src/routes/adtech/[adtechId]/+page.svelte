@@ -4,6 +4,7 @@
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
 	import { vaultStore } from '$lib/stores';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
+	import { substituteEmailVariables } from '$lib/utils/email-template';
 
 	const adtechId = $derived($page.params.adtechId);
 
@@ -198,6 +199,81 @@
 								You haven't scanned this company yet. Start a scan to check if your information
 								appears on this site.
 							</p>
+						</div>
+					{/if}
+
+					<!-- Zendesk Warning -->
+					{#if adtech.id === 'zendesk'}
+						<div class="mb-8 p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+							<h2 class="text-xl font-bold text-yellow-900 mb-2 flex items-center gap-2">
+								<span class="text-2xl">⚠️</span>
+								Important Warning
+							</h2>
+							<p class="text-sm text-yellow-900 font-medium mb-2">
+								Requesting deletion from Zendesk may affect your support tickets with companies that
+								use Zendesk.
+							</p>
+							<p class="text-sm text-yellow-800">
+								If you have open support tickets with any companies (e.g., customer support, help
+								desk tickets), requesting data deletion from Zendesk could cancel or close those
+								tickets. Consider resolving your open support issues before proceeding with this
+								removal request.
+							</p>
+						</div>
+					{/if}
+
+					<!-- Email Template Preview -->
+					{#if adtech.email_template}
+						{@const substituted = substituteEmailVariables(adtech.email_template)}
+						<div class="mb-8 p-6 border-2 border-gray-200 rounded-lg bg-gray-50">
+							<h2 class="text-xl font-bold text-gray-900 mb-4">Email Removal Template</h2>
+
+							<div class="space-y-4">
+								<!-- To -->
+								<div>
+									<label class="text-sm font-medium text-gray-700">To:</label>
+									<div class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm">
+										{substituted.email}
+									</div>
+								</div>
+
+								<!-- Subject -->
+								<div>
+									<label class="text-sm font-medium text-gray-700">Subject:</label>
+									<div class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm">
+										{substituted.subject}
+									</div>
+								</div>
+
+								<!-- Body -->
+								<div>
+									<label class="text-sm font-medium text-gray-700">Body:</label>
+									<div
+										class="mt-1 p-4 bg-white border border-gray-300 rounded font-mono text-sm whitespace-pre-wrap max-h-96 overflow-y-auto"
+									>
+										{substituted.body}
+									</div>
+								</div>
+
+								<!-- Expected Response Time -->
+								<div class="flex items-center gap-2 text-sm text-gray-600">
+									<span class="font-medium">Expected Response:</span>
+									<span
+										>{adtech.email_template.response_days}
+										{adtech.email_template.response_days === 1 ? 'day' : 'days'}</span
+									>
+								</div>
+
+								<!-- Notes -->
+								{#if adtech.email_template.notes}
+									<div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
+										<h4 class="font-medium text-blue-900 mb-2">Notes:</h4>
+										<p class="text-sm text-blue-800 whitespace-pre-wrap">
+											{adtech.email_template.notes}
+										</p>
+									</div>
+								{/if}
+							</div>
 						</div>
 					{/if}
 

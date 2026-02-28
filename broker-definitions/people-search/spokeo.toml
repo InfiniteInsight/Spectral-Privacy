@@ -39,7 +39,7 @@ notes = "Requires email verification. Link expires after 72 hours. Re-check afte
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@spokeo.com"
 
 [removal.form_selectors]
 listing_url_input = "#url"

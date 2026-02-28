@@ -54,14 +54,16 @@
 	const brokersWithCookies = $derived.by(() => {
 		if (!latestScan) return [];
 
-		return Object.entries(latestScan.cookiesByBroker)
-			.map(([brokerId, count]) => ({
-				broker: brokerMap.get(brokerId),
-				brokerId,
-				count
-			}))
-			.filter((item) => item.broker !== undefined)
-			.sort((a, b) => b.count - a.count);
+		return (
+			Object.entries(latestScan.cookiesByBroker)
+				.map(([brokerId, count]) => ({
+					broker: brokerMap.get(brokerId),
+					brokerId,
+					count
+				}))
+				// Don't filter out unknown brokers - show them with ID
+				.sort((a, b) => b.count - a.count)
+		);
 	});
 
 	// Group unmatched cookies by domain
@@ -190,7 +192,7 @@
 				</div>
 
 				<!-- Brokers with Cookies -->
-				{#if brokersWithCookies.length > 0}
+				{#if latestScan.matchedCookies > 0}
 					<div class="mb-6">
 						<h2 class="mb-4 text-xl font-semibold text-gray-900">Tracking Cookies by Broker</h2>
 						<div class="overflow-hidden rounded-lg border border-gray-200">
@@ -224,6 +226,11 @@
 										<tr class="hover:bg-gray-50">
 											<td class="whitespace-nowrap px-6 py-4">
 												<div class="font-medium text-gray-900">{broker?.name || brokerId}</div>
+												{#if !broker}
+													<div class="text-xs text-gray-500">
+														Broker ID: {brokerId}
+													</div>
+												{/if}
 											</td>
 											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
 												{broker?.domain || 'Unknown'}

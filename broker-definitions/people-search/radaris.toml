@@ -41,7 +41,7 @@ notes = "Radaris has a straightforward removal process. Submit the opt-out form 
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "removals@radaris.com"
 
 [removal.form_selectors]
 listing_url_input = "#url, input[name='url'], input[placeholder*='URL']"

@@ -40,7 +40,7 @@ notes = "MyLife removal is complex. Requires account creation or emailing privac
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@mylife.com"
 full_name = "{full_name}"
 
 [removal.form_selectors]

@@ -14,6 +14,7 @@
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 	let currentDirectory = $state<string | null>(null);
+	let scannedPaths = $state<Array<{ path: string; name: string; timestamp: number }>>([]);
 
 	// Filter state
 	let piiTypeFilter = $state<Set<string>>(new Set());
@@ -99,6 +100,7 @@
 		try {
 			scanning = true;
 			error = null;
+			scannedPaths = []; // Clear previous scan paths
 			await startDiscoveryScan(vid);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -132,6 +134,15 @@
 		// Listen for scan progress
 		const unlistenProgress = listen('discovery:progress', (event: any) => {
 			currentDirectory = event.payload.directory;
+			// Add to scanned paths list (keep last 100 for performance)
+			scannedPaths = [
+				{
+					path: event.payload.path || event.payload.directory,
+					name: event.payload.directory,
+					timestamp: Date.now()
+				},
+				...scannedPaths.slice(0, 99)
+			];
 		});
 
 		// Listen for scan completion
@@ -203,6 +214,32 @@
 			{/if}
 		</button>
 	</div>
+
+	{#if scanning && scannedPaths.length > 0}
+		<div class="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+			<div class="mb-3 flex items-center gap-2">
+				<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+				<h3 class="text-sm font-semibold text-indigo-900">
+					Scanning for PII... ({scannedPaths.length} locations scanned)
+				</h3>
+			</div>
+			<div class="max-h-48 overflow-y-auto rounded border border-indigo-200 bg-white">
+				<div class="divide-y divide-gray-100">
+					{#each scannedPaths.slice(0, 20) as item (item.timestamp)}
+						<div class="px-3 py-2 text-xs">
+							<div class="font-mono text-gray-900">{item.name}</div>
+							<div class="text-gray-500 truncate">{item.path}</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+			{#if scannedPaths.length > 20}
+				<div class="mt-2 text-xs text-indigo-700">
+					Showing 20 most recent. {scannedPaths.length - 20} more scanned...
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#if error}
 		<div class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>

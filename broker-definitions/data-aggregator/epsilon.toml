@@ -26,7 +26,7 @@ confirmation = "email-verification"
 notes = "Epsilon handles data for major retailers and brands. Submit a CCPA/GDPR data deletion request through their privacy portal. Requires verification via email. They have 45 days to respond under CCPA. Include detailed information to help them locate your records. As a B2B service, they may require additional verification."
 
 [removal.fields]
-email = "{user_email}"
+email = "privacy@epsilon.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 address = "{address}"

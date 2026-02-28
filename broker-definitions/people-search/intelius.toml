@@ -41,7 +41,7 @@ notes = "Intelius requires email verification. You must access the removal page,
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "support@mailer.intelius.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 phone = "{user_phone}"

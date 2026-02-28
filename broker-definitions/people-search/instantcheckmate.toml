@@ -47,7 +47,7 @@ notes = "Instant Checkmate has a complex opt-out process. You must find your exa
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@instantcheckmate.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 state = "{state}"

@@ -45,7 +45,7 @@ notes = "Requires finding your listing URL first, then email verification. May t
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@beenverified.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 
