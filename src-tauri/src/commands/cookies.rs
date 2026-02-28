@@ -52,19 +52,8 @@ pub struct CookieRemovalResponse {
     pub errors: Vec<String>,
 }
 
-/// Scan all browsers for tracking cookies.
-#[tauri::command]
-pub async fn scan_cookies(
-    state: State<'_, AppState>,
-    vault_id: String,
-) -> Result<CookieScanResponse, String> {
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| "Vault not unlocked".to_string())?;
-
-    let db = vault.database().map_err(|e| e.to_string())?;
-
-    // Log diagnostic information about browser paths
+/// Log diagnostic information about browser installation paths.
+fn log_browser_diagnostics() {
     if let Some(home) = dirs::home_dir() {
         tracing::info!("Home directory: {}", home.display());
 
@@ -91,15 +80,10 @@ pub async fn scan_cookies(
     } else {
         tracing::error!("Could not determine home directory!");
     }
+}
 
-    // Load broker cookie patterns from the already-loaded broker registry
-    let broker_patterns = load_broker_cookie_patterns_from_registry(&state).await?;
-    tracing::info!("Loaded {} broker cookie patterns", broker_patterns.len());
-
-    // Create matcher
-    let matcher = CookieMatcher::new(broker_patterns).map_err(|e| e.to_string())?;
-
-    // Detect browsers first for diagnostic purposes
+/// Log detected browser profiles for diagnostic purposes.
+fn log_detected_browsers() {
     tracing::info!("=== Starting Browser Detection ===");
     match Browser::detect_installed() {
         Ok(profiles) => {
@@ -124,65 +108,62 @@ pub async fn scan_cookies(
         }
     }
     tracing::info!("=== Browser Detection Complete ===");
+}
 
-    // Scan cookies
-    let scanner = CookieScanner::with_matcher(matcher);
-    tracing::info!("Starting cookie scan for vault: {}", vault_id);
-    let scan_result = scanner
-        .scan_all_browsers()
-        .map_err(|e| format!("Cookie scan failed: {}", e))?;
+/// Convert scanned cookie results to database records and insert them.
+async fn save_scan_results_to_db(
+    db_pool: &sqlx::Pool<sqlx::Sqlite>,
+    vault_id: &str,
+    scanned_cookies: &[spectral_cookies::ScannedCookie],
+) -> Result<(), String> {
+    let browser_cookies: Vec<spectral_db::cookies::BrowserCookie> = scanned_cookies
+        .iter()
+        .map(|scanned_cookie| {
+            let cookie_id = uuid::Uuid::new_v4().to_string();
+            let scan_timestamp = chrono::Utc::now().to_rfc3339();
 
-    tracing::info!(
-        "Cookie scan complete: {} total cookies, {} matched, {} browsers scanned",
-        scan_result.total_cookies,
-        scan_result.matched_cookies,
-        scan_result.cookies_by_browser.len()
-    );
+            spectral_db::cookies::BrowserCookie {
+                id: cookie_id,
+                vault_id: vault_id.to_string(),
+                browser_type: scanned_cookie.browser_type.as_str().to_string(),
+                profile_name: Some(scanned_cookie.profile_name.clone()),
+                cookie_name: scanned_cookie.cookie.name.clone(),
+                cookie_domain: scanned_cookie.cookie.domain.clone(),
+                cookie_value: Some(scanned_cookie.cookie.value.clone()),
+                cookie_path: scanned_cookie.cookie.path.clone(),
+                creation_time: scanned_cookie.cookie.creation_time,
+                expiry_time: scanned_cookie.cookie.expiry_time,
+                last_access_time: scanned_cookie.cookie.last_access_time,
+                is_secure: if scanned_cookie.cookie.is_secure {
+                    1
+                } else {
+                    0
+                },
+                is_httponly: if scanned_cookie.cookie.is_httponly {
+                    1
+                } else {
+                    0
+                },
+                same_site: scanned_cookie.cookie.same_site.map(|s| s.to_string()),
+                matched_broker_id: scanned_cookie.matched_broker_id.clone(),
+                scan_timestamp,
+                removal_status: "Pending".to_string(),
+                removed_at: None,
+            }
+        })
+        .collect();
 
-    // Store scanned cookies in database
-    let mut browser_cookies = Vec::new();
-    for scanned_cookie in &scan_result.scanned_cookies {
-        let cookie_id = uuid::Uuid::new_v4().to_string();
-        let scan_timestamp = chrono::Utc::now().to_rfc3339();
-
-        let browser_cookie = spectral_db::cookies::BrowserCookie {
-            id: cookie_id,
-            vault_id: vault_id.clone(),
-            browser_type: scanned_cookie.browser_type.as_str().to_string(),
-            profile_name: Some(scanned_cookie.profile_name.clone()),
-            cookie_name: scanned_cookie.cookie.name.clone(),
-            cookie_domain: scanned_cookie.cookie.domain.clone(),
-            cookie_value: Some(scanned_cookie.cookie.value.clone()),
-            cookie_path: scanned_cookie.cookie.path.clone(),
-            creation_time: scanned_cookie.cookie.creation_time,
-            expiry_time: scanned_cookie.cookie.expiry_time,
-            last_access_time: scanned_cookie.cookie.last_access_time,
-            is_secure: if scanned_cookie.cookie.is_secure {
-                1
-            } else {
-                0
-            },
-            is_httponly: if scanned_cookie.cookie.is_httponly {
-                1
-            } else {
-                0
-            },
-            same_site: scanned_cookie.cookie.same_site.map(|s| s.to_string()),
-            matched_broker_id: scanned_cookie.matched_broker_id.clone(),
-            scan_timestamp: scan_timestamp.clone(),
-            removal_status: "Pending".to_string(),
-            removed_at: None,
-        };
-
-        browser_cookies.push(browser_cookie);
-    }
-
-    // Insert into database
-    spectral_db::cookies::insert_scanned_cookies(db.pool(), &vault_id, browser_cookies)
+    spectral_db::cookies::insert_scanned_cookies(db_pool, vault_id, browser_cookies)
         .await
-        .map_err(|e| format!("Failed to save cookies: {}", e))?;
+        .map_err(|e| format!("Failed to save cookies: {}", e))
+}
 
-    // Create scan session
+/// Create a scan session record in the database and audit log.
+async fn create_scan_session_record(
+    db_pool: &sqlx::Pool<sqlx::Sqlite>,
+    vault_id: &str,
+    scan_result: &spectral_cookies::CookieScanResult,
+) -> Result<String, String> {
     let browsers_scanned: Vec<String> = scan_result
         .cookies_by_browser
         .keys()
@@ -203,9 +184,9 @@ pub async fn scan_cookies(
 
     #[allow(clippy::cast_possible_wrap)]
     let scan_id = spectral_db::cookies::create_cookie_scan(
-        db.pool(),
-        &vault_id,
-        browsers_scanned.clone(),
+        db_pool,
+        vault_id,
+        browsers_scanned,
         scan_result.total_cookies as i32,
         scan_result.matched_cookies as i32,
         brokers_matched,
@@ -215,8 +196,8 @@ pub async fn scan_cookies(
 
     // Log to audit log
     let _ = spectral_db::audit_log::insert_audit_entry(
-        db.pool(),
-        vault_id.clone(),
+        db_pool,
+        vault_id.to_string(),
         "CookieScanCompleted".to_string(),
         format!(
             "Scanned {} cookies, matched {} to brokers",
@@ -227,6 +208,57 @@ pub async fn scan_cookies(
         "Allowed".to_string(),
     )
     .await;
+
+    Ok(scan_id)
+}
+
+/// Scan all browsers for tracking cookies.
+#[tauri::command]
+pub async fn scan_cookies(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<CookieScanResponse, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not unlocked".to_string())?;
+
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    log_browser_diagnostics();
+
+    // Load broker cookie patterns and create matcher
+    let broker_patterns = load_broker_cookie_patterns_from_registry(&state).await?;
+    tracing::info!("Loaded {} broker cookie patterns", broker_patterns.len());
+
+    let matcher = CookieMatcher::new(broker_patterns).map_err(|e| e.to_string())?;
+
+    log_detected_browsers();
+
+    // Scan cookies
+    let scanner = CookieScanner::with_matcher(matcher);
+    tracing::info!("Starting cookie scan for vault: {}", vault_id);
+    let scan_result = scanner
+        .scan_all_browsers()
+        .map_err(|e| format!("Cookie scan failed: {}", e))?;
+
+    tracing::info!(
+        "Cookie scan complete: {} total cookies, {} matched, {} browsers scanned",
+        scan_result.total_cookies,
+        scan_result.matched_cookies,
+        scan_result.cookies_by_browser.len()
+    );
+
+    // Save results to database
+    save_scan_results_to_db(db.pool(), &vault_id, &scan_result.scanned_cookies).await?;
+
+    // Create scan session record
+    let scan_id = create_scan_session_record(db.pool(), &vault_id, &scan_result).await?;
+
+    let browsers_scanned: Vec<String> = scan_result
+        .cookies_by_browser
+        .keys()
+        .map(|k| k.to_string())
+        .collect();
 
     Ok(CookieScanResponse {
         scan_id,
@@ -594,24 +626,36 @@ pub async fn get_unmatched_cookies(
         .collect())
 }
 
+/// Check if a directory is a Cargo workspace root with broker-definitions.
+fn check_for_broker_definitions(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    let cargo_toml = dir.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return None;
+    }
+
+    let contents = std::fs::read_to_string(&cargo_toml).ok()?;
+    if !contents.contains("[workspace]") {
+        return None;
+    }
+
+    let definitions_dir = dir.join("broker-definitions");
+    if definitions_dir.exists() {
+        Some(definitions_dir)
+    } else {
+        None
+    }
+}
+
 /// Find the broker-definitions directory using the same logic as BrokerLoader::with_default_dir().
 fn find_broker_definitions_dir() -> Result<std::path::PathBuf, String> {
     use std::path::PathBuf;
 
-    // Find workspace root by looking for Cargo.toml with [workspace]
+    // Find workspace root by traversing parent directories
     let mut current_dir = std::env::current_dir().map_err(|e| e.to_string())?;
 
     loop {
-        let cargo_toml = current_dir.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(contents) = std::fs::read_to_string(&cargo_toml) {
-                if contents.contains("[workspace]") {
-                    let definitions_dir = current_dir.join("broker-definitions");
-                    if definitions_dir.exists() {
-                        return Ok(definitions_dir);
-                    }
-                }
-            }
+        if let Some(definitions_dir) = check_for_broker_definitions(&current_dir) {
+            return Ok(definitions_dir);
         }
 
         if !current_dir.pop() {
