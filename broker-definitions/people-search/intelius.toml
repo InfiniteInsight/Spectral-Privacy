@@ -56,3 +56,14 @@ submit_button = "button.submit, input[type='submit'], #submitBtn"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success, .confirmation-message"
 error_indicator = ".error, .alert-danger"
+
+[removal.email_fallback]
+enabled = true
+email = "privacy@peopleconnect.us"
+phone = "1-877-564-3253"
+subject = "Removal Request for Intelius"
+required_fields = ["full_name", "profile_url", "user_email", "phone"]
+processing_days = 3
+notes = "Email removal supported through PeopleConnect parent company. If unable to access online form, contact privacy@peopleconnect.us. Phone support: Mon-Fri 7am-4pm PST. Response within 72 hours."
+network_note = "Intelius is part of the PeopleConnect network. This email removes data from all PeopleConnect sites: Intelius, Instant Checkmate, TruthFinder, PublicRecordsNow, US Search, and Classmates."
+ccpa_compliant = true

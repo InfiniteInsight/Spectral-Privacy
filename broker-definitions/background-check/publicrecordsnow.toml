@@ -60,3 +60,13 @@ submit_button = "button.submit, input[type='submit']"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success, .confirmation"
 error_indicator = ".error, .failure"
+
+[removal.email_fallback]
+enabled = true
+email = "privacy@peopleconnect.us"
+subject = "PublicRecordsNow Removal Request"
+required_fields = ["full_name", "profile_url", "state"]
+processing_days = 3
+notes = "PublicRecordsNow is owned by Intelius and managed through PeopleConnect. Email removal requests supported through privacy@peopleconnect.us. Response within 72 hours."
+network_note = "PublicRecordsNow is part of the Intelius/PeopleConnect network. This email removes data from all PeopleConnect sites: PublicRecordsNow, Intelius, Instant Checkmate, TruthFinder, US Search, and Classmates."
+ccpa_compliant = true

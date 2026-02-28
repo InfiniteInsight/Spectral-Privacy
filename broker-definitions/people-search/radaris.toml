@@ -50,3 +50,13 @@ submit_button = "#btnSubmit, button[type='submit'], .btn-submit"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success, .opt-out-confirmation"
 error_indicator = ".error, .alert-error"
+
+[removal.email_fallback]
+enabled = true
+email = "ccpa@radaris.com"
+phone = "1-855-723-2747"
+subject = "Opt-Out Request"
+required_fields = ["profile_url", "full_name", "address"]
+processing_days = 1
+notes = "Dedicated CCPA email with 24-hour processing. Alternative emails: danielslaw@radaris.com (judges/law enforcement), support@radaris.com (general). Phone: Mon-Fri 9am-5pm, Sat 10am-4pm ET."
+ccpa_compliant = true

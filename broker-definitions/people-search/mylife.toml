@@ -51,3 +51,13 @@ submit_button = "button.submit, input[type='submit']"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success-message, .confirmation"
 error_indicator = ".error-message, .alert-error"
+
+[removal.email_fallback]
+enabled = true
+email = "privacy@mylife.com"
+phone = "1-888-704-1900"
+subject = "Opt-Out Request Under CCPA"
+required_fields = ["full_name", "profile_url", "address", "past_addresses"]
+processing_days = 15
+notes = "If the MyLife opt-out form doesn't work, email removal requests accepted. Alternative emails: customercare@mylife.com, membersupport@mylife.com. Phone support: Mon-Fri 6am-9pm PST. Processing time: 15 business days."
+ccpa_compliant = true

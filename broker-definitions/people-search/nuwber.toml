@@ -52,3 +52,13 @@ request_code_button = "button.send-code, #sendCode"
 submit_button = "button.submit-removal, #submitRemoval"
 success_indicator = ".success-message, .removal-confirmed"
 error_indicator = ".error-message, .removal-failed"
+
+[removal.email_fallback]
+enabled = true
+email = "support@nuwber.com"
+phone = "+1-844-912-1292"
+subject = "Privacy Request - Data Removal"
+required_fields = ["profile_url", "full_name", "phone"]
+processing_days = 2
+notes = "Email privacy requests and data reappearance issues to support@nuwber.com. Phone support available during business hours. Response within 48 hours. Nuwber processed 295,500 opt-out requests in 2024 with fast turnaround."
+ccpa_compliant = true

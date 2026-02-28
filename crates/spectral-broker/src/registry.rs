@@ -291,6 +291,7 @@ mod tests {
                 },
                 confirmation: ConfirmationType::EmailVerification,
                 notes: String::new(),
+                email_fallback: None,
             },
         }
     }

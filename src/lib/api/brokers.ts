@@ -17,6 +17,22 @@ export interface EmailTemplate {
 	notes: string | null;
 }
 
+export interface EmailFallback {
+	enabled: boolean;
+	email: string;
+	phone: string | null;
+	ccpa_phone: string | null;
+	subject: string | null;
+	subject_required: boolean;
+	required_fields: string[];
+	processing_days: number;
+	email_template: string | null;
+	notes: string;
+	network_note: string | null;
+	ccpa_compliant: boolean;
+	gdpr_compliant: boolean;
+}
+
 export interface BrokerDetail {
 	id: string;
 	name: string;
@@ -31,6 +47,7 @@ export interface BrokerDetail {
 	scan_status: string | null;
 	finding_count: number | null;
 	email_template: EmailTemplate | null;
+	email_fallback: EmailFallback | null;
 }
 
 export const brokerAPI = {

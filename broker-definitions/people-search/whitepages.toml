@@ -51,3 +51,12 @@ last_name_input = "#lastName"
 submit_button = "button.submit-btn"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success-message"
+
+[removal.email_fallback]
+enabled = true
+email = "ccparequest@whitepages.com"
+subject = "Privacy Request - Data Removal"
+required_fields = ["full_name", "listing_url", "address", "phone"]
+processing_days = 30
+notes = "Email removal requests accepted. California residents use ccparequest@whitepages.com. General support: support@whitepages.com. May take up to 30 days for mail requests, faster for online."
+ccpa_compliant = true

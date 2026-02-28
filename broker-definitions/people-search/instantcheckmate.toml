@@ -65,3 +65,14 @@ submit_button = "button[type='submit'], .submit-btn, #submitOptOut"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success-message, .opt-out-confirmed"
 error_indicator = ".error-message, .opt-out-error"
+
+[removal.email_fallback]
+enabled = true
+email = "privacy@peopleconnect.us"
+phone = "1-855-921-3711"
+subject = "Instant Checkmate Removal Request"
+required_fields = ["full_name", "profile_url", "date_of_birth", "state"]
+processing_days = 2
+notes = "Email removal supported through PeopleConnect parent company. If unable to complete online form or email/phone not recognized, contact privacy@peopleconnect.us. Phone support: Mon-Fri 7am-4pm PT. Response within 48 hours (2-3 business days)."
+network_note = "Instant Checkmate is part of the PeopleConnect network. This email removes data from all PeopleConnect sites: Instant Checkmate, Intelius, TruthFinder, PublicRecordsNow, US Search, and Classmates."
+ccpa_compliant = true
