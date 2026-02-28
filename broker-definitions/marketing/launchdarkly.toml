@@ -1,0 +1,245 @@
+# LaunchDarkly - Feature Flag Management Platform (with User Tracking)
+# Last verified: 2026-02-27
+
+[broker]
+id = "launchdarkly"
+name = "LaunchDarkly"
+url = "https://launchdarkly.com"
+domain = "launchdarkly.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://launchdarkly.com"
+instructions = "LaunchDarkly is a feature flag management platform that tracks user context and behavior to enable targeted feature rollouts. While primarily a developer tool, it extensively tracks user attributes and feature interactions. Cannot search directly - data is owned by companies using LaunchDarkly."
+
+[removal]
+method = "email"
+email = "privacy@launchdarkly.com"
+subject = "CCPA/GDPR Data Deletion Request - LaunchDarkly User Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data and user context data collected through LaunchDarkly
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Key: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from LaunchDarkly's systems
+2. Notify client companies to delete my data from their LaunchDarkly projects
+3. Stop processing my user context and feature flag evaluations
+4. Remove all user attributes, custom properties, and feature interaction data
+5. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+LaunchDarkly tracking and removal (MODERATE COMPLEXITY):
+
+WHAT LAUNCHDARKLY IS:
+- Feature flag and feature management platform
+- Used by 4,000+ companies (including Microsoft, IBM, Atlassian)
+- Enables gradual feature rollouts and A/B testing
+- Allows targeting features to specific user segments
+- While marketed as DevOps tool, extensively tracks users
+- NOT just a developer tool - has significant privacy implications
+
+HOW IT WORKS:
+1. Company integrates LaunchDarkly SDK into application
+2. Application sends user context to LaunchDarkly (email, ID, attributes)
+3. LaunchDarkly evaluates feature flags based on user targeting rules
+4. Tracks which features shown to which users
+5. Analytics track feature usage and user behavior
+6. Data used for experimentation and gradual rollouts
+
+WHAT THEY TRACK:
+- User identification: email, user ID, name
+- User context: custom attributes (age, plan, location, segment)
+- Feature flag evaluations: which features enabled for you
+- Feature interactions: clicks, usage, engagement per feature
+- Device data: browser, OS, mobile device info
+- Session data: when you use app, frequency
+- A/B test assignments: which experiment variations you see
+- Custom events: app-specific behavioral events
+- Anonymous users: device IDs for logged-out users
+
+WHY IT'S PRIVACY-INVASIVE:
+- Collects detailed user context for targeting
+- Persistent tracking across sessions
+- Often includes PII (email, name, phone)
+- Behavioral analytics on feature usage
+- Integrates with analytics platforms (amplifies tracking)
+- Server-side tracking harder to detect/block
+- No user-facing opt-out mechanism
+
+REMOVAL CHALLENGES:
+- LaunchDarkly is a data processor (not data controller)
+- Data legally owned by companies using LaunchDarkly
+- No direct search capability for end users
+- Must request deletion from individual companies
+- Server-side SDKs harder to detect
+- User context often includes extensive PII
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify apps/sites using LaunchDarkly (harder to detect than web analytics)
+   - Check network requests for: app.launchdarkly.com, clientstream.launchdarkly.com
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of all feature flag and user context data
+   - Companies should use LaunchDarkly's delete user API
+   - This deletes user context, feature evaluations, and analytics
+
+2. EMAIL LAUNCHDARKLY PRIVACY TEAM:
+   - Address: privacy@launchdarkly.com
+   - Include email, name, any known user IDs/keys
+   - LaunchDarkly may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+
+3. DETECT LAUNCHDARKLY TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * app.launchdarkly.com (flag evaluations)
+     * clientstream.launchdarkly.com (streaming updates)
+     * events.launchdarkly.com (analytics events)
+     * sdk.launchdarkly.com (SDK delivery)
+   - Cookies: ld_*, launchdarkly_*
+   - LocalStorage: ld:* entries
+   - Server-side SDKs harder to detect (no browser requests)
+
+4. BLOCK LAUNCHDARKLY TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||launchdarkly.com^
+     * ||launchdarkly.us^ (US region)
+     * ||launchdarkly.eu^ (EU region)
+   - Blocks feature flag evaluations (may break app functionality)
+   - App may fall back to default flag values
+   - Prevents analytics tracking
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks LaunchDarkly analytics)
+   - Firefox Enhanced Tracking Protection
+   - Third-party cookie blocking
+   - Server-side LaunchDarkly unaffected by browser settings
+
+6. CLEAR TRACKING DATA:
+   - Delete LaunchDarkly cookies:
+     * ld_* (various tracking cookies)
+     * launchdarkly_* (feature flag state)
+   - Clear LocalStorage ld:* entries
+   - LocalStorage stores flag values and user context
+   - Clearing breaks feature flag caching
+
+7. SERVER-SIDE TRACKING:
+   - Many companies use server-side LaunchDarkly SDKs
+   - No browser requests (happens on backend)
+   - Impossible to detect from client side
+   - Still subject to GDPR/CCPA deletion rights
+   - Request deletion from company directly
+
+8. MOBILE APP TRACKING:
+   - LaunchDarkly SDKs for iOS, Android, React Native
+   - Tracks device ID, app usage, feature interactions
+   - Request deletion from app developer
+   - Include device ID (IDFA/AAID) in request
+
+REALITY CHECK:
+- LaunchDarkly marketed as developer tool, not analytics
+- But extensively tracks user behavior and context
+- Used by major tech companies, SaaS, e-commerce
+- Often combined with analytics (Amplitude, Segment)
+- Server-side tracking prevalent and hard to detect
+- Best strategy: request deletion from companies
+- Blocking less effective than with client-side analytics
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * app.launchdarkly.com (API and flag evaluation)
+  * clientstream.launchdarkly.com (real-time streaming)
+  * events.launchdarkly.com (analytics events)
+  * sdk.launchdarkly.com (SDK delivery)
+- Cookies:
+  * ld_* (various cookies, implementation-specific)
+  * launchdarkly_* (flag evaluation cache)
+- LocalStorage:
+  * ld:{projectKey}:{environmentKey}:* (cached flags)
+  * Stores user context and flag values
+- SDKs available for:
+  * Client-side: JavaScript, React, Angular, Vue
+  * Server-side: Java, Python, Go, Node.js, Ruby, PHP, .NET
+  * Mobile: iOS, Android, React Native, Flutter
+
+COMPANIES KNOWN TO USE LAUNCHDARKLY:
+- Technology: Microsoft, IBM, Atlassian, CircleCI
+- Financial: Intuit, GoodRx
+- E-commerce: Nespresso, TechStyle
+- Thousands of SaaS and mobile apps
+- Hard to identify without network monitoring
+
+LAUNCHDARKLY'S GDPR COMPLIANCE:
+- Provides user deletion API (delete by user key)
+- Companies can delete all data for specific users
+- Supports data export for portability requests
+- DPA (Data Processing Agreement) with enterprise customers
+- Claims GDPR/CCPA compliance as data processor
+- SOC 2 Type II certified
+
+DATA RETENTION:
+- LaunchDarkly retains user context as long as customer maintains account
+- Analytics events retained for 30 days by default (configurable)
+- Flag evaluation history retained per customer configuration
+- After deletion request, user data removed within 30 days
+- Request confirmation of full deletion including archives
+
+FEATURE FLAG EXPERIMENTATION:
+- LaunchDarkly Experimentation product runs A/B tests
+- Tracks user behavior and conversion metrics
+- Similar to Optimizely but integrated with feature flags
+- Additional layer of behavioral tracking
+- Mention experimentation specifically in deletion requests
+
+USER CONTEXT CONCERNS:
+- Companies often send extensive user context:
+  * Email, name, phone number
+  * Customer segment, plan type
+  * Geographic location
+  * Custom attributes (any app-specific data)
+- This context used for targeting feature flags
+- Stored in LaunchDarkly and sent with every flag evaluation
+- Can be very privacy-invasive depending on implementation
+
+RELAY PROXY:
+- Some companies run LaunchDarkly Relay Proxy (on-premises)
+- Reduces data sent to LaunchDarkly cloud
+- User context may stay within company infrastructure
+- Still request deletion from company
+- Mention Relay Proxy if you know they use it
+
+EFFECTIVENESS:
+- Medium difficulty: companies generally comply with requests
+- LaunchDarkly provides deletion API (easy for companies to use)
+- Browser blocking effective for client-side tracking
+- Server-side tracking harder to block
+- Cookie/LocalStorage deletion breaks caching but not tracking
+- Requires requesting deletion from each company using it
+"""
+
+[removal.cookies]
+patterns = ["ld_*", "launchdarkly_*"]
+domains = [".launchdarkly.com", ".launchdarkly.us", ".launchdarkly.eu"]

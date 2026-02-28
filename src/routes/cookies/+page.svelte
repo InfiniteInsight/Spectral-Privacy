@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { vaultStore } from '$lib/stores/vault.svelte';
-	import { cookiesAPI, type CookieScanResponse } from '$lib/api/cookies';
+	import { cookiesAPI, type CookieScanResponse, type ScannedCookie } from '$lib/api/cookies';
 	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
 	import { goto } from '$app/navigation';
 
 	let recentScans = $state<CookieScanResponse[]>([]);
+	let unmatchedCookies = $state<ScannedCookie[]>([]);
 	let brokerMap = $state<Map<string, BrokerSummary>>(new Map());
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let removingBroker = $state<string | null>(null);
+	let showUnmatched = $state(false);
 
 	// Load data on mount
 	$effect(() => {
@@ -26,6 +28,10 @@
 				// Load recent cookie scans
 				const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
 				recentScans = scans;
+
+				// Load unmatched cookies
+				const unmatched = await cookiesAPI.getUnmatchedCookies(vaultStore.currentVaultId);
+				unmatchedCookies = unmatched;
 
 				// Load all brokers to map IDs to names
 				const brokers = await brokerAPI.listBrokers();
@@ -55,6 +61,24 @@
 				count
 			}))
 			.filter((item) => item.broker !== undefined)
+			.sort((a, b) => b.count - a.count);
+	});
+
+	// Group unmatched cookies by domain
+	const cookiesByDomain = $derived.by(() => {
+		const grouped = new Map<string, ScannedCookie[]>();
+
+		for (const cookie of unmatchedCookies) {
+			const domain = cookie.cookieDomain;
+			if (!grouped.has(domain)) {
+				grouped.set(domain, []);
+			}
+			grouped.get(domain)!.push(cookie);
+		}
+
+		// Convert to sorted array
+		return Array.from(grouped.entries())
+			.map(([domain, cookies]) => ({ domain, cookies, count: cookies.length }))
 			.sort((a, b) => b.count - a.count);
 	});
 
@@ -155,18 +179,14 @@
 							<div class="text-sm text-gray-600">Brokers Detected</div>
 						</div>
 						<div class="rounded-lg bg-white p-4">
-							<div class="text-2xl font-bold text-green-600">
-								{latestScan.browsersScanned.length}
+							<div class="mb-1 text-sm font-medium text-gray-700">Browsers Scanned</div>
+							<div class="text-base font-semibold text-green-600">
+								{latestScan.browsersScanned.length > 0
+									? latestScan.browsersScanned.join(', ')
+									: 'None'}
 							</div>
-							<div class="text-sm text-gray-600">Browsers Scanned</div>
 						</div>
 					</div>
-
-					{#if latestScan.browsersScanned.length > 0}
-						<div class="mt-4 text-sm text-purple-700">
-							Scanned: {latestScan.browsersScanned.join(', ')}
-						</div>
-					{/if}
 				</div>
 
 				<!-- Brokers with Cookies -->
@@ -237,6 +257,89 @@
 						<p class="text-green-700">
 							Your browsers don't have any cookies from known data brokers.
 						</p>
+					</div>
+				{/if}
+
+				<!-- Unmatched Cookies -->
+				{#if unmatchedCookies.length > 0}
+					<div class="mb-6">
+						<div class="mb-4 flex items-center justify-between">
+							<div>
+								<h2 class="text-xl font-semibold text-gray-900">Unmatched Cookies</h2>
+								<p class="text-sm text-gray-600">
+									{unmatchedCookies.length} cookies from unknown sources or not tracked by brokers
+								</p>
+							</div>
+							<button
+								onclick={() => (showUnmatched = !showUnmatched)}
+								class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+							>
+								{showUnmatched ? 'Hide' : 'Show'} Details
+							</button>
+						</div>
+
+						{#if showUnmatched}
+							<div class="overflow-hidden rounded-lg border border-gray-200">
+								<table class="min-w-full divide-y divide-gray-200">
+									<thead class="bg-gray-50">
+										<tr>
+											<th
+												class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+											>
+												Domain
+											</th>
+											<th
+												class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+											>
+												Cookie Count
+											</th>
+											<th
+												class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+											>
+												Cookie Names
+											</th>
+										</tr>
+									</thead>
+									<tbody class="divide-y divide-gray-200 bg-white">
+										{#each cookiesByDomain as { domain, cookies, count }}
+											<tr class="hover:bg-gray-50">
+												<td class="px-6 py-4">
+													<div class="font-medium text-gray-900">{domain}</div>
+												</td>
+												<td class="whitespace-nowrap px-6 py-4">
+													<span
+														class="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800"
+													>
+														{count}
+														{count === 1 ? 'cookie' : 'cookies'}
+													</span>
+												</td>
+												<td class="px-6 py-4">
+													<div class="max-w-2xl text-sm text-gray-600">
+														{cookies.map((c) => c.cookieName).join(', ')}
+													</div>
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+
+							<div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+								<h4 class="mb-2 font-medium text-blue-900">About Unmatched Cookies</h4>
+								<ul class="space-y-1 text-sm text-blue-700">
+									<li>
+										• These cookies don't match any known data broker patterns in our database
+									</li>
+									<li>• They may be legitimate website cookies (sessions, preferences, etc.)</li>
+									<li>• Or they could be tracking cookies from services we haven't added yet</li>
+									<li>
+										• Check the domain names - common tracking domains include advertising and
+										analytics services
+									</li>
+								</ul>
+							</div>
+						{/if}
 					</div>
 				{/if}
 

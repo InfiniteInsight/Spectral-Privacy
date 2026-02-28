@@ -1,0 +1,300 @@
+# RocketReach - Email and Phone Number Finder for Professionals
+# Last verified: 2026-02-27
+
+[broker]
+id = "rocketreach"
+name = "RocketReach"
+url = "https://rocketreach.co"
+domain = "rocketreach.co"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://rocketreach.co"
+instructions = "RocketReach is a B2B contact database providing email addresses and phone numbers for 700M+ professionals. Scrapes LinkedIn, company websites, and public sources. No direct search - must request removal via privacy contact."
+
+[removal]
+method = "email"
+email = "privacy@rocketreach.co"
+subject = "CCPA/GDPR Data Deletion and Opt-Out Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Permanent deletion and opt-out from RocketReach database
+
+Personal Information:
+- Full Name: {full_name}
+- Email addresses: {user_email}, [any work emails]
+- Phone numbers: {phone_number}, [any work phones]
+- Company: [Current and previous employers]
+- LinkedIn profile: [LinkedIn URL if applicable]
+- Job title: [Current title]
+
+Please:
+1. Permanently delete ALL my data from RocketReach's database
+2. Add me to a permanent opt-out/suppression list
+3. Stop scraping my data from LinkedIn and public sources
+4. Confirm deletion and opt-out in writing
+5. Explain your re-scraping prevention measures
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+RocketReach removal and opt-out (MODERATE COMPLEXITY - RE-SCRAPING RISK):
+
+WHAT ROCKETREACH IS:
+- B2B contact database with 700M+ professional profiles
+- Email and phone number finder for sales and recruiting
+- Browser extension for instant contact lookup on LinkedIn, Twitter, etc.
+- API for bulk contact enrichment
+- Used by 16M+ users (sales, recruiters, journalists)
+- Major competitor to Lusha, ZoomInfo, Apollo.io
+
+HOW ROCKETREACH GETS YOUR DATA:
+1. LINKEDIN SCRAPING (PRIMARY SOURCE):
+   - Automated scraping of public LinkedIn profiles
+   - Extracts: name, title, company, location, education
+   - Uses AI to infer email addresses from patterns
+   - Cross-references with known email formats
+
+2. COMPANY WEBSITE SCRAPING:
+   - Crawls "About", "Team", "Leadership", "Contact" pages
+   - Extracts published emails and phone numbers
+   - Associates with LinkedIn profiles via name matching
+
+3. PUBLIC BUSINESS RECORDS:
+   - Business registrations and filings
+   - Professional licensing directories
+   - Chamber of Commerce listings
+   - Industry association member directories
+
+4. SOCIAL MEDIA PROFILES:
+   - Twitter/X profiles (bio, links)
+   - GitHub profiles (public emails)
+   - Facebook business pages
+   - Personal websites and blogs
+
+5. EMAIL PATTERN PREDICTION:
+   - Analyzes company email patterns
+   - Predicts format: firstname.lastname@company.com
+   - Verifies using email validation services
+   - 90%+ accuracy for common patterns
+
+6. PHONE NUMBER SOURCING:
+   - Company directories
+   - Publicly listed numbers
+   - Partner data exchanges
+   - Verified through carrier lookups
+
+7. CROWDSOURCED DATA:
+   - Users uploading contacts
+   - Browser extension capturing emails from signatures
+   - Reciprocal data sharing with partners
+   - "Contribute" features incentivizing data sharing
+
+WHAT THEY STORE:
+- Personal: name, email, phone, location
+- Professional: title, company, seniority, department
+- Education: degrees, schools, graduation years
+- Social: LinkedIn, Twitter, GitHub profiles
+- Employment history: previous companies and roles
+- Verification: email/phone validity status
+- Confidence scores: data accuracy ratings
+
+WHY IT'S PRIVACY-INVASIVE:
+- Massive scale: 700M profiles (most professionals worldwide)
+- Scrapes without consent or notification
+- Makes contact info easily searchable by anyone
+- Used for cold outreach (unsolicited emails/calls)
+- Aggregates data from dozens of sources
+- Creates comprehensive profiles without your knowledge
+- Re-scrapes to stay current (hard to stay removed)
+- No user-facing control or opt-out visibility
+
+REMOVAL CHALLENGES:
+- RE-SCRAPING: RocketReach refreshes data every 30-90 days
+- Data returns unless removed at source
+- Deletion is temporary without source remediation
+- No guaranteed permanent opt-out
+- Must combine deletion with source data removal
+- Crowdsourced data hard to prevent
+
+HOW TO REMOVE YOUR DATA:
+
+1. EMAIL PRIVACY TEAM (PRIMARY METHOD):
+   - Address: privacy@rocketreach.co
+   - Use subject: "CCPA/GDPR Data Deletion and Opt-Out Request"
+   - Include:
+     * All email addresses (personal + work)
+     * All phone numbers
+     * Current and previous employers
+     * LinkedIn profile URL
+     * Any other identifying information
+   - Request permanent deletion AND suppression list addition
+   - Ask about re-scraping prevention
+   - Response expected within 30 days (GDPR/CCPA requirement)
+
+2. CHECK FOR OPT-OUT FORM:
+   - Visit: https://rocketreach.co/privacy (check for opt-out link)
+   - Some data brokers provide self-service opt-out forms
+   - As of 2026, verify current opt-out process
+   - May require account creation to opt out (ironic but common)
+
+3. PREVENT RE-SCRAPING (CRITICAL):
+   - LINKEDIN: Set profile to "Connections Only"
+     * Settings & Privacy → Visibility → Profile visibility
+     * Set to "Your connections" or "Only you"
+     * Disable public profile entirely
+   - COMPANY WEBSITE: Request removal from team/about pages
+   - SOCIAL MEDIA: Set profiles to private or remove contact info
+   - GITHUB: Remove email from public profile
+   - PERSONAL WEBSITE: Remove or obfuscate email addresses
+
+4. LINKEDIN PRIVACY (DETAILED):
+   - Settings & Privacy → Visibility → Profile visibility
+   - Turn off public profile: Public profile & URL → Off
+   - Restrict profile viewing: "Your connections only"
+   - Disable "viewers of this profile also viewed": Turn off
+   - Opt out of Microsoft sharing (LinkedIn owned by Microsoft)
+   - This prevents future scraping (existing data requires deletion)
+
+5. WEBSITE CONTACT INFO PROTECTION:
+   - Use contact forms instead of published emails
+   - Obfuscate emails: "firstname [at] company [dot] com"
+   - Use JavaScript email obfuscation (defeats scrapers)
+   - Remove from company "Team" pages if possible
+
+6. REQUEST PERMANENT SUPPRESSION LIST:
+   - Ask RocketReach to add you to "do not process" list
+   - GDPR Article 21: Right to object to processing
+   - CCPA: Right to opt out of sale/sharing
+   - Suppression list should prevent re-adding
+   - Request written confirmation of suppression
+
+7. VERIFY DELETION SUCCESS:
+   - After 30 days, have colleague search you in RocketReach
+   - Search by name, email, company
+   - If still present, escalate with privacy team
+   - Document for potential regulatory complaint
+
+8. ONGOING MONITORING:
+   - Check every 90 days (re-scraping interval)
+   - If data reappears, file new deletion request
+   - Document pattern of re-scraping
+   - Consider complaint to data protection authority
+
+REALITY CHECK:
+- RocketReach is massive (700M profiles)
+- Re-scraping is business model (fresh data = valuable)
+- Deletion temporary without source removal
+- Public LinkedIn profile = guaranteed re-scraping
+- Best strategy: delete + make all sources private
+- Requires ongoing vigilance (not one-time fix)
+
+TECHNICAL DETAILS:
+- Browser extensions: Chrome, Firefox, Edge, Safari
+- Runs on LinkedIn, Twitter, GitHub to show instant contacts
+- API: api.rocketreach.co for programmatic access
+- No tracking cookies (you don't visit RocketReach site)
+- Data accessed by sales/recruiting professionals
+
+WHO USES ROCKETREACH:
+- Sales teams: cold outreach, lead generation
+- Recruiters: candidate sourcing
+- Marketers: email list building
+- Journalists: finding sources and interviewees
+- Investors: due diligence and contact discovery
+- You're the product, not the customer
+
+ROCKETREACH'S GDPR COMPLIANCE:
+- Claims GDPR/CCPA compliance
+- Provides deletion request processing
+- Based in US (California) - subject to CCPA
+- Privacy Policy: https://rocketreach.co/privacy
+- DPA available for business customers
+- Processes requests within 30 days (legally required)
+
+DATA RETENTION:
+- RocketReach retains data indefinitely
+- Continuously refreshed from public sources
+- After deletion, removed within 30 days
+- Re-scraping can re-add data within 30-90 days
+- Suppression list (if honored) prevents re-adding
+
+OPT-OUT EFFECTIVENESS:
+- Medium effectiveness: deletion works initially
+- Re-scraping is critical weakness
+- Private LinkedIn significantly reduces re-scraping risk
+- Requires multi-pronged approach (source + broker deletion)
+- Not a one-time action (requires monitoring)
+
+COMPARISON TO COMPETITORS:
+- Similar data sources and methods as:
+  * ZoomInfo (larger, more expensive)
+  * Lusha (similar size and accuracy)
+  * Apollo.io (includes CRM features)
+  * Hunter.io (email-focused)
+  * Seamless.AI (real-time search)
+- Opt out from ALL B2B data brokers (see list above)
+- All have same re-scraping challenges
+
+CROWDSOURCED DATA CONCERNS:
+- RocketReach users upload contact lists
+- Browser extension captures emails from Gmail, Outlook
+- Your data may come from multiple sources
+- Harder to prevent crowdsourced contributions
+- GDPR still applies (right to deletion regardless of source)
+
+EMAIL VERIFICATION CONCERNS:
+- RocketReach verifies email validity
+- May send verification emails (you might notice)
+- Verification pings can alert security systems
+- Request deletion of verification history
+
+ACCURACY AND STALENESS:
+- RocketReach claims 90%+ accuracy
+- Data can be outdated (6-12 months old)
+- Old employers, old titles common
+- Request correction if deletion not preferred
+- Inaccurate data may benefit privacy (wrong contact info)
+
+B2B PROFESSIONAL CONSIDERATIONS:
+- Being in RocketReach has pros and cons:
+  * PRO: Recruiters can find you for opportunities
+  * PRO: Potential clients/partners can reach you
+  * PRO: Industry visibility and networking
+  * CON: Cold sales emails and calls
+  * CON: Spam and phishing targeting
+  * CON: Privacy loss and detailed profiling
+- Weigh career benefits vs. privacy concerns
+- Consider selective approach: remove phone, keep email
+
+ALTERNATIVE TO FULL REMOVAL:
+- Request data correction instead of deletion
+- Update to current, accurate information
+- More sustainable than endless deletion requests
+- Useful if you need professional findability
+- Email privacy@rocketreach.co with corrections
+
+EFFECTIVENESS:
+- Medium difficulty: RocketReach processes deletion requests
+- Re-scraping is major obstacle to permanent removal
+- Private LinkedIn + source removal = most effective
+- Requires ongoing monitoring every 90 days
+- Best for people who can make LinkedIn private
+- Challenging for executives, sales professionals (need public profiles)
+- Consider trade-offs: privacy vs. professional visibility
+"""
+
+[removal.cookies]
+patterns = []
+domains = []

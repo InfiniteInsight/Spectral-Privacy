@@ -100,24 +100,30 @@ pub async fn scan_cookies(
     let matcher = CookieMatcher::new(broker_patterns).map_err(|e| e.to_string())?;
 
     // Detect browsers first for diagnostic purposes
-    tracing::info!("Detecting installed browsers...");
+    tracing::info!("=== Starting Browser Detection ===");
     match Browser::detect_installed() {
         Ok(profiles) => {
-            tracing::info!("Browser detection found {} profiles", profiles.len());
+            tracing::info!("✓ Browser detection found {} profiles", profiles.len());
             for profile in &profiles {
+                let exists_marker = if profile.cookie_db_path.exists() {
+                    "✓"
+                } else {
+                    "✗"
+                };
                 tracing::info!(
-                    "  - {} {} at {} [exists: {}]",
+                    "  {} {} - {} at {}",
+                    exists_marker,
                     profile.browser_type,
                     profile.profile_name,
-                    profile.cookie_db_path.display(),
-                    profile.cookie_db_path.exists()
+                    profile.cookie_db_path.display()
                 );
             }
         }
         Err(e) => {
-            tracing::error!("Browser detection failed: {}", e);
+            tracing::error!("✗ Browser detection failed: {}", e);
         }
     }
+    tracing::info!("=== Browser Detection Complete ===");
 
     // Scan cookies
     let scanner = CookieScanner::with_matcher(matcher);
@@ -437,7 +443,7 @@ pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>,
         // Chrome
         let chrome_path = home.join("AppData/Local/Google/Chrome/User Data");
         diagnostics.push((
-            "Chrome Path".to_string(),
+            "Chrome Base Path".to_string(),
             chrome_path.display().to_string(),
             chrome_path.exists(),
         ));
@@ -445,7 +451,7 @@ pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>,
         // Firefox
         let firefox_path = home.join("AppData/Roaming/Mozilla/Firefox/Profiles");
         diagnostics.push((
-            "Firefox Path".to_string(),
+            "Firefox Base Path".to_string(),
             firefox_path.display().to_string(),
             firefox_path.exists(),
         ));
@@ -453,9 +459,39 @@ pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>,
         // Edge
         let edge_path = home.join("AppData/Local/Microsoft/Edge/User Data");
         diagnostics.push((
-            "Edge Path".to_string(),
+            "Edge Base Path".to_string(),
             edge_path.display().to_string(),
             edge_path.exists(),
+        ));
+
+        // Brave
+        let brave_path = home.join("AppData/Local/BraveSoftware/Brave-Browser/User Data");
+        diagnostics.push((
+            "Brave Base Path".to_string(),
+            brave_path.display().to_string(),
+            brave_path.exists(),
+        ));
+
+        // Firefox-based browsers
+        let zen_path = home.join("AppData/Roaming/zen");
+        diagnostics.push((
+            "Zen Browser Path".to_string(),
+            zen_path.display().to_string(),
+            zen_path.exists(),
+        ));
+
+        let floorp_path = home.join("AppData/Roaming/floorp");
+        diagnostics.push((
+            "Floorp Browser Path".to_string(),
+            floorp_path.display().to_string(),
+            floorp_path.exists(),
+        ));
+
+        let librewolf_path = home.join("AppData/Roaming/librewolf");
+        diagnostics.push((
+            "LibreWolf Browser Path".to_string(),
+            librewolf_path.display().to_string(),
+            librewolf_path.exists(),
         ));
     } else {
         diagnostics.push((
@@ -466,23 +502,29 @@ pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>,
     }
 
     // Try actual detection
+    tracing::info!("Running browser detection diagnostics...");
     match Browser::detect_installed() {
         Ok(profiles) => {
             diagnostics.push((
-                "Detected Profiles".to_string(),
+                "✓ Detected Profiles".to_string(),
                 format!("{} browser profiles found", profiles.len()),
                 !profiles.is_empty(),
             ));
             for profile in profiles {
+                let cookie_exists = profile.cookie_db_path.exists();
+                let status = if cookie_exists { "✓" } else { "✗" };
                 diagnostics.push((
-                    format!("{} - {}", profile.browser_type, profile.profile_name),
+                    format!(
+                        "{} {} - {}",
+                        status, profile.browser_type, profile.profile_name
+                    ),
                     profile.cookie_db_path.display().to_string(),
-                    profile.cookie_db_path.exists(),
+                    cookie_exists,
                 ));
             }
         }
         Err(e) => {
-            diagnostics.push(("Detection Error".to_string(), e.to_string(), false));
+            diagnostics.push(("✗ Detection Error".to_string(), e.to_string(), false));
         }
     }
 
@@ -516,6 +558,38 @@ pub async fn get_recent_cookie_scans(
             cookies_by_broker: HashMap::new(),  // Not stored in scan summary
             browsers_scanned: scan.browsers_scanned,
             timestamp: scan.scan_timestamp.to_rfc3339(),
+        })
+        .collect())
+}
+
+/// Get unmatched cookies from the most recent scan.
+#[tauri::command]
+pub async fn get_unmatched_cookies(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<ScannedCookieResponse>, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not unlocked".to_string())?;
+
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    let cookies = spectral_db::cookies::get_unmatched_cookies(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("Failed to get unmatched cookies: {}", e))?;
+
+    Ok(cookies
+        .into_iter()
+        .map(|c| ScannedCookieResponse {
+            cookie_name: c.cookie_name,
+            cookie_domain: c.cookie_domain,
+            browser_type: c.browser_type,
+            profile_name: c.profile_name.unwrap_or_default(),
+            matched_broker_id: c.matched_broker_id,
+            is_secure: c.is_secure != 0,
+            is_httponly: c.is_httponly != 0,
+            creation_time: c.creation_time,
+            expiry_time: c.expiry_time,
         })
         .collect())
 }

@@ -1,0 +1,162 @@
+# Mixpanel - Product Analytics Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "mixpanel"
+name = "Mixpanel"
+url = "https://mixpanel.com"
+domain = "mixpanel.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://mixpanel.com"
+instructions = "Mixpanel is a product analytics platform that tracks user interactions, events, and behavior across web and mobile apps. Cannot search directly - data is owned by companies using Mixpanel for analytics."
+
+[removal]
+method = "email"
+email = "privacy@mixpanel.com"
+subject = "CCPA/GDPR Data Deletion Request - Mixpanel Analytics"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data and analytics tracked through Mixpanel
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Distinct ID: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Mixpanel's systems
+2. Notify client companies to delete my data from their Mixpanel projects
+3. Stop processing my data through Mixpanel infrastructure
+4. Remove all event data, user properties, and behavioral profiles
+5. Confirm deletion in writing
+
+I expect completion within 30 days.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Mixpanel tracking and removal (MODERATE COMPLEXITY):
+
+WHAT MIXPANEL IS:
+- Product analytics platform used by 30,000+ companies
+- Tracks user actions (clicks, pageviews, form submissions, purchases)
+- Builds behavioral profiles for product optimization
+- Powers funnel analysis, A/B testing, and user segmentation
+- Popular with SaaS companies and mobile apps
+
+HOW IT WORKS:
+1. Company integrates Mixpanel SDK into their product
+2. Mixpanel tracks every user interaction as "events"
+3. Events include: button clicks, page views, feature usage, purchases
+4. Data sent to Mixpanel's servers for analysis
+5. Companies use this data to improve products and retention
+
+WHAT THEY TRACK:
+- Event data: every action you take in apps/websites
+- User properties: email, name, signup date, subscription tier
+- Device info: browser, OS, device type, screen resolution
+- Location data: IP address, country, city
+- Session data: visit duration, frequency, last seen
+- Custom properties: anything the company chooses to track
+
+REMOVAL CHALLENGES:
+- Mixpanel is infrastructure (not the data owner)
+- Data owned by each company using Mixpanel
+- No centralized search for your data
+- Must contact each company individually
+- Mixpanel processes but doesn't "own" the data legally
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (MOST EFFECTIVE):
+   - Identify sites using Mixpanel (look for mixpanel.com in network tab)
+   - Email each company's privacy/support contact
+   - Request CCPA/GDPR deletion of all analytics data
+   - Companies should use Mixpanel's GDPR deletion API
+   - This is the legally required approach
+
+2. EMAIL MIXPANEL PRIVACY:
+   - Address: privacy@mixpanel.com
+   - Include email, name, and any user IDs
+   - Mixpanel may facilitate deletions with client companies
+   - Limited effectiveness (data owned by clients)
+   - Worth trying for comprehensive removal
+
+3. DETECT MIXPANEL TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to: api.mixpanel.com, cdn.mixpanel.com
+   - Cookies: mp_* pattern (mp_12345_mixpanel, etc.)
+   - LocalStorage: mixpanel_distinct_id
+   - If present, the site is tracking you with Mixpanel
+
+4. BLOCK MIXPANEL TRACKING:
+   - Install Privacy Badger or uBlock Origin
+   - Add custom filters: ||mixpanel.com^, ||mxpnl.com^
+   - Blocks tracking across all Mixpanel-enabled sites
+   - May break some site functionality (analytics is often integrated)
+
+5. USE PRIVACY-FOCUSED BROWSERS:
+   - Brave Browser blocks Mixpanel by default
+   - Firefox with Enhanced Tracking Protection
+   - Safari with Intelligent Tracking Prevention
+
+6. CLEAR COOKIES AND STORAGE:
+   - Delete all mp_* cookies
+   - Clear LocalStorage for mixpanel entries
+   - Breaks cross-session tracking
+   - Mixpanel will assign new distinct_id on next visit
+
+7. OPT OUT OF TRACKING (SOME SITES):
+   - Some Mixpanel implementations respect Do Not Track
+   - Check site privacy settings for analytics opt-out
+   - Not universally honored
+
+REALITY CHECK:
+- Mixpanel is extremely common (Uber, Netflix, Samsung, Expedia)
+- Used heavily in SaaS, fintech, e-commerce, mobile apps
+- Tracking is detailed and persistent
+- Best approach: block tracking + request deletion from each company
+- Companies have legal obligation to delete under GDPR/CCPA
+
+TECHNICAL DETAILS:
+- Tracking domains: api.mixpanel.com, cdn.mixpanel.com, api-js.mixpanel.com
+- Cookies: mp_{project_token}_mixpanel, mp_{project_token}
+- LocalStorage: mixpanel_distinct_id, mp_*
+- Also tracks via server-side (harder to detect/block)
+- Persistence: uses multiple methods to prevent tracking loss
+
+COMPANIES KNOWN TO USE MIXPANEL:
+- Uber, Slack, Samsung, Expedia, DocuSign, Loom
+- Thousands of SaaS and mobile app companies
+- Check BuiltWith.com or Wappalyzer to identify which sites use it
+
+MIXPANEL'S GDPR COMPLIANCE:
+- Provides deletion APIs for client companies
+- Companies should delete within 30 days of request
+- Mixpanel acts as "data processor" under GDPR
+- Companies are "data controllers" (legally responsible)
+- If company refuses deletion, file complaint with data protection authority
+
+EFFECTIVENESS:
+- Medium difficulty: companies usually comply with deletion requests
+- Mixpanel has good GDPR tooling for clients
+- Tracking can be effectively blocked with browser extensions
+- Persistent tracking requires ongoing vigilance
+"""
+
+[removal.cookies]
+patterns = ["mp_*", "mixpanel_*"]
+domains = [".mixpanel.com", ".mxpnl.com"]

@@ -1,0 +1,247 @@
+# LogRocket - Session Replay and Error Tracking for Developers
+# Last verified: 2026-02-27
+
+[broker]
+id = "logrocket"
+name = "LogRocket"
+url = "https://logrocket.com"
+domain = "logrocket.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://logrocket.com"
+instructions = "LogRocket records user sessions with video-like replay, network requests, console logs, and Redux/Vuex state for debugging and product analytics. Cannot search directly - session data is owned by companies using LogRocket."
+
+[removal]
+method = "email"
+email = "privacy@logrocket.com"
+subject = "CCPA/GDPR Data Deletion Request - LogRocket Session Recordings"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all session recordings, network logs, console logs, and user data collected through LogRocket
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID: (if known)
+- IP Address: {ip_address}
+- Websites/apps visited: (list any known)
+
+Please:
+1. Delete all my session recordings from LogRocket's systems
+2. Remove all network request logs, console logs, and application state data
+3. Notify client companies to delete my data from their LogRocket accounts
+4. Stop processing any data associated with my identity or devices
+5. Confirm complete deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+LogRocket tracking and removal (MODERATE-HIGH COMPLEXITY):
+
+WHAT LOGROCKET IS:
+- Session replay platform built for developers and product teams
+- Records video-like session replays with technical debugging data
+- Captures network requests, console logs, errors, Redux/Vuex state
+- Integrates with error tracking and performance monitoring
+- Used by 10,000+ companies for debugging and analytics
+- More technical than Hotjar/FullStory (focused on developer debugging)
+
+HOW IT WORKS:
+1. Company adds LogRocket SDK to their web app
+2. LogRocket records DOM mutations as video-like replay
+3. Captures all network requests (API calls, GraphQL, REST)
+4. Logs console messages, errors, warnings
+5. Records Redux/Vuex state changes (application state)
+6. Developers watch replays to debug user-reported issues
+7. Product teams analyze user behavior and friction points
+
+WHAT THEY TRACK (EXTREMELY DETAILED):
+- Session recordings: video-like playback of user interactions
+- Network requests: all HTTP/AJAX/fetch requests and responses
+- Console logs: console.log, console.error, warnings
+- Redux/Vuex state: complete application state tree
+- DOM events: clicks, inputs, hovers, scrolls
+- JavaScript errors: stack traces and error details
+- Performance metrics: page load times, API response times
+- User properties: email, name, custom user attributes
+- Device info: browser, OS, screen size, device type
+- Location data: IP address, geolocation
+
+PRIVACY CONCERNS (VERY SERIOUS):
+- Network requests may contain sensitive API payloads
+- Console logs often leak debugging data, user IDs, tokens
+- Redux/Vuex state may contain sensitive application data
+- Cookies and session tokens visible in network logs
+- Error stack traces may reveal code structure and data
+- API responses captured (potentially including PII)
+- GraphQL queries/responses logged with full data
+- More invasive than standard analytics (debugging focus)
+
+REMOVAL CHALLENGES:
+- LogRocket is data processor (companies are data controllers)
+- Session replays owned by individual companies
+- No end-user portal to search or delete data
+- Technical data scattered across many recording types
+- Must contact each company using LogRocket
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (MOST EFFECTIVE):
+   - Identify sites using LogRocket (see detection below)
+   - Email company's privacy contact (privacy@company.com or support@company.com)
+   - Request deletion of all LogRocket session recordings and logs
+   - Cite GDPR Article 17 / CCPA deletion rights
+   - Companies can delete recordings from LogRocket dashboard
+   - Request deletion of network logs, console logs, state data
+
+2. EMAIL LOGROCKET PRIVACY TEAM:
+   - Address: privacy@logrocket.com
+   - Include email, name, IP, any known user IDs
+   - List websites/apps where you encountered LogRocket
+   - Request facilitation with client companies
+   - LogRocket has limited direct control (data processor)
+
+3. DETECT LOGROCKET TRACKING (IMPORTANT):
+   - Open browser DevTools → Network tab
+   - Look for requests to: r.lr-ingest.io, lr-ingest.io, cdn.logrocket.io
+   - Cookies: _lr_id_*, _lr_retry_request, _lr_env_*
+   - LocalStorage: _lr_* entries
+   - If present, your session is being recorded with full technical details
+
+4. BLOCK LOGROCKET TRACKING (HIGHLY RECOMMENDED):
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filters: ||logrocket.com^, ||logrocket.io^, ||lr-ingest.io^
+   - Blocks session recording and network logging
+   - Essential for preventing technical surveillance
+
+5. USE PRIVACY-FOCUSED BROWSERS:
+   - Brave Browser blocks LogRocket by default
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - These prevent most session replay tracking
+
+6. CLEAR LOGROCKET COOKIES:
+   - Delete all _lr_* cookies
+   - Clear LocalStorage _lr_* entries
+   - LogRocket assigns new session ID on next visit
+   - Regular clearing breaks cross-session tracking
+
+7. DISABLE JAVASCRIPT FOR SENSITIVE OPERATIONS:
+   - LogRocket requires JavaScript
+   - Use NoScript for granular JS control
+   - Disable on sites handling sensitive data
+   - Not practical everywhere but effective when needed
+
+8. USE INCOGNITO/PRIVATE MODE:
+   - Prevents persistent tracking via cookies
+   - LogRocket can still record session but can't link visits
+   - Use for sensitive browsing
+
+REALITY CHECK:
+- LogRocket captures extremely detailed technical data
+- Used by SaaS companies (Nubank, Grubhub, LivePerson, Twilio)
+- Developer-focused means more technical data captured
+- Network logs are particularly privacy-invasive
+- Blocking is critical for privacy protection
+- Best approach: aggressive blocking + deletion requests
+
+TECHNICAL DETAILS:
+- Tracking domains: r.lr-ingest.io, lr-ingest.io, cdn.logrocket.io, cdn.lr-ingest.com
+- Cookies: _lr_id_{app_id}, _lr_retry_request, _lr_env_{app_id}
+- LocalStorage: _lr_id, _lr_tabs, _lr_storage_test
+- SessionStorage: used for buffering
+- WebSocket: real-time session streaming to LogRocket servers
+- IndexedDB: may buffer session data
+
+COMPANIES KNOWN TO USE LOGROCKET:
+- Nubank, Grubhub, LivePerson, Twilio, Segment
+- Popular with SaaS companies and technical products
+- Common in fintech, developer tools, enterprise software
+- Check BuiltWith.com or network requests to identify
+
+LOGROCKET'S GDPR COMPLIANCE:
+- GDPR-compliant DPA (Data Processing Agreement) with customers
+- Customers are data controllers
+- LogRocket is data processor
+- Supports deletion via customer account features
+- Claims to sanitize sensitive data (implementation varies)
+
+DATA RETENTION:
+- Session recordings: typically 30-90 days (configurable)
+- Network logs: same retention as sessions
+- After deletion request: removed within 30 days
+- Backups may retain data for up to 90 additional days
+
+SENSITIVE DATA HANDLING:
+- Auto-sanitization: attempts to remove passwords, tokens, credit cards
+- Sanitization quality varies by implementation
+- Network request/response bodies often contain sensitive data
+- Console logs frequently leak debugging info
+- Redux/Vuex state may contain unencrypted sensitive data
+- Assume recordings capture sensitive technical data
+
+NETWORK REQUEST PRIVACY:
+- HTTP headers captured (may contain auth tokens)
+- Request/response bodies logged
+- GraphQL queries/mutations with full variables
+- API keys sometimes visible in requests
+- Session cookies captured in network logs
+- This is particularly invasive compared to other analytics
+
+REDUX/VUEX STATE CAPTURE:
+- Complete application state tree recorded
+- May contain user data, authentication state, sensitive info
+- State changes tracked over time
+- Developers can replay state transitions
+- Often overlooked source of sensitive data leakage
+
+LEGAL CONSIDERATIONS:
+- GDPR: session replay with network logs likely requires explicit consent
+- Many companies fail to disclose LogRocket in privacy policies
+- Network logging may violate data minimization principles
+- CCPA: requires disclosure and deletion rights
+- Consider reporting to privacy regulators if disclosure is inadequate
+
+EFFECTIVENESS:
+- Medium difficulty: companies usually honor deletion requests
+- Blocking is highly effective and strongly recommended
+- LogRocket provides deletion tools to customers
+- Requires ongoing vigilance (companies add LogRocket over time)
+- Consider this high-priority for blocking due to technical data capture
+
+INTEGRATION WITH ERROR TRACKING:
+- Often integrated with Sentry, Rollbar, Bugsnag
+- Session URLs shared across error tracking platforms
+- Deletion request should cover LogRocket and integrated services
+- Ask companies about connected services
+
+DEVELOPER ACCESS:
+- Session replays accessible to entire engineering team
+- Often shared in Slack, Jira, GitHub issues
+- Data may be viewed by contractors, offshore teams
+- Consider data exposure beyond just LogRocket servers
+
+ADDITIONAL PROTECTIONS:
+- Use email aliases to hide real email
+- Avoid sensitive operations on sites using LogRocket
+- Regular cookie/storage clearing
+- Privacy-focused browser extensions
+- VPN to mask IP address
+- Consider reporting invasive implementations to regulators
+"""
+
+[removal.cookies]
+patterns = ["_lr_*", "LogRocket*"]
+domains = [".logrocket.com", ".logrocket.io", ".lr-ingest.io", ".lr-ingest.com"]

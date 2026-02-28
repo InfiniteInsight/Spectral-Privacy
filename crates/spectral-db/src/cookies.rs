@@ -314,6 +314,71 @@ pub async fn get_recent_cookie_scans(
     Ok(scans)
 }
 
+/// Get unmatched cookies (no broker match) from the most recent scan.
+pub async fn get_unmatched_cookies(
+    pool: &Pool<Sqlite>,
+    vault_id: &str,
+) -> Result<Vec<BrowserCookie>, sqlx::Error> {
+    // Get the most recent scan timestamp
+    let recent_scan = sqlx::query(
+        "SELECT scan_timestamp FROM cookie_scans
+         WHERE vault_id = ?
+         ORDER BY scan_timestamp DESC
+         LIMIT 1",
+    )
+    .bind(vault_id)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(scan_row) = recent_scan {
+        // nosemgrep: use-zeroize-for-secrets
+        let scan_timestamp: String = scan_row.get("scan_timestamp");
+
+        // Get unmatched cookies from this scan
+        let rows = sqlx::query(
+            "SELECT id, vault_id, browser_type, profile_name, cookie_name, cookie_domain,
+                    cookie_value, cookie_path, creation_time, expiry_time, last_access_time,
+                    is_secure, is_httponly, same_site, matched_broker_id,
+                    scan_timestamp, removal_status, removed_at
+             FROM browser_cookies
+             WHERE vault_id = ? AND matched_broker_id IS NULL AND scan_timestamp >= ?
+             ORDER BY cookie_domain, cookie_name",
+        )
+        .bind(vault_id)
+        .bind(&scan_timestamp)
+        .fetch_all(pool)
+        .await?;
+
+        let cookies: Vec<BrowserCookie> = rows
+            .into_iter()
+            .map(|row| BrowserCookie {
+                id: row.get("id"),
+                vault_id: row.get("vault_id"),
+                browser_type: row.get("browser_type"),
+                profile_name: row.get("profile_name"),
+                cookie_name: row.get("cookie_name"),
+                cookie_domain: row.get("cookie_domain"),
+                cookie_value: row.get("cookie_value"),
+                cookie_path: row.get("cookie_path"),
+                creation_time: row.get("creation_time"),
+                expiry_time: row.get("expiry_time"),
+                last_access_time: row.get("last_access_time"),
+                is_secure: row.get("is_secure"),
+                is_httponly: row.get("is_httponly"),
+                same_site: row.get("same_site"),
+                matched_broker_id: row.get("matched_broker_id"),
+                scan_timestamp: row.get("scan_timestamp"),
+                removal_status: row.get("removal_status"),
+                removed_at: row.get("removed_at"),
+            })
+            .collect();
+
+        Ok(cookies)
+    } else {
+        Ok(vec![])
+    }
+}
+
 /// Clear all cookie scan data for a vault.
 pub async fn clear_cookie_data(pool: &Pool<Sqlite>, vault_id: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM browser_cookies WHERE vault_id = ?")

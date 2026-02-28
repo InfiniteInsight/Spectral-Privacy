@@ -1,0 +1,241 @@
+# Klaviyo - E-commerce Email and SMS Marketing Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "klaviyo"
+name = "Klaviyo"
+url = "https://www.klaviyo.com"
+domain = "klaviyo.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.klaviyo.com"
+instructions = "Klaviyo is an e-commerce marketing platform used by 40,000+ online stores. Tracks: purchase history, browsing behavior, abandoned carts, email opens, SMS engagement, product views. Data owned by stores using Klaviyo."
+
+[removal]
+method = "email"
+email = "privacy@klaviyo.com"
+subject = "CCPA/GDPR Data Deletion Request - Klaviyo"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data held by Klaviyo
+
+Personal Information:
+- Email: {user_email}
+- Phone: {phone_number}
+- Name: {full_name}
+
+Please delete from:
+- Klaviyo platform databases
+- All customer store profiles tracking me
+- Email and SMS engagement history
+- Purchase tracking data
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Klaviyo tracking and removal:
+
+WHAT KLAVIYO IS:
+- E-commerce marketing platform used by 40,000+ online stores
+- Powers email and SMS marketing for major brands
+- Tracks customer behavior across shopping sessions
+- Used by: Chubbies, ColourPop, Huckberry, and thousands more
+- Primary focus: converting browsers into buyers
+
+HOW KLAVIYO WORKS:
+
+1. SHOPPING BEHAVIOR TRACKING:
+   - Tracks every product you view on e-commerce sites
+   - Records items added to cart (even if not purchased)
+   - Monitors browsing time, page visits, search queries
+   - Links all behavior to your email/phone once provided
+
+2. ABANDONED CART TRACKING:
+   - Records items left in cart without purchase
+   - Triggers automated "You forgot something!" emails
+   - Often includes discount codes to encourage purchase
+   - Uses cookies to reconnect you across visits
+
+3. PURCHASE HISTORY:
+   - Stores complete order history
+   - Product categories, prices, frequency
+   - Used for product recommendation emails
+   - Builds customer lifetime value profiles
+
+4. EMAIL ENGAGEMENT TRACKING:
+   - Tracks email opens (via invisible tracking pixels)
+   - Records every link click in emails
+   - Monitors email client, device, location
+   - Measures time of day you typically engage
+
+5. SMS TRACKING:
+   - Phone number collection via checkout/popups
+   - SMS delivery and click tracking
+   - Opt-in timestamps and keyword responses
+   - Integration with loyalty programs
+
+6. CROSS-DEVICE TRACKING:
+   - Links mobile and desktop sessions
+   - Uses email as universal identifier
+   - Tracks app + web behavior together
+   - Creates unified customer profile
+
+WHAT DATA KLAVIYO COLLECTS:
+
+IDENTITY DATA:
+- Email address, phone number, name
+- IP address, device fingerprints
+- Location (city/region from IP)
+- Customer ID from store database
+
+BEHAVIORAL DATA:
+- Product views, searches, filters used
+- Cart additions, removals, abandonments
+- Purchase history, order values, frequency
+- Email opens, clicks, unsubscribes
+- SMS delivery status, link clicks
+
+PREDICTIVE DATA:
+- "Predicted next order date"
+- "Customer lifetime value" score
+- "Churn risk" probability
+- Product affinity scores
+
+HOW TO REMOVE YOUR DATA:
+
+1. UNSUBSCRIBE FROM EMAILS:
+   - Every Klaviyo email has "Unsubscribe" link
+   - Removes you from that store's email list
+   - Required by CAN-SPAM Act
+   - Doesn't delete historical data
+
+2. OPT OUT OF SMS:
+   - Reply "STOP" to any Klaviyo SMS
+   - Immediately stops messages from that store
+   - Required by TCPA regulations
+   - Doesn't delete phone number or history
+
+3. REQUEST FROM STORES DIRECTLY:
+   - Email the store's privacy/support email
+   - Request CCPA/GDPR deletion
+   - Store should delete from Klaviyo + their database
+   - Most effective approach
+   - Legally required within 30-45 days
+
+4. EMAIL KLAVIYO PRIVACY:
+   - Address: privacy@klaviyo.com
+   - Include email, phone, name
+   - Klaviyo will facilitate deletion from customer stores
+   - May require store cooperation
+   - Submit via: https://www.klaviyo.com/privacy
+
+5. KLAVIYO PRIVACY CENTER:
+   - Visit: https://www.klaviyo.com/privacy/contact
+   - Submit GDPR/CCPA request form
+   - Select "Delete my data"
+   - Provide email and phone number
+   - Receive confirmation within 30 days
+
+6. DETECT KLAVIYO TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for: static.klaviyo.com, q.klaviyo.com
+   - Cookies: _kla_id, __kla_id
+   - Common on Shopify stores
+
+7. BLOCK KLAVIYO TRACKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block domains: *.klaviyo.com
+   - Prevents behavioral tracking
+   - May break some email preference centers
+
+8. CLEAR COOKIES:
+   - Delete _kla_id and __kla_id cookies
+   - Breaks cross-session tracking
+   - Klaviyo will generate new anonymous ID
+   - Clear regularly for ongoing privacy
+
+REALITY CHECK:
+- Klaviyo is used by most mid-to-large Shopify stores
+- Your shopping data likely in dozens of Klaviyo databases
+- Each store is separate - no unified opt-out
+- Best approach: Unsubscribe aggressively + block tracking
+- Use alias emails for online shopping to limit exposure
+
+KLAVIYO'S TRACKING POWER:
+- Can predict when you'll buy again (predictive analytics)
+- Knows your favorite product categories
+- Tracks price sensitivity (do discounts work on you?)
+- Monitors engagement times (when you open emails)
+- Shares data with Facebook/Google for ad targeting
+
+TECHNICAL DETAILS:
+
+TRACKING DOMAINS:
+- static.klaviyo.com (JavaScript SDK)
+- a.klaviyo.com (tracking pixel)
+- q.klaviyo.com (event queue)
+
+COOKIES:
+- _kla_id (persistent user identifier)
+- __kla_id (session identifier)
+- _klaviyo_* (various tracking cookies)
+
+JAVASCRIPT TRACKING:
+- klaviyo.push() calls throughout site
+- Tracks: pageviews, product views, cart events
+- Real-time event streaming to Klaviyo servers
+
+EMAIL TRACKING:
+- Opens tracked via 1x1 pixel image
+- Clicks tracked via redirect links
+- Location/device data collected on open
+
+SMS TRACKING:
+- Link clicks tracked via short URLs
+- Delivery receipts collected
+- Keyword responses analyzed
+
+INTEGRATION POINTS:
+- Shopify (native integration)
+- WooCommerce, Magento, BigCommerce
+- Facebook Custom Audiences
+- Google Customer Match
+- TikTok, Pinterest advertising
+
+PRIVACY IMPLICATIONS:
+- Extremely detailed customer profiles
+- Predictive analytics can feel invasive
+- Cross-platform tracking (email → web → SMS)
+- Data often shared with ad platforms
+- No opt-out from tracking while browsing (only emails)
+
+WHO USES KLAVIYO:
+- Primarily e-commerce (fashion, beauty, food, lifestyle)
+- Shopify stores heavily represented
+- Direct-to-consumer brands
+- Subscription box companies
+- Check BuiltWith.com for specific companies
+
+KLAVIYO VS COMPETITORS:
+- More powerful than Mailchimp for e-commerce
+- Deeper Shopify integration than Braze
+- Better segmentation than Customer.io
+- More affordable than Salesforce Marketing Cloud
+- Industry standard for online retail
+"""
+
+[removal.cookies]
+patterns = ["_kla_*", "__kla_id", "klaviyo_*"]
+domains = [".klaviyo.com", "static.klaviyo.com"]

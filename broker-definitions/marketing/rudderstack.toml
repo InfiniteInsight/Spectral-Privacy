@@ -1,0 +1,368 @@
+# RudderStack - Open-Source Customer Data Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "rudderstack"
+name = "RudderStack"
+url = "https://rudderstack.com"
+domain = "rudderstack.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://rudderstack.com"
+instructions = "RudderStack is an open-source customer data platform (CDP) that companies use to collect and route customer data to marketing tools. Cannot search directly - data is owned by companies using RudderStack. Self-hosted deployments common."
+
+[removal]
+method = "email"
+email = "privacy@rudderstack.com"
+subject = "CCPA/GDPR Data Deletion Request - RudderStack CDP"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through RudderStack
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Anonymous ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from RudderStack's cloud systems (if applicable)
+2. Notify client companies to delete data collected via RudderStack
+3. Stop processing my data through RudderStack infrastructure
+4. Remove all user profiles, event data, and warehouse data
+5. Confirm deletion in writing
+
+Note: If the company uses self-hosted RudderStack, I understand you may not have access to the data. Please provide guidance on deletion procedures.
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+RudderStack tracking and removal (MODERATE COMPLEXITY - OPEN-SOURCE):
+
+WHAT RUDDERSTACK IS:
+- Open-source customer data platform (CDP)
+- Segment alternative with self-hosting option
+- Collects customer data from web, mobile, server, cloud apps
+- Routes data to 200+ marketing and analytics destinations
+- Warehouse-first approach (stores data in your data warehouse)
+- Focus on data privacy and control
+
+HOW IT WORKS:
+1. Company integrates RudderStack SDK (or uses Segment API compatibility)
+2. RudderStack collects events and user data
+3. Two deployment options:
+   - RudderStack Cloud (hosted by RudderStack)
+   - Self-hosted (company controls infrastructure)
+4. Data routed to destinations:
+   - Google Analytics, Amplitude, Mixpanel
+   - Facebook Ads, Google Ads
+   - Data warehouses (Snowflake, BigQuery, Redshift)
+   - Email tools (SendGrid, Mailchimp)
+   - 200+ destinations
+5. Warehouse-native: prioritizes storing data in company's warehouse
+
+WHAT THEY TRACK:
+- Event data: pageviews, clicks, purchases, custom events
+- User properties: email, name, user ID, custom attributes
+- Device data: browser, OS, device type, screen resolution
+- Location data: IP address, country, region, city
+- Session data: visit duration, frequency, last active
+- E-commerce data: product views, cart actions, purchases
+- Custom events: unlimited company-defined tracking
+- Server-side events: backend operations, API calls
+- Cloud app events: data from business tools
+
+KEY DIFFERENCES FROM SEGMENT:
+- Open-source: code is public, auditable
+- Self-hostable: companies can run on their infrastructure
+- Warehouse-first: emphasizes data ownership
+- Privacy-friendly: more control over data
+- Free tier: generous open-source option
+- API compatible: drop-in Segment replacement
+
+DEPLOYMENT MODELS:
+
+1. RudderStack Cloud (Hosted):
+   - RudderStack hosts infrastructure
+   - Similar privacy profile to Segment/mParticle
+   - Data passes through RudderStack servers
+   - Subject to RudderStack privacy policy
+
+2. Self-Hosted (Open-Source):
+   - Company controls all infrastructure
+   - RudderStack never sees the data
+   - Privacy depends entirely on company's practices
+   - Cannot request deletion from RudderStack (they don't have data)
+   - Must request from company directly
+
+PRIVACY IMPLICATIONS:
+- Self-hosted: more privacy-respecting (company controls data)
+- Cloud-hosted: similar concerns to other CDPs
+- Open-source: transparency in how tracking works
+- Warehouse-native: data stored in company's warehouse
+- Still enables comprehensive tracking
+- Privacy depends on deployment model and company practices
+
+REMOVAL CHALLENGES:
+- Cannot determine deployment model from outside
+- Self-hosted: RudderStack has no data to delete
+- Cloud-hosted: RudderStack is data processor
+- Must identify companies using RudderStack
+- Data also in warehouse and downstream destinations
+- Deletion requires multi-system coordination
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (ESSENTIAL):
+   - Identify sites/apps using RudderStack
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL data
+   - Specifically mention: "including RudderStack and all connected systems"
+   - Important: request deletion from company's data warehouse
+   - Companies should delete from:
+     * RudderStack (if cloud-hosted)
+     * Data warehouse (Snowflake/BigQuery/Redshift)
+     * All downstream destinations
+
+2. EMAIL RUDDERSTACK PRIVACY TEAM:
+   - Address: privacy@rudderstack.com (or support@rudderstack.com)
+   - Include email, name, any known user IDs
+   - Request deletion from RudderStack Cloud systems
+   - Note: only effective for cloud-hosted deployments
+   - Self-hosted data: RudderStack cannot delete
+   - Still worth trying for completeness
+
+3. DETECT RUDDERSTACK TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * Cloud: *.rudderstack.com, *.rudderlabs.com
+     * Custom domains: companies may use own domain
+   - Cookies: rl_*, rudder_*, rs_*
+   - LocalStorage: rl_*, rudderstack_*
+   - JavaScript: window.rudderanalytics exists
+   - User-Agent tracking: RudderStack SDK identifiers
+
+4. BLOCK RUDDERSTACK TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     ||rudderstack.com^
+     ||rudderlabs.com^
+   - Blocks cloud-hosted RudderStack
+   - Self-hosted: harder to block (custom domains)
+   - May need to block company-specific endpoints
+
+5. SELF-HOSTED DETECTION (HARDER):
+   - Check page source for rudderanalytics.js
+   - Look for DATA_PLANE_URL config (shows endpoint)
+   - Custom domains make detection difficult
+   - Network tab shows actual endpoint
+   - Cannot block generically (each company different)
+
+6. CLEAR TRACKING DATA:
+   - Delete rl_*, rudder_*, rs_* cookies
+   - Clear LocalStorage rudderstack entries
+   - Clears anonymous ID
+   - RudderStack assigns new ID on next visit
+   - Breaks cross-session tracking
+
+7. BROWSER PRIVACY SETTINGS:
+   - Use privacy-focused browsers (Brave, Firefox)
+   - Enable Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - May block some RudderStack tracking
+
+8. REQUEST DATA ACCESS FIRST:
+   - GDPR/CCPA data access rights
+   - Request data copy from companies
+   - Helps understand extent of tracking
+   - Identify all systems holding your data
+   - Verify deletion was successful
+
+REALITY CHECK:
+- RudderStack less common than Segment (newer, smaller)
+- Growing adoption among privacy-conscious companies
+- Tech companies and startups primary users
+- Self-hosted option attracts companies wanting control
+- Deletion depends heavily on deployment model
+- Best approach: request from company, not RudderStack
+
+TECHNICAL DETAILS:
+- Cloud domains:
+  * hosted.rudderlabs.com (data plane)
+  * api.rudderstack.com (control plane)
+  * cdn.rudderlabs.com (SDK delivery)
+- Self-hosted: custom domains (vary by company)
+- Cookies: rl_user_id, rl_trait, rl_anonymous_id
+- LocalStorage: rl_page_init_*, rudderstack_*
+- JavaScript SDK: rudderanalytics.js
+- Segment API compatible: analytics.js drop-in
+
+COMMON DESTINATIONS:
+- Analytics: Google Analytics, Amplitude, Mixpanel, Heap
+- Advertising: Facebook Ads, Google Ads, LinkedIn
+- Data warehouses: Snowflake, BigQuery, Redshift, Postgres
+- Marketing automation: HubSpot, Marketo, Salesforce
+- Email: SendGrid, Mailchimp, Customer.io
+- 200+ total integrations
+
+COMPANIES USING RUDDERSTACK:
+- Tech-forward companies and startups
+- Privacy-conscious organizations
+- Companies wanting data ownership
+- Segment alternative seekers
+- Check company tech stack documentation
+- Often not publicly disclosed (self-hosted)
+
+RUDDERSTACK'S GDPR COMPLIANCE:
+- Cloud: Data Processing Agreement (DPA) available
+- Provides deletion APIs for cloud customers
+- GDPR-compliant data handling
+- Self-hosted: company responsible for compliance
+- Open-source transparency
+- Privacy-by-design principles
+
+DATA RETENTION:
+- Cloud: configurable by customer
+- Self-hosted: entirely customer-controlled
+- Warehouse: follows warehouse retention policies
+- After deletion: typically 30 days
+- Backups: request confirmation including backups
+- Downstream destinations: separate retention
+
+EFFECTIVENESS OF REMOVAL:
+- Cloud-hosted: medium difficulty (similar to other CDPs)
+- Self-hosted: must work with company directly
+- Good deletion tooling for cloud deployments
+- Browser blocking: effective for known endpoints
+- Self-hosted blocking: requires custom rules per site
+- Data warehouse deletion: critical step
+
+RUDDERSTACK VS. SEGMENT:
+- RudderStack: open-source, self-hostable
+- Segment: closed-source, cloud-only
+- RudderStack: warehouse-first architecture
+- Segment: CDP-first architecture
+- RudderStack: more privacy control options
+- Segment: larger ecosystem, more mature
+- RudderStack: API compatible with Segment
+
+RUDDERSTACK VS. MPARTICLE:
+- RudderStack: developer-friendly, transparent
+- mParticle: enterprise focus, mobile-first
+- RudderStack: open-source alternative
+- mParticle: closed-source, proprietary
+- RudderStack: self-hosting option
+- mParticle: cloud-only
+- RudderStack: lower cost
+- mParticle: more enterprise features
+
+PRIVACY ADVANTAGES (RELATIVE):
+- Open-source: code is auditable
+- Self-hosting: data never leaves company
+- Warehouse-native: data in company's control
+- Transparent architecture
+- No vendor lock-in
+- Privacy-conscious positioning
+
+PRIVACY CONCERNS (STILL EXIST):
+- Still enables comprehensive tracking
+- Cloud-hosted has similar concerns to competitors
+- Destinations receive full data
+- Warehouse stores detailed user profiles
+- Privacy depends on company implementation
+- "Privacy-friendly" is relative to other CDPs
+
+DETECTION IN PRACTICE:
+- Look for rudderanalytics object in console
+- Network requests to rudderlabs or rudderstack domains
+- Cookies with rl_ or rudder_ prefix
+- Check page source for rudderanalytics.js
+- Wappalyzer may detect RudderStack
+- Self-hosted harder to identify generically
+
+BLOCKING CONSIDERATIONS:
+- Cloud: straightforward to block known domains
+- Self-hosted: requires identifying custom endpoint
+- May break analytics-dependent features
+- Some sites use for error tracking
+- Consider per-site blocking decisions
+
+SELF-HOSTING IMPLICATIONS:
+- Companies using self-hosted RudderStack:
+  * Have complete data control
+  * RudderStack cannot delete data
+  * All deletion requests → company
+  * More privacy-respecting architecture
+  * But still tracks comprehensively
+
+RECOMMENDATIONS:
+1. Request deletion from companies using RudderStack
+2. Block rudderstack.com/rudderlabs.com domains
+3. Clear cookies and storage regularly
+4. Use privacy-focused browsers
+5. Request data access to understand scope
+6. File CCPA/GDPR requests with specific companies
+7. Don't rely on RudderStack for self-hosted deletions
+8. Monitor network traffic for detection
+
+DATA FLOW EXAMPLE (CLOUD-HOSTED):
+1. User visits website with RudderStack SDK
+2. SDK tracks: page view, user ID, device info
+3. Data sent to hosted.rudderlabs.com
+4. RudderStack processes and routes to:
+   - Snowflake data warehouse (full event history)
+   - Google Analytics (pageview stats)
+   - Mixpanel (product analytics)
+   - Facebook Ads (conversion tracking)
+5. User data now in 4+ systems
+6. Warehouse retains indefinitely (company policy)
+
+DATA FLOW EXAMPLE (SELF-HOSTED):
+1. User visits website with RudderStack SDK
+2. SDK tracks: page view, user ID, device info
+3. Data sent to company's RudderStack server (self-hosted)
+4. Company's server routes to destinations
+5. RudderStack (company) never sees the data
+6. Privacy better but still tracked comprehensively
+
+WHY COMPANIES CHOOSE RUDDERSTACK:
+- Open-source transparency
+- Avoid vendor lock-in
+- Data warehouse ownership
+- Segment alternative (migration path)
+- Cost savings (self-hosted free)
+- Privacy positioning
+- Developer-friendly
+
+COMPANY PERSPECTIVE:
+- RudderStack positions as "privacy-first CDP"
+- Emphasizes data ownership
+- Open-source builds trust
+- But still enables comprehensive tracking
+- "Privacy" means company control, not user privacy
+- Marketing focuses on GDPR compliance tools
+
+FUTURE DEVELOPMENTS:
+- Growing adoption as Segment alternative
+- Enhanced privacy features expected
+- Reverse ETL capabilities expanding
+- Competition with commercial CDPs
+- Possible acquisition by larger vendor
+- Privacy regulations driving self-hosted adoption
+"""
+
+[removal.cookies]
+patterns = ["rl_*", "rudder_*", "rs_*"]
+domains = [".rudderstack.com", ".rudderlabs.com"]

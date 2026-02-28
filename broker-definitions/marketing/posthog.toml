@@ -1,0 +1,279 @@
+# PostHog - Open-Source Product Analytics and Feature Flags Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "posthog"
+name = "PostHog"
+url = "https://posthog.com"
+domain = "posthog.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://posthog.com"
+instructions = "PostHog is an open-source product analytics platform with session recording, feature flags, and event tracking. Can be self-hosted or cloud-hosted. Cannot search directly - data is owned by companies using PostHog."
+
+[removal]
+method = "email"
+email = "privacy@posthog.com"
+subject = "CCPA/GDPR Data Deletion Request - PostHog Analytics Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all event data, session recordings, user properties, and analytics data collected through PostHog
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Distinct ID: (if known)
+- IP Address: {ip_address}
+- Websites/apps visited: (list any known)
+
+Please:
+1. Delete all my data from PostHog Cloud systems
+2. Remove all events, user properties, session recordings, and feature flag data
+3. Notify client companies to delete my data from their PostHog instances
+4. Stop processing any data associated with my identity or devices
+5. Confirm complete deletion in writing
+
+Note: If the company uses self-hosted PostHog, please facilitate deletion with the data controller.
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+PostHog tracking and removal (MODERATE COMPLEXITY):
+
+WHAT POSTHOG IS:
+- Open-source product analytics platform (alternative to Mixpanel/Amplitude)
+- Combines event tracking, session recording, feature flags, A/B testing
+- Can be self-hosted (company controls data) or PostHog Cloud
+- Auto-capture option: automatically tracks all interactions
+- Used by 10,000+ companies including YCombinator startups
+- Privacy-focused alternative (self-hosting option)
+
+HOW IT WORKS:
+1. Company integrates PostHog SDK or JavaScript snippet
+2. Tracks user events (pageviews, clicks, custom actions)
+3. Optional auto-capture: tracks ALL interactions automatically
+4. Optional session recording: records user sessions
+5. Feature flags: controls feature rollouts (tracks usage)
+6. Data sent to PostHog Cloud OR company's self-hosted instance
+7. Companies analyze funnels, retention, user paths
+
+WHAT THEY TRACK:
+- Event data: custom events (signups, purchases, clicks)
+- Auto-capture events: all interactions if enabled (like Heap)
+- Session recordings: video-like replays if enabled (like Hotjar)
+- User properties: email, name, signup date, custom attributes
+- Device info: browser, OS, device type, screen size
+- Location data: IP address, country, city (optional)
+- Feature flag evaluations: which features shown to users
+- A/B test assignments: which experiment variants shown
+- Session data: duration, frequency, last seen
+- Page properties: URL, title, referrer
+
+SELF-HOSTED VS CLOUD (IMPORTANT):
+- PostHog Cloud: data stored on PostHog's servers
+- Self-hosted: data stored on company's own infrastructure
+- Removal process different for each:
+  - Cloud: contact PostHog + company
+  - Self-hosted: contact company only (PostHog has no access)
+- Detection: check requests to app.posthog.com (Cloud) vs custom domain (self-hosted)
+
+REMOVAL CHALLENGES:
+- PostHog is data processor for Cloud, no role for self-hosted
+- Self-hosted instances: company has full control (PostHog can't help)
+- Cloud instances: data owned by companies using PostHog
+- No end-user search capability
+- Auto-capture option: high data volume if enabled
+- Session recordings: separate deletion required
+
+HOW TO REMOVE YOUR DATA:
+
+1. IDENTIFY DEPLOYMENT TYPE:
+   - Check network requests in DevTools
+   - app.posthog.com = PostHog Cloud
+   - Custom domain = Self-hosted (e.g., analytics.company.com)
+   - This determines removal approach
+
+2. FOR POSTHOG CLOUD DEPLOYMENTS:
+   A. Email company's privacy contact:
+      - Request deletion of all PostHog data
+      - Cite GDPR Article 17 / CCPA deletion rights
+      - Companies can delete users via PostHog dashboard
+
+   B. Email PostHog privacy team:
+      - Address: privacy@posthog.com
+      - Include email, name, user IDs
+      - List websites using PostHog Cloud
+      - PostHog can facilitate deletion with customers
+
+3. FOR SELF-HOSTED DEPLOYMENTS:
+   - Contact company directly (only option)
+   - PostHog has no access to self-hosted data
+   - Company should delete from their PostHog instance
+   - Request confirmation of deletion
+
+4. SESSION RECORDINGS DELETION:
+   - If site uses PostHog session recording:
+   - Specifically request deletion of all recordings
+   - Recordings may be stored separately from events
+   - Include in deletion request to company
+
+5. DETECT POSTHOG TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     - app.posthog.com (Cloud)
+     - Custom analytics domain (self-hosted)
+   - Cookies: ph_* pattern (ph_phc_*, ph_{project_id}_posthog)
+   - LocalStorage: posthog, ph_* entries
+   - SessionStorage: posthog session data
+
+6. BLOCK POSTHOG TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - For Cloud: add filter ||posthog.com^
+   - For self-hosted: harder to block (company domain)
+   - Blocks event tracking and session recording
+
+7. USE PRIVACY-FOCUSED BROWSERS:
+   - Brave Browser (blocks known PostHog Cloud domains)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+
+8. CLEAR POSTHOG COOKIES:
+   - Delete all ph_* cookies
+   - Clear LocalStorage posthog entries
+   - PostHog assigns new distinct_id on next visit
+   - Regular clearing breaks cross-session tracking
+
+9. OPT OUT (SOME IMPLEMENTATIONS):
+   - Some PostHog deployments provide opt-out
+   - Check site privacy settings
+   - PostHog supports opt-out cookie: ph_optout
+   - Not universally implemented
+
+REALITY CHECK:
+- PostHog increasingly popular (especially in startups/YC companies)
+- Self-hosted deployments harder to detect and block
+- Session recording highly invasive if enabled
+- Auto-capture option creates high data volume
+- Open-source nature means many custom deployments
+- Best approach: blocking + deletion requests
+
+TECHNICAL DETAILS:
+- Cloud domains: app.posthog.com, us.posthog.com, eu.posthog.com
+- Self-hosted: varies (company-specific domain)
+- Cookies: ph_phc_{token}_posthog, ph_{project}_posthog
+- LocalStorage: posthog_distinct_id, ph_*
+- SessionStorage: posthog session buffer
+- Can use cookieless tracking (LocalStorage only)
+
+COMPANIES KNOWN TO USE POSTHOG:
+- Y Combinator startups, Hasura, Phantom, Pry, Contra
+- Popular with developer tools, SaaS, fintech startups
+- Many tech companies switching from Mixpanel/Amplitude
+- Hard to identify via BuiltWith (self-hosted instances not tracked)
+
+POSTHOG'S GDPR COMPLIANCE:
+- GDPR-compliant DPA for PostHog Cloud customers
+- Customers are data controllers (legally responsible)
+- PostHog Cloud is data processor
+- Self-hosted: PostHog has no GDPR role (company controls data)
+- Provides deletion APIs and privacy tools
+
+DATA RETENTION:
+- PostHog Cloud: configurable (30 days to indefinite)
+- Self-hosted: determined by company
+- After deletion request: removed within 30 days
+- Backups may retain data for up to 90 additional days
+- Session recordings: separate retention settings
+
+AUTO-CAPTURE FEATURE:
+- Optional feature (like Heap)
+- Captures ALL clicks, form submissions, pageviews
+- Higher data volume than manual event tracking
+- Privacy concerns similar to Heap
+- Companies should disclose if auto-capture enabled
+
+SESSION RECORDING FEATURE:
+- Optional feature (like FullStory/Hotjar)
+- Records user sessions with DOM reconstruction
+- Privacy concerns similar to FullStory
+- May capture sensitive interactions
+- Separate deletion process from event data
+
+FEATURE FLAGS TRACKING:
+- PostHog tracks which features shown to users
+- Feature flag evaluations logged as events
+- A/B test assignments tracked
+- May reveal behavioral experimentation
+- Included in deletion request
+
+PRIVACY-FOCUSED FEATURES:
+- Self-hosting option (full data control)
+- Built-in GDPR tools for customers
+- Anonymization features available
+- IP address capture optional
+- Open-source transparency (can audit code)
+
+LEGAL CONSIDERATIONS:
+- GDPR: event tracking + session recording requires consent
+- Many sites fail to disclose PostHog in privacy policies
+- Self-hosted makes disclosure harder (no obvious third party)
+- CCPA: requires disclosure and deletion rights
+- Consider filing complaints if disclosure inadequate
+
+EFFECTIVENESS:
+- Medium difficulty for Cloud deployments
+- Harder for self-hosted (company-specific process)
+- Blocking Cloud deployments effective
+- Self-hosted harder to detect and block
+- Companies usually comply with deletion requests
+- Open-source community generally privacy-conscious
+
+COMPARISON TO ALTERNATIVES:
+- More privacy-friendly than Mixpanel/Amplitude (self-hosting)
+- Similar features to Heap (auto-capture option)
+- Session recording similar to FullStory/Hotjar
+- Open-source transparency advantage
+- Self-hosted option gives companies full control
+
+EU DATA RESIDENCY:
+- PostHog Cloud offers EU region (eu.posthog.com)
+- GDPR-compliant data processing in EU
+- Self-hosted: company chooses location
+- Check region for GDPR compliance
+
+ADDITIONAL PROTECTIONS:
+- Use email aliases to hide real email
+- Block PostHog Cloud domains (||posthog.com^)
+- Regular cookie/storage clearing
+- Privacy-focused browser extensions
+- For self-hosted: harder to block (use general ad blockers)
+- Request opt-out from companies using PostHog
+
+OPEN-SOURCE CONSIDERATIONS:
+- Code is auditable (github.com/PostHog/posthog)
+- Community can verify privacy claims
+- Custom forks possible (harder to track)
+- Transparency advantage over closed-source alternatives
+
+DEVELOPER TOOLS INTEGRATION:
+- Often integrated with error tracking (Sentry)
+- Feature flags may be used in production code
+- Data shared across developer tools
+- Request deletion from integrated services too
+"""
+
+[removal.cookies]
+patterns = ["ph_*", "posthog_*"]
+domains = [".posthog.com"]

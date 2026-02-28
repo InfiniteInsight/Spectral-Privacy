@@ -1,0 +1,224 @@
+# Optimizely - A/B Testing and Experimentation Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "optimizely"
+name = "Optimizely"
+url = "https://www.optimizely.com"
+domain = "optimizely.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.optimizely.com"
+instructions = "Optimizely is an A/B testing and experimentation platform that tracks user behavior during experiments to measure conversion rates and optimize user experiences. Cannot search directly - data is owned by companies using Optimizely for testing."
+
+[removal]
+method = "email"
+email = "privacy@optimizely.com"
+subject = "CCPA/GDPR Data Deletion Request - Optimizely Experimentation Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data and experimentation tracking data collected through Optimizely
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Optimizely Visitor ID: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Optimizely's systems
+2. Notify client companies to delete my data from their Optimizely projects
+3. Stop processing my behavioral data in active experiments
+4. Remove all visitor attributes, experiment data, and variation assignments
+5. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Optimizely tracking and removal (MODERATE COMPLEXITY):
+
+WHAT OPTIMIZELY IS:
+- Leading A/B testing and experimentation platform
+- Used by 9,000+ companies to optimize websites and apps
+- Powers multivariate testing, feature flags, and personalization
+- Tracks which variations users see and how they convert
+- Major customers: eBay, Microsoft, IBM, The Wall Street Journal
+
+HOW IT WORKS:
+1. Company creates experiment in Optimizely (e.g., test 2 button colors)
+2. Optimizely JavaScript loads on website/app
+3. User assigned to variation (A or B) via cookie
+4. Optimizely tracks user actions to measure conversion
+5. Company analyzes results to determine winning variation
+6. Tracking continues across sessions for consistent experience
+
+WHAT THEY TRACK:
+- Visitor ID: persistent identifier across sessions
+- Experiment assignments: which variations you saw
+- Conversion events: clicks, purchases, signups measured per experiment
+- Page views: which pages viewed during experiment
+- Device data: browser, OS, screen resolution
+- Custom attributes: age, location, customer segment (if passed by site)
+- Session behavior: time on site, bounce rate, engagement
+- Revenue data: transaction values for e-commerce experiments
+
+WHY IT'S PRIVACY-INVASIVE:
+- Persistent cross-session tracking via cookies
+- Behavioral profiling to segment users
+- Often combined with analytics (Google Analytics integration)
+- Tracks even users not in experiments (control groups)
+- Server-side experiments also track server logs
+- No opt-out mechanism visible to end users
+
+REMOVAL CHALLENGES:
+- Optimizely is a data processor (not data controller)
+- Data legally owned by companies running experiments
+- No direct search capability for end users
+- Must request deletion from individual companies
+- Optimizely provides deletion APIs but companies must initiate
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Optimizely (check network requests)
+   - Look for: cdn.optimizely.com, logx.optimizely.com
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of all experimentation data
+   - Companies should use Optimizely's Data Subject Request APIs
+   - This deletes visitor data, experiment history, and attributes
+
+2. EMAIL OPTIMIZELY PRIVACY TEAM:
+   - Address: privacy@optimizely.com
+   - Include email, name, any known visitor IDs
+   - Optimizely may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+
+3. DETECT OPTIMIZELY TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * cdn.optimizely.com (JavaScript SDK)
+     * logx.optimizely.com (event tracking)
+     * p13nlog.optimizely.com (personalization)
+   - Cookies: optimizelyEndUserId, optimizely_*
+   - These indicate active experimentation tracking
+
+4. BLOCK OPTIMIZELY TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||optimizely.com^
+     * ||optimizelyapis.com^
+   - Blocks tracking across all Optimizely-enabled sites
+   - May impact site functionality (some sites depend on experiments)
+   - May see different content on each visit (no consistent variation)
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Optimizely automatically)
+   - Firefox Enhanced Tracking Protection (blocks some tracking)
+   - Safari Intelligent Tracking Prevention (limits cookie duration)
+   - Chrome Privacy Sandbox (reduces cross-site tracking)
+
+6. CLEAR TRACKING DATA:
+   - Delete all optimizely* cookies
+   - Cookie names:
+     * optimizelyEndUserId (main visitor ID)
+     * optimizelySegments
+     * optimizelyBuckets (variation assignments)
+   - Optimizely assigns new visitor ID on next visit
+   - You'll be treated as new visitor and re-bucketed into experiments
+
+7. USE DO NOT TRACK:
+   - Some Optimizely implementations respect DNT header
+   - Enable in browser settings: Privacy → Do Not Track
+   - Not consistently honored across all implementations
+   - Companies must explicitly configure DNT support
+
+REALITY CHECK:
+- Optimizely used by major e-commerce, SaaS, media companies
+- Continuous experimentation means constant tracking
+- Server-side experiments harder to detect/block
+- Full-stack experiments track backend behavior too
+- Best strategy: combine blocking + deletion requests
+- Companies legally obligated to honor GDPR/CCPA requests
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * cdn.optimizely.com (SDK delivery)
+  * logx.optimizely.com (event logging)
+  * p13nlog.optimizely.com (personalization)
+- Cookies:
+  * optimizelyEndUserId (visitor ID, 10-year expiration)
+  * optimizelySegments (audience targeting)
+  * optimizelyBuckets (variation assignments)
+  * _opt_* (various tracking cookies)
+- LocalStorage: optimizely_data (client-side event buffering)
+- Persistence: multi-layered to ensure consistent experiences
+
+COMPANIES KNOWN TO USE OPTIMIZELY:
+- E-commerce: eBay, The Gap, Lending Tree
+- Technology: Microsoft, IBM, Atlassian
+- Media: The Wall Street Journal, The Telegraph
+- Thousands of SaaS, fintech, travel companies
+- Check BuiltWith.com or Wappalyzer to identify usage
+
+OPTIMIZELY'S GDPR COMPLIANCE:
+- Provides Data Subject Request API for deletion
+- Companies can delete visitor data via REST API
+- Supports data portability requests
+- DPA (Data Processing Agreement) with enterprise customers
+- Claims GDPR/CCPA compliance as data processor
+- Privacy Shield certified (US-EU data transfers)
+
+DATA RETENTION:
+- Optimizely retains data as long as customer maintains account
+- Experiment results stored indefinitely by default
+- After deletion request, visitor data removed within 30 days
+- Aggregated/anonymized experiment results may remain
+- Request confirmation of full deletion including archives
+
+TYPES OF EXPERIMENTS TRACKED:
+- A/B tests: comparing two variations
+- Multivariate tests: testing multiple elements simultaneously
+- Personalization: showing different content to different segments
+- Feature flags: gradual rollouts and targeted releases
+- All types involve persistent user tracking
+
+SERVER-SIDE EXPERIMENTS:
+- Optimizely Full Stack SDK runs on backend servers
+- Harder to detect (no browser network requests)
+- Tracks server-side events (API calls, backend behavior)
+- Look for Optimizely SDKs in website's technology stack
+- Still subject to GDPR/CCPA deletion rights
+
+MOBILE APP TRACKING:
+- Optimizely SDKs for iOS and Android
+- Tracks in-app behavior and experiments
+- Uses device IDs for persistent tracking
+- Request deletion from app developer
+- Include device ID (IDFA/AAID) in request
+
+EFFECTIVENESS:
+- Medium difficulty: most companies respond to deletion requests
+- Optimizely provides good deletion tooling (REST API)
+- Browser blocking is highly effective for prevention
+- Cookie deletion breaks cross-session tracking
+- Server-side experiments harder to block
+- Requires ongoing monitoring for new tracking
+"""
+
+[removal.cookies]
+patterns = ["optimizelyEndUserId", "optimizely*", "_opt_*"]
+domains = [".optimizely.com"]

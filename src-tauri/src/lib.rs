@@ -154,6 +154,7 @@ pub fn run() {
             commands::cookies::get_cookies_for_broker,
             commands::cookies::remove_cookies_for_broker,
             commands::cookies::get_recent_cookie_scans,
+            commands::cookies::get_unmatched_cookies,
             commands::cookies::diagnose_browser_detection,
             commands::privacy::set_llm_primary_provider,
             commands::privacy::set_llm_task_provider,

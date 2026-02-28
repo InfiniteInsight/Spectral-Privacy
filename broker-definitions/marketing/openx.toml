@@ -1,0 +1,322 @@
+# OpenX - Programmatic Advertising Platform and Ad Exchange
+# Last verified: 2026-02-27
+
+[broker]
+id = "openx"
+name = "OpenX"
+url = "https://www.openx.com"
+domain = "openx.net"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 0
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.openx.com"
+instructions = "OpenX is a programmatic advertising platform and ad exchange. Facilitates real-time bidding and supply-side platform services for publishers. Tracks user behavior across thousands of websites for ad targeting."
+
+[removal]
+method = "manual"
+url = "https://www.openx.com/legal/privacy-policy/"
+instructions = "Visit OpenX's privacy policy at https://www.openx.com/legal/privacy-policy/ for opt-out options (usually at bottom of page). Also use NAI opt-out at https://optout.networkadvertising.org and DAA opt-out at https://optout.aboutads.info."
+response_days = 0
+notes = """
+OpenX tracking and opt-out (MODERATE COMPLEXITY):
+
+WHAT OPENX IS:
+- Programmatic advertising platform and ad exchange
+- Founded in 2008, one of the original independent ad exchanges
+- Serves 500+ billion ad requests per month
+- Used by 1,000+ publishers globally
+- Provides supply-side platform (SSP) services
+- Enables real-time bidding (RTB) and header bidding
+- Major competitor to Google Ad Exchange, PubMatic, Index Exchange
+
+HOW IT WORKS (PROGRAMMATIC RTB):
+1. You visit website using OpenX for advertising
+2. Website sends bid request to OpenX with your information
+3. OpenX conducts real-time auction among advertisers
+4. Multiple advertisers bid on impression (in ~100ms)
+5. Highest bidder wins, their ad is displayed
+6. OpenX tracks impression, clicks, engagement
+7. Data used to build user profiles for future targeting
+
+WHAT THEY TRACK:
+- Device data: browser type, OS, screen size, device model
+- Geographic data: country, region, city, zip code from IP address
+- Browsing behavior: websites visited, pages viewed, time spent
+- Page context: URL, content category, keywords
+- Cookie ID: persistent identifier for cross-site tracking
+- Ad interactions: impressions, clicks, viewability, engagement
+- Audience segments: interests, demographics, purchase intent
+- Conversion tracking: purchases, signups, actions (if tracked)
+- Video engagement: for video ad placements
+- Mobile app data: via OpenX mobile SDK
+
+WHY IT'S PRIVACY-INVASIVE:
+- WIDESPREAD: thousands of websites use OpenX
+- Real-time bidding: your data broadcast to many advertisers
+- Bid requests expose detailed personal information
+- Cross-site tracking via cookies
+- Behavioral profiling for ad targeting
+- Invisible to users (operates behind the scenes)
+- Data shared across advertising ecosystem
+- No direct user relationship or control
+
+REMOVAL CHALLENGES:
+- Cannot "delete" data from OpenX
+- Must OPT OUT of interest-based advertising instead
+- Opt-out prevents behavioral targeting (generic ads still shown)
+- Requires opting out from multiple places (OpenX, NAI, DAA)
+- Opt-out uses cookies (lost when you clear cookies)
+- Must repeat opt-out on each browser/device
+
+HOW TO OPT OUT AND REDUCE TRACKING:
+
+1. OPENX PRIVACY POLICY OPT-OUT:
+   - Visit: https://www.openx.com/legal/privacy-policy/
+   - Scroll to "Your Choices" or "Opt-Out" section
+   - Click opt-out link/button
+   - Sets opt-out cookie in browser
+   - Prevents OpenX from behavioral ad targeting
+   - Still see ads (just not personalized)
+   - Must re-do if cookies cleared
+   - Per-browser/device (repeat everywhere)
+
+2. NAI OPT-OUT (NETWORK ADVERTISING INITIATIVE):
+   - Visit: https://optout.networkadvertising.org
+   - Opt out of OpenX and 100+ ad networks simultaneously
+   - Industry self-regulatory program
+   - Sets opt-out cookies for all participating networks
+   - OpenX is NAI member (honors opt-outs)
+   - Most efficient multi-network opt-out
+
+3. DAA OPT-OUT (DIGITAL ADVERTISING ALLIANCE):
+   - Visit: https://optout.aboutads.info (US)
+   - Visit: https://youronlinechoices.com (Europe/Canada)
+   - Opt out of OpenX and other ad networks
+   - Similar to NAI, different industry group
+   - Sets opt-out cookies
+   - Regional opt-out options available
+
+4. IAB TRANSPARENCY & CONSENT FRAMEWORK (GDPR):
+   - For EU users: consent management platforms (CMPs)
+   - Cookie consent banners on European websites
+   - Reject OpenX specifically in consent preferences
+   - GDPR-compliant consent mechanism
+   - More granular control than US opt-outs
+
+5. BROWSER-LEVEL BLOCKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||openx.net^
+     * ||openx.com^
+   - Blocks OpenX tracking and ad serving entirely
+   - May impact website ad revenue
+   - Most effective prevention method
+
+6. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks OpenX automatically)
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - Chrome with third-party cookie blocking
+   - All significantly limit tracking
+
+7. CLEAR OPENX COOKIES:
+   - Delete cookies from:
+     * .openx.net (primary domain)
+     * .openx.com (alternate domain)
+   - Cookie names: i, pd, w (very short names)
+   - Breaks cross-site user tracking
+   - OpenX assigns new ID on next visit
+   - Use browser cookie manager or DevTools
+
+8. DISABLE THIRD-PARTY COOKIES:
+   - Browser Settings → Privacy → Block third-party cookies
+   - Prevents OpenX from setting tracking cookies
+   - May affect some website features
+   - Browsers phasing out third-party cookies (Chrome, Firefox)
+
+9. MOBILE DEVICE OPT-OUT:
+   - iOS: Settings → Privacy & Security → Tracking → Off
+   - iOS: Settings → Privacy → Apple Advertising → Off
+   - Android: Settings → Google → Ads → Opt out of Ads Personalization
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Limits mobile advertising ID (IDFA/AAID) tracking
+   - Applies to OpenX mobile SDK in apps
+
+10. USE PRIVACY-FOCUSED BROWSERS/EXTENSIONS:
+    - Brave Browser: built-in tracker blocking
+    - Privacy Badger: learns and blocks trackers
+    - Ghostery: blocks ads and trackers
+    - Disconnect: blocks advertising networks
+    - All reduce OpenX tracking effectiveness
+
+REALITY CHECK:
+- OpenX present on thousands of websites
+- Programmatic advertising inherently shares your data widely
+- Opt-out reduces targeting but doesn't stop all data collection
+- Generic ads still shown after opt-out
+- Browser-level blocking most effective
+- Best approach: layered privacy (opt-out + blocking + settings)
+
+TECHNICAL DETAILS:
+- Primary domains:
+  * openx.net (main ad serving and tracking)
+  * openx.com (corporate site, alternate tracking)
+  * d.openx.com (delivery subdomain)
+- Cookies:
+  * i (user ID, 1-year expiration)
+  * pd (publisher data)
+  * w (frequency capping, 2-week)
+  * Note: very short cookie names (stealth approach)
+- Header bidding: Prebid.js integration common
+- Mobile SDK: iOS and Android in-app advertising
+
+PUBLISHERS USING OPENX:
+- News sites: Reuters, Bloomberg, Financial Times
+- Entertainment: ESPN, Variety
+- Technology: TechCrunch, The Verge
+- E-commerce: various retail websites
+- Thousands of websites and mobile apps globally
+- Common in premium digital media
+
+OPENX'S GDPR/CCPA COMPLIANCE:
+- Claims full GDPR/CCPA compliance
+- Provides opt-out mechanisms (legally required)
+- IAB Transparency & Consent Framework (TCF) participant
+- Privacy Policy: https://www.openx.com/legal/privacy-policy/
+- Data Processing Agreement (DPA) for publisher customers
+- NAI and DAA member (self-regulatory)
+- ISO 27001 security certified
+
+DATA RETENTION:
+- OpenX retains data for:
+  * Cookie data: 1 year (user ID cookie)
+  * Frequency cap data: 2 weeks
+  * Log data: varies by type (typically 90 days)
+  * Aggregate data: indefinitely (anonymized)
+- After opt-out, behavioral targeting stops immediately
+- Historical data retained but not used for personalization
+- No direct user deletion mechanism
+
+REAL-TIME BIDDING (RTB) PRIVACY CONCERNS:
+- Each ad request broadcasts your data to bidders
+- Bid request typically contains:
+  * Device and browser fingerprint
+  * Geographic location (from IP)
+  * Cookie ID or mobile ad ID
+  * Page URL and content
+  * User segments (interests, demographics)
+- Shared with demand-side platforms (DSPs) and advertisers
+- Privacy issue: data shared before ad is shown
+- GDPR concerns: potential consent violations in RTB
+
+HEADER BIDDING:
+- OpenX commonly used in header bidding setups
+- Multiple ad exchanges bid simultaneously (client-side)
+- Increases publisher revenue through competition
+- More bid requests = more data sharing
+- Your data sent to multiple exchanges at once
+- Prebid.js integration (open-source header bidding framework)
+
+AUDIENCE SEGMENTATION:
+- OpenX creates behavioral audience segments:
+  * Demographics: age, gender, income
+  * Interests: sports, technology, travel, finance
+  * Purchase intent: in-market for products/services
+  * Behavioral: frequency, recency, engagement
+  * Contextual: content categories consumed
+- Segments sold to advertisers for targeting
+- Opt-out prevents segment-based targeting
+
+COOKIE SYNCING:
+- OpenX syncs cookies with other ad tech companies
+- Enables cross-platform user identification
+- Your OpenX ID matched with DSPs, DMPs, SSPs
+- Privacy concern: data sharing across ecosystem
+- Partner network of dozens of companies
+- Opt-out reduces cookie syncing activity
+
+CROSS-DEVICE TRACKING:
+- OpenX may link devices to same user
+- Cross-device graph: desktop, mobile, tablet, TV
+- Uses probabilistic matching (IP, behavior patterns)
+- Deterministic matching (logged-in accounts)
+- Opt-out limits cross-device tracking
+
+VIDEO ADVERTISING:
+- OpenX supports video ad placements
+- Tracks video engagement metrics:
+  * Views, completion rate
+  * Quartile completion (25%, 50%, 75%, 100%)
+  * Click-through rates
+- In-stream video (pre-roll, mid-roll)
+- Out-stream video (in-content)
+- Connected TV (CTV) advertising
+
+MOBILE APP TRACKING:
+- OpenX SDK integrated in mobile apps
+- Tracks mobile advertising ID (IDFA on iOS, AAID on Android)
+- In-app behavioral tracking
+- Location tracking (if app has permission)
+- Opt out via device settings (iOS/Android)
+
+SUPPLY-SIDE PLATFORM (SSP):
+- OpenX functions as SSP (represents publishers)
+- Connects to demand-side platforms (DSPs)
+- DSPs represent advertisers
+- SSP-DSP ecosystem enables programmatic RTB
+- Your data flows through both SSP and DSP infrastructure
+
+COMPARISON TO COMPETITORS:
+Major programmatic ad exchanges:
+- Google Ad Exchange (largest, most dominant)
+- PubMatic (major competitor, similar scale)
+- Index Exchange (major competitor)
+- Rubicon Project / Magnite
+- AppNexus / Xandr (Microsoft)
+- Opt out from all via NAI/DAA for comprehensive protection
+
+OPT-OUT COOKIE MAINTENANCE:
+- Opt-out cookies can be accidentally deleted
+- Privacy browser extensions help maintain opt-outs
+- "Protect My Choices" extension preserves NAI/DAA opt-outs
+- Browser-level blocking more reliable than opt-out cookies
+- Consider combination approach
+
+OPENX MARKET (DIRECT DEALS):
+- OpenX Market enables direct advertiser-publisher deals
+- Programmatic guaranteed and preferred deals
+- Your data still used for targeting in private deals
+- Opt-out applies to OpenX Market as well
+
+OPENX AUDIENCE (DMP FEATURES):
+- Data management platform capabilities
+- Creates and manages audience segments
+- First-party and third-party data integration
+- Opt-out prevents audience targeting
+
+EFFECTIVENESS:
+- Medium difficulty: opt-out available but cookie-based
+- OpenX honors NAI/DAA opt-outs (self-regulatory compliance)
+- Opt-out immediate (stops interest-based targeting)
+- Browser blocking very effective (stops all tracking and ads)
+- Requires multi-layered approach:
+  * OpenX direct opt-out
+  * NAI/DAA industry opt-outs
+  * Browser-level blocking
+  * Third-party cookie blocking
+- Mobile requires device-level settings
+- Opt-out cookies fragile (can be cleared)
+- Browser protection more reliable than opt-out alone
+- Ongoing maintenance: re-check opt-out status periodically
+"""
+
+[removal.cookies]
+patterns = ["i", "pd", "w"]
+domains = [".openx.net", ".openx.com"]

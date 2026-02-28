@@ -1,0 +1,326 @@
+# Seamless.AI - Real-Time B2B Contact Search Engine
+# Last verified: 2026-02-27
+
+[broker]
+id = "seamless-ai"
+name = "Seamless.AI"
+url = "https://www.seamless.ai"
+domain = "seamless.ai"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.seamless.ai"
+instructions = "Seamless.AI is a real-time B2B contact search engine providing instant access to emails and phone numbers. Claims 1B+ contacts. Scrapes LinkedIn, company websites, and public sources in real-time. No direct search - must request removal via privacy contact."
+
+[removal]
+method = "email"
+email = "privacy@seamless.ai"
+subject = "CCPA/GDPR Data Deletion and Opt-Out Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Permanent deletion and opt-out from Seamless.AI database
+
+Personal Information:
+- Full Name: {full_name}
+- Email addresses: {user_email}, [any work emails]
+- Phone numbers: {phone_number}, [any work phones]
+- Company: [Current and previous employers]
+- LinkedIn profile: [LinkedIn URL if applicable]
+- Job title: [Current title]
+
+Please:
+1. Permanently delete ALL my data from Seamless.AI's database
+2. Add me to a permanent opt-out/suppression list
+3. Stop real-time scraping of my data from LinkedIn and public sources
+4. Confirm deletion and opt-out in writing
+5. Explain your re-scraping prevention measures
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Seamless.AI removal and opt-out (MODERATE COMPLEXITY - AGGRESSIVE SCRAPING):
+
+WHAT SEAMLESS.AI IS:
+- Real-time B2B contact search engine
+- Claims 1B+ business contacts database
+- Instant email and phone number lookup
+- AI-powered lead generation platform
+- Browser extension for LinkedIn prospecting
+- Used by 500,000+ sales professionals
+- Competitor to ZoomInfo, Lusha, Apollo.io
+
+HOW SEAMLESS.AI WORKS (REAL-TIME SCRAPING):
+- Unlike competitors, Seamless.AI emphasizes REAL-TIME data
+- Scrapes sources on-demand when user searches
+- Combines cached data with fresh scraping
+- AI algorithms predict and verify contact info
+- Faster data refresh than traditional databases
+
+HOW SEAMLESS.AI GETS YOUR DATA:
+1. REAL-TIME LINKEDIN SCRAPING:
+   - Browser extension scrapes LinkedIn as you browse
+   - Extracts profile data in real-time
+   - AI predicts email from LinkedIn profile
+   - Cross-references with company email patterns
+   - More aggressive than batch scrapers
+
+2. COMPANY WEBSITE SCRAPING:
+   - Real-time crawling of company websites
+   - Extracts emails from "Team", "About", "Contact" pages
+   - Parses employee directories
+   - Scrapes blog author bios and press releases
+
+3. PUBLIC DATA SOURCES:
+   - Business registrations and filings
+   - Professional directories
+   - Social media profiles (Twitter, GitHub)
+   - News articles and press releases
+   - Conference attendee lists
+
+4. AI-POWERED EMAIL PREDICTION:
+   - Analyzes company email patterns
+   - Predicts format using AI models
+   - Common patterns: {first}.{last}@company.com
+   - Verifies predictions via SMTP
+   - Claims 90%+ accuracy
+
+5. PHONE NUMBER DISCOVERY:
+   - Company switchboards
+   - Public business listings
+   - Social media profiles
+   - Verified via carrier lookups
+
+6. CROWDSOURCED CONTRIBUTIONS:
+   - Users uploading contact lists
+   - Browser extension capturing data
+   - "Credits" system incentivizes contributions
+   - Reciprocal data sharing
+
+WHAT THEY STORE:
+- Personal: name, email, phone, location
+- Professional: title, company, seniority, department
+- Social: LinkedIn URL, Twitter handle
+- Company: company size, industry, revenue
+- Verification: email/phone validity, confidence scores
+- Search history: who searched for you (visible to paid users)
+- Job changes: tracks when you change employers
+
+WHY IT'S EXTREMELY PRIVACY-INVASIVE:
+- REAL-TIME scraping harder to prevent
+- Browser extension aggressively collects data
+- Claims 1B+ profiles (most professionals globally)
+- Tracks job changes in real-time
+- Shows who searched for you (invasive feature)
+- Used for aggressive cold outreach
+- Crowdsourced data hard to control
+- Re-scraping constant (not periodic)
+
+REMOVAL CHALLENGES:
+- REAL-TIME SCRAPING: not just periodic refreshes
+- Constant re-scraping as users search
+- Browser extension continuously collects data
+- Crowdsourced data from multiple sources
+- No public opt-out form (as of 2026)
+- Must email privacy team
+- Requires source data removal to prevent re-addition
+
+HOW TO REMOVE YOUR DATA:
+
+1. EMAIL PRIVACY TEAM (PRIMARY METHOD):
+   - Address: privacy@seamless.ai
+   - Use subject: "CCPA/GDPR Data Deletion and Opt-Out Request"
+   - Include ALL identifying information:
+     * All email addresses (personal + work)
+     * All phone numbers
+     * Current and previous employers
+     * LinkedIn profile URL
+     * Job titles (current and past)
+   - Request permanent deletion AND suppression list
+   - Ask about real-time scraping prevention
+   - Response expected within 30 days (GDPR/CCPA)
+
+2. CHECK FOR OPT-OUT FORM:
+   - Visit: https://www.seamless.ai/privacy (check for opt-out)
+   - Or: https://www.seamless.ai/optout
+   - As of 2026, verify if self-service opt-out exists
+   - May require contacting privacy team if no form
+
+3. PREVENT REAL-TIME SCRAPING (CRITICAL):
+   - LINKEDIN: Set profile to "Connections Only"
+     * Settings & Privacy → Visibility → Profile visibility
+     * Set to "Your connections" or "Only you"
+     * Disable public profile entirely
+     * This is CRITICAL for Seamless.AI (real-time scraper)
+   - COMPANY WEBSITE: Remove from team/about pages
+   - SOCIAL MEDIA: Set profiles to private
+   - GITHUB: Remove public email from profile
+
+4. BLOCK SEAMLESS.AI BROWSER EXTENSION:
+   - Seamless.AI extension scrapes as you browse
+   - Can't block on your browser (but others use it)
+   - Making LinkedIn private prevents extension scraping
+   - Only defense: source data protection
+
+5. REQUEST PERMANENT SUPPRESSION LIST:
+   - Ask Seamless.AI to add you to "do not scrape" list
+   - GDPR Article 21: Right to object to processing
+   - CCPA: Right to opt out of sale/sharing
+   - Suppression should prevent re-scraping
+   - Request written confirmation
+
+6. VERIFY DELETION:
+   - After 30 days, have colleague search you in Seamless.AI
+   - Search by name, email, company
+   - Check if profile appears in search results
+   - If present, escalate with privacy team
+
+7. ONGOING MONITORING:
+   - Check every 60-90 days (frequent due to real-time scraping)
+   - If data reappears, file new deletion request
+   - Document pattern for regulatory complaint
+   - Real-time scraping makes ongoing monitoring essential
+
+REALITY CHECK:
+- Seamless.AI is VERY aggressive (real-time scraping)
+- Claims 1B+ profiles (extremely comprehensive)
+- Deletion temporary without source removal
+- Public LinkedIn = guaranteed re-scraping
+- Best strategy: delete + make LinkedIn completely private
+- Requires vigilant ongoing monitoring
+- One of the harder B2B brokers to avoid
+
+TECHNICAL DETAILS:
+- Browser extension: Chrome (primary)
+- Runs on LinkedIn, Sales Navigator, company websites
+- Real-time scraping as extension users browse
+- API: api.seamless.ai for programmatic access
+- No tracking cookies on your browser (you don't visit site)
+- Data accessed by sales professionals via search
+
+WHO USES SEAMLESS.AI:
+- Sales teams: cold outreach, prospecting
+- Recruiters: candidate sourcing
+- Marketers: email list building
+- Business development: partnership outreach
+- Very popular in high-velocity sales orgs
+
+SEAMLESS.AI'S GDPR COMPLIANCE:
+- Claims GDPR/CCPA compliance
+- Based in US (Ohio) - subject to CCPA
+- Should process deletion requests within 30 days
+- Privacy Policy: https://www.seamless.ai/privacy-policy
+- DPA available for business customers
+- Compliance practices less transparent than competitors
+
+DATA RETENTION:
+- Seamless.AI retains data indefinitely
+- Real-time refresh model (not batch updates)
+- After deletion, removed within 30 days
+- Re-scraping can happen immediately (real-time model)
+- Suppression list critical to prevent re-addition
+
+OPT-OUT EFFECTIVENESS:
+- Medium effectiveness: deletion works initially
+- Real-time scraping makes re-addition faster
+- Private LinkedIn absolutely essential
+- Requires aggressive source data removal
+- More challenging than periodic scrapers
+- Ongoing monitoring critical
+
+COMPARISON TO COMPETITORS:
+Seamless.AI differences:
+- More aggressive: real-time vs. batch scraping
+- Faster re-scraping: immediate vs. 30-90 days
+- Browser extension: more invasive collection
+- Crowdsourcing: incentivized data contributions
+- Less transparent: opt-out process less clear
+
+Similar competitors:
+- ZoomInfo (larger, more expensive)
+- Lusha (similar size, periodic scraping)
+- Apollo.io (includes CRM)
+- RocketReach (periodic scraping)
+- Opt out from ALL (see individual brokers)
+
+CROWDSOURCING CONCERNS:
+- Seamless.AI users upload contact lists
+- "Credits" system rewards data contributions
+- Your data may come from uploaded lists
+- Harder to prevent crowdsourced data
+- GDPR still applies (right to deletion)
+
+"WRITER" FEATURE CONCERNS:
+- Seamless.AI Writer generates cold email templates
+- Uses your job title/company for personalization
+- Shows what cold emails you might receive
+- More targeted = more invasive
+
+JOB CHANGE TRACKING:
+- Seamless.AI tracks when you change jobs
+- Updates company/title in real-time
+- Based on LinkedIn profile changes
+- "Intent data" for sales targeting
+- Request deletion of job change history
+
+"BUYER INTENT" TRACKING:
+- Seamless.AI tracks company-level web activity
+- Identifies when companies research products
+- Associates with employee contacts
+- Request deletion of buyer intent data if applicable
+
+SEARCH HISTORY FEATURE:
+- Seamless.AI shows who searched for you
+- Premium feature for paid users
+- Extremely invasive privacy violation
+- Request deletion of search history
+- GDPR "right to know" applies
+
+B2B PROFESSIONAL CONSIDERATIONS:
+- Being in Seamless.AI has trade-offs:
+  * PRO: Recruiters can find you for opportunities
+  * PRO: Business partners can connect
+  * CON: Aggressive cold sales outreach
+  * CON: Phone spam from sales reps
+  * CON: Detailed profiling and tracking
+- Weigh career benefits vs. privacy invasion
+- Consider: do you need to be easily findable?
+
+ALTERNATIVE APPROACH:
+- Request data correction instead of deletion
+- Update to current, accurate information
+- May reduce spam (outdated = less targeted)
+- But: continues privacy invasion
+- Only if you need professional discoverability
+
+VERIFY YOUR DATA:
+- Ask colleague with Seamless.AI account
+- Have them search your name/email
+- See what data Seamless.AI has on you
+- Use to verify deletion success
+- Check search history feature (who's looking you up)
+
+EFFECTIVENESS:
+- Medium difficulty: Seamless.AI should respond to requests
+- Real-time scraping makes permanent removal very difficult
+- Private LinkedIn absolutely essential (not optional)
+- Source data removal critical
+- Requires frequent monitoring (every 60 days)
+- One of the more challenging B2B brokers
+- Best for people who can make LinkedIn completely private
+- Very difficult for those needing public LinkedIn presence
+"""
+
+[removal.cookies]
+patterns = []
+domains = []

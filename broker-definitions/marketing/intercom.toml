@@ -1,0 +1,270 @@
+# Intercom - Customer Messaging Platform (Tracks EVERYTHING)
+# Last verified: 2026-02-27
+
+[broker]
+id = "intercom"
+name = "Intercom"
+url = "https://www.intercom.com"
+domain = "intercom.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.intercom.com"
+instructions = "Intercom is a customer messaging platform that tracks ALL user behavior: page views, clicks, product usage, messages, and user identity. Used by 25,000+ companies. Cannot search directly - data is owned by companies using Intercom."
+
+[removal]
+method = "email"
+email = "privacy@intercom.com"
+subject = "CCPA/GDPR Data Deletion Request - Intercom User Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data, messaging history, and behavioral tracking data collected through Intercom
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Intercom User ID: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Intercom's systems
+2. Notify client companies to delete my data from their Intercom workspaces
+3. Stop processing my behavioral data, messages, and product usage
+4. Remove all user attributes, conversation history, and event data
+5. Delete any associated support tickets and notes
+6. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Intercom tracking and removal (MODERATE COMPLEXITY - HIGH PRIVACY IMPACT):
+
+WHAT INTERCOM IS:
+- Customer messaging and engagement platform
+- Used by 25,000+ companies (Atlassian, Amazon, Microsoft)
+- Combines live chat, support tickets, marketing automation
+- Tracks EVERYTHING: page views, clicks, product usage, messages
+- One of the most comprehensive user tracking platforms
+- Often running silently even without visible chat widget
+
+HOW IT WORKS:
+1. Company integrates Intercom into website/app
+2. Intercom JavaScript tracks every page view and user action
+3. Identifies users via email/ID when logged in
+4. Tracks anonymous users via device ID
+5. Records all chat conversations and support interactions
+6. Builds comprehensive user profiles with behavioral data
+7. Enables targeted messaging based on user behavior
+
+WHAT THEY TRACK:
+- User identity: email, name, user ID, phone number
+- User attributes: signup date, plan type, MRR, custom fields
+- Page views: every page visited with timestamps
+- Product events: button clicks, feature usage, conversions
+- Conversation history: all chat messages, support tickets
+- Session data: visit frequency, session duration, last seen
+- Geographic data: country, region, city from IP
+- Device data: browser, OS, screen resolution, language
+- Company data: company name, size, industry (B2B)
+- Tags and segments: manual tags, automatic behavioral segments
+- Email engagement: opens, clicks on Intercom emails
+- Mobile app events: if Intercom mobile SDK integrated
+
+WHY IT'S EXTREMELY PRIVACY-INVASIVE:
+- Tracks every single page view and click
+- Stores all conversation history (including sensitive support issues)
+- Often tracks logged-out users via cookies
+- Combines behavioral data with personal identity
+- Support agents see full user history during conversations
+- Enables highly targeted messaging (implies detailed profiling)
+- No user-facing opt-out mechanism
+- Runs continuously, not just when chat widget visible
+- Often integrated with sales/marketing tools (amplifies tracking)
+
+REMOVAL CHALLENGES:
+- Intercom is a data processor (not data controller)
+- Data legally owned by companies using Intercom
+- Stores extensive conversation history
+- No direct search capability for end users
+- Must request deletion from individual companies
+- Very sticky data (support tickets often retained long-term)
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Intercom (look for chat widget or network requests)
+   - Look for: api-iam.intercom.io, widget.intercom.io, js.intercomcdn.com
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL Intercom data:
+     * User profile and attributes
+     * Behavioral event data (page views, clicks)
+     * Conversation history (chats, tickets, notes)
+     * Email engagement data
+     * Tags and segments
+   - Companies should use Intercom's permanent deletion API
+   - Emphasize "permanent deletion" (not just archival)
+
+2. EMAIL INTERCOM PRIVACY TEAM:
+   - Address: privacy@intercom.com
+   - Include email, name, any known user IDs
+   - Intercom may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+   - Mention specific companies if you know them
+
+3. DETECT INTERCOM TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * api-iam.intercom.io (authentication and identity)
+     * api-iam.intercom.com (alternate domain)
+     * widget.intercom.io (chat widget)
+     * js.intercomcdn.com (JavaScript SDK)
+     * nexus-websocket-*.intercom.io (real-time messaging)
+   - Cookies: intercom-*, intercom-id-*, intercom-session-*
+   - LocalStorage: intercom-* entries
+   - Chat widget icon (bottom-right corner, usually)
+   - Even without visible widget, tracking may be active
+
+4. BLOCK INTERCOM TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||intercom.com^
+     * ||intercom.io^
+     * ||intercomcdn.com^
+   - Blocks all Intercom tracking and chat widget
+   - May impact customer support (can't use chat)
+   - Prevents behavioral tracking entirely
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Intercom automatically)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - Third-party cookie blocking
+   - All reduce Intercom tracking effectiveness
+
+6. CLEAR TRACKING DATA:
+   - Delete all Intercom cookies:
+     * intercom-id-{app_id} (user identity)
+     * intercom-session-{app_id} (session tracking)
+     * intercom-device-id-{app_id} (device tracking)
+     * intercom-state (widget state)
+   - Clear LocalStorage intercom-* entries
+   - Intercom assigns new device ID on next visit
+   - Breaks cross-session user identification
+
+7. USE DO NOT TRACK:
+   - Intercom does NOT honor Do Not Track header
+   - DNT ineffective against Intercom
+   - Must use blocking or deletion instead
+
+8. OPT OUT OF INTERCOM EMAILS:
+   - Unsubscribe from marketing emails sent via Intercom
+   - Click unsubscribe link in Intercom emails
+   - Only stops marketing emails, not behavioral tracking
+   - Must request full deletion for comprehensive removal
+
+REALITY CHECK:
+- Intercom is EXTREMELY common (25,000+ companies)
+- Tracks more data than most analytics platforms
+- Conversation history often considered "business records"
+- Companies reluctant to delete support tickets
+- May need to emphasize "personal data" vs "support records"
+- Best strategy: block Intercom + aggressive deletion requests
+- Companies legally obligated to honor GDPR/CCPA requests
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * api-iam.intercom.io (identity and API)
+  * api-iam.intercom.com (alternate)
+  * widget.intercom.io (chat widget)
+  * js.intercomcdn.com (JavaScript CDN)
+  * nexus-websocket-*.intercom.io (WebSocket real-time)
+  * uploads.intercomcdn.com (file uploads)
+- Cookies:
+  * intercom-id-{app_id} (persistent user ID)
+  * intercom-session-{app_id} (session ID)
+  * intercom-device-id-{app_id} (device fingerprint)
+  * intercom-state (widget state)
+  * intercom-lou-{app_id} (last opened URL)
+- LocalStorage:
+  * intercom.intercom-state-{app_id}
+  * intercom-{app_id}-inbox (message inbox)
+  * Extensive client-side caching
+
+COMPANIES KNOWN TO USE INTERCOM:
+- Technology: Atlassian (Jira, Confluence), Sentry, New Relic
+- E-commerce: Shopify merchants (very common)
+- SaaS: Countless B2B SaaS companies
+- Check chat widget branding or network requests
+- Often visible via "We run on Intercom" badge
+
+INTERCOM'S GDPR COMPLIANCE:
+- Claims full GDPR/CCPA compliance as data processor
+- Provides permanent deletion API for customers
+- Deletion includes: user, conversations, events, attributes
+- DPA (Data Processing Agreement) with customers
+- ISO 27001, SOC 2 Type II certified
+- Privacy Shield certified (US-EU data transfers)
+
+DATA RETENTION:
+- Intercom retains data as long as customer maintains account
+- Conversation history often retained indefinitely
+- Behavioral events stored per customer configuration
+- After deletion request, data removed within 30 days
+- Backups retained for 90 days (request backup deletion too)
+- Request written confirmation of complete deletion
+
+CONVERSATION HISTORY CONCERNS:
+- Support conversations may contain sensitive information:
+  * Account issues, billing problems
+  * Technical problems (may reveal usage patterns)
+  * Personal complaints or feedback
+- Companies often treat as "business records"
+- Emphasize GDPR Article 17 "Right to Erasure"
+- Personal data in conversations must be deleted
+
+MOBILE APP TRACKING:
+- Intercom SDKs for iOS and Android
+- Tracks in-app events and conversations
+- Push notifications for messages
+- Request deletion from app developer
+- Include device ID (IDFA/AAID) in request
+
+SERVER-SIDE TRACKING:
+- Companies can track server-side events via Intercom API
+- User actions on backend sent to Intercom
+- Harder to detect (no browser requests)
+- Still subject to deletion rights
+- Request deletion of all event data
+
+INTERCOM PRODUCT TOURS:
+- Intercom Product Tours track feature onboarding
+- Records which tours shown, steps completed
+- Part of behavioral tracking
+- Included in standard deletion requests
+
+EFFECTIVENESS:
+- Medium difficulty: most companies respond to deletion requests
+- Intercom provides good deletion API
+- Browser blocking highly effective (prevents all tracking)
+- Cookie deletion breaks persistent identification
+- Conversation history often sticky (may require emphasis)
+- Support ticket deletion may require escalation
+- Ongoing monitoring needed (Intercom extremely common)
+"""
+
+[removal.cookies]
+patterns = ["intercom-*", "intercom-id-*", "intercom-session-*", "intercom-device-id-*"]
+domains = [".intercom.com", ".intercom.io", ".intercomcdn.com"]

@@ -80,5 +80,12 @@ export const cookiesAPI = {
 	 */
 	async getRecentCookieScans(vaultId: string, limit: number): Promise<CookieScanResponse[]> {
 		return await invoke<CookieScanResponse[]>('get_recent_cookie_scans', { vaultId, limit });
+	},
+
+	/**
+	 * Get unmatched cookies from the most recent scan.
+	 */
+	async getUnmatchedCookies(vaultId: string): Promise<ScannedCookie[]> {
+		return await invoke<ScannedCookie[]>('get_unmatched_cookies', { vaultId });
 	}
 };

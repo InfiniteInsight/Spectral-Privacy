@@ -1,0 +1,272 @@
+# Braze - Mobile-First Cross-Channel Marketing Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "braze"
+name = "Braze"
+url = "https://www.braze.com"
+domain = "braze.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.braze.com"
+instructions = "Braze is a mobile-first engagement platform used by major apps and brands. Tracks: app events, push notification engagement, in-app behavior, location, device info. Data owned by companies using Braze."
+
+[removal]
+method = "email"
+email = "privacy@braze.com"
+subject = "CCPA/GDPR Data Deletion Request - Braze"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through Braze
+
+Personal Information:
+- Email: {user_email}
+- Phone: {phone_number}
+- Name: {full_name}
+- Device IDs: (if known)
+
+Please delete from:
+- Braze platform databases
+- All customer app/brand profiles
+- Push notification history
+- In-app message engagement data
+- Location tracking data
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Braze tracking and removal:
+
+WHAT BRAZE IS:
+- Mobile-first customer engagement platform
+- Used by 1,000+ major apps and brands
+- Powers push notifications, in-app messages, emails, SMS
+- Customers include: Burger King, Domino's, HBO Max, Urban Outfitters
+- Focus: real-time mobile app engagement
+
+HOW BRAZE WORKS:
+
+1. MOBILE APP TRACKING:
+   - Embedded SDK in iOS/Android apps
+   - Tracks every screen view, button tap, gesture
+   - Records session duration, frequency, time of day
+   - Monitors app version, crashes, performance
+   - Links to advertising IDs (IDFA/GAID)
+
+2. PUSH NOTIFICATION TRACKING:
+   - Records which notifications you receive
+   - Tracks opens, dismissals, tap actions
+   - Monitors optimal send times for each user
+   - A/B tests different message variants
+   - Stores push token for targeting
+
+3. IN-APP MESSAGING:
+   - Tracks in-app message views and clicks
+   - Monitors slide-up, modal, fullscreen engagement
+   - Records CTA button clicks
+   - Measures time spent viewing messages
+   - Personalizes based on behavior
+
+4. LOCATION TRACKING:
+   - Collects GPS coordinates (if app has permission)
+   - Tracks location-triggered campaigns
+   - Monitors geofence entries/exits
+   - Records city, region, country
+   - Used for location-based offers
+
+5. CROSS-CHANNEL ENGAGEMENT:
+   - Email tracking (opens, clicks)
+   - SMS delivery and engagement
+   - Web push notifications
+   - Connected TV engagement
+   - Unified profile across all channels
+
+6. BEHAVIORAL SEGMENTATION:
+   - Creates user segments ("power users", "at-risk churners")
+   - Predictive churn scoring
+   - Lifetime value calculations
+   - Event-based triggering (e.g., abandoned cart)
+
+WHAT DATA BRAZE COLLECTS:
+
+IDENTITY DATA:
+- Email, phone, name, username
+- Advertising IDs (IDFA, GAID, IDFV)
+- Device IDs, push tokens
+- IP address, user agent
+- Custom user attributes set by app
+
+BEHAVIORAL DATA:
+- App opens, session length, frequency
+- Screen views, feature usage
+- In-app purchases, transaction history
+- Custom events (app-specific actions)
+- Push/email/SMS engagement
+
+DEVICE DATA:
+- Device model, OS version
+- App version, SDK version
+- Carrier, connection type (WiFi/cellular)
+- Language, timezone
+- Screen size, device orientation
+
+LOCATION DATA:
+- GPS coordinates (if permitted)
+- City, region, country
+- Geofence triggers
+- IP-based location
+
+ENGAGEMENT DATA:
+- Push notification opens/dismissals
+- In-app message interactions
+- Email opens/clicks
+- SMS clicks
+- Content card views
+
+HOW TO REMOVE YOUR DATA:
+
+1. DELETE ACCOUNT IN APP:
+   - Many apps have "Delete Account" option
+   - Usually in Settings → Privacy/Account
+   - This should trigger Braze data deletion
+   - Most thorough method
+   - Deletes from app's database + Braze
+
+2. OPT OUT OF NOTIFICATIONS:
+   - Disable push notifications in app settings
+   - Stops messages but doesn't delete data
+   - Or disable in phone Settings → Notifications
+   - Unsubscribe from emails via link
+   - Reply STOP to SMS messages
+
+3. REVOKE APP PERMISSIONS:
+   - Remove location access (Settings → Privacy → Location)
+   - Revoke notification permission
+   - Limits future data collection
+   - Doesn't delete historical data
+
+4. REQUEST FROM APP COMPANY:
+   - Email app's privacy/support contact
+   - Request CCPA/GDPR data deletion
+   - Company should delete from Braze + their systems
+   - Most effective approach
+   - Legally required within 30-45 days
+
+5. EMAIL BRAZE PRIVACY:
+   - Address: privacy@braze.com
+   - Include email, phone, device IDs if known
+   - Braze will facilitate deletion from customer apps
+   - May require app company cooperation
+   - Submit via: https://www.braze.com/privacy
+
+6. RESET ADVERTISING ID:
+   - iOS: Settings → Privacy → Apple Advertising → Reset
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Breaks tracking link between sessions
+   - Braze will generate new anonymous profile
+
+7. LIMIT AD TRACKING:
+   - iOS: Settings → Privacy → Apple Advertising → Limit
+   - Android: Settings → Google → Ads → Opt out
+   - Reduces (but doesn't eliminate) tracking
+   - Some Braze features still work
+
+8. DETECT BRAZE TRACKING:
+   - Check app network traffic (Charles Proxy, mitmproxy)
+   - Look for: *.braze.com, *.braze.eu, sdk.iad-01.braze.com
+   - Cookies (web): _braze_*, ab.storage.*
+   - Braze is invisible to average users (backend)
+
+REALITY CHECK:
+- Braze is embedded in many popular mobile apps
+- Extremely difficult to detect without technical tools
+- No unified opt-out across all apps using Braze
+- Each app maintains separate Braze database
+- Best approach: Delete unused apps + limit permissions
+
+BRAZE'S TRACKING POWER:
+- Real-time behavioral tracking in mobile apps
+- Can predict when you'll churn (stop using app)
+- Knows your most active times, days, features
+- Tracks purchase patterns, spend levels
+- Links mobile app + web + email engagement
+- Powers hyper-personalized retargeting campaigns
+
+TECHNICAL DETAILS:
+
+TRACKING ENDPOINTS:
+- sdk.iad-01.braze.com (US data center)
+- sdk.fra-01.braze.eu (EU data center)
+- sdk.syd-01.braze.com (Australia)
+- Multiple regional endpoints
+
+COOKIES (WEB SDK):
+- _braze_* (various tracking cookies)
+- ab.storage.* (localStorage keys)
+- appboy_* (legacy Appboy cookies - old name)
+
+MOBILE SDKs:
+- iOS: BrazeKit framework
+- Android: com.braze library
+- React Native, Flutter, Unity, Cordova
+
+TRACKING CAPABILITIES:
+- Session tracking (start/end times)
+- Custom events (developer-defined)
+- Purchase tracking (item, price, currency)
+- User attributes (name, email, custom fields)
+- Location tracking (opt-in)
+
+INTEGRATION POINTS:
+- Facebook Custom Audiences
+- Google Customer Match
+- Snapchat, TikTok, Pinterest ad sync
+- Data warehouses (Snowflake, BigQuery)
+- CDPs (Segment, mParticle)
+
+CHANNELS BRAZE POWERS:
+- Push notifications (mobile/web)
+- In-app messages
+- Email (via SendGrid/SparkPost integration)
+- SMS (via Twilio integration)
+- Content cards (in-app feed)
+- Connected TV messages
+
+PRIVACY IMPLICATIONS:
+- Extremely detailed app usage profiles
+- Real-time behavioral surveillance
+- Predictive analytics (churn risk, LTV)
+- Cross-device tracking via email
+- Data often synced to ad platforms
+- Most users unaware of Braze's presence
+
+WHO USES BRAZE:
+- Major consumer apps (food delivery, streaming, retail)
+- Gaming companies
+- Financial apps
+- Health/fitness apps
+- Check company's privacy policy for "Braze" mentions
+
+BRAZE VS COMPETITORS:
+- More mobile-focused than Klaviyo (e-commerce)
+- Similar to Iterable, Customer.io (mobile engagement)
+- Competes with Airship, OneSignal (push notifications)
+- More specialized than Salesforce Marketing Cloud
+- Industry leader for mobile app marketing
+"""
+
+[removal.cookies]
+patterns = ["_braze_*", "ab_*", "appboy_*", "ab.storage.*"]
+domains = [".braze.com", ".braze.eu", ".iad-01.braze.com", ".fra-01.braze.eu"]

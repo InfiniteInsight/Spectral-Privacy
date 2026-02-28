@@ -1,0 +1,265 @@
+# Index Exchange - Programmatic Ad Exchange and SSP
+# Last verified: 2026-02-27
+
+[broker]
+id = "index-exchange"
+name = "Index Exchange"
+url = "https://www.indexexchange.com"
+domain = "casalemedia.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 0
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.indexexchange.com"
+instructions = "Index Exchange is a programmatic advertising exchange and supply-side platform (SSP). Facilitates real-time bidding between publishers and advertisers. Tracks user behavior for ad targeting across thousands of websites."
+
+[removal]
+method = "manual"
+url = "https://www.indexexchange.com/privacy/"
+instructions = "Visit Index Exchange's privacy page at https://www.indexexchange.com/privacy/ for opt-out options. Also use NAI opt-out at https://optout.networkadvertising.org and DAA opt-out at https://optout.aboutads.info for comprehensive ad network opt-outs."
+response_days = 0
+notes = """
+Index Exchange tracking and opt-out (MODERATE COMPLEXITY):
+
+WHAT INDEX EXCHANGE IS:
+- Major programmatic advertising exchange (SSP)
+- Connects publishers with advertisers via real-time bidding (RTB)
+- Processes 200+ billion ad requests per day
+- Used by 1,000+ premium publishers globally
+- Enables header bidding (multiple demand sources compete)
+- Operates under Casale Media domain (legacy brand)
+
+HOW IT WORKS (REAL-TIME BIDDING):
+1. You visit website using Index Exchange
+2. Website sends bid request with your data to Index Exchange
+3. Index Exchange forwards bid request to hundreds of advertisers
+4. Advertisers bid in real-time (auction in ~100 milliseconds)
+5. Highest bidder wins, their ad is served
+6. Index Exchange tracks impression, clicks, conversions
+7. Data used to refine future targeting
+
+WHAT THEY TRACK:
+- Bid request data: device, browser, OS, screen size
+- Geographic data: country, region, city from IP
+- Page context: URL, content category, keywords
+- Cookie ID: persistent identifier for cross-site tracking
+- Ad interactions: impressions, clicks, viewability
+- Conversion data: purchases, signups (if tracked)
+- Browsing behavior: sites visited, frequency, recency
+- Audience segments: interests, demographics inferred
+- Device graph: linking devices to same user
+
+WHY IT'S PRIVACY-INVASIVE:
+- WIDESPREAD: thousands of websites use Index Exchange
+- Real-time bidding: your data shared with hundreds of advertisers
+- Bid requests contain detailed user information
+- Cross-site tracking via cookies
+- Behavioral profiling for ad targeting
+- No direct relationship with you (invisible intermediary)
+- Data shared across ad tech ecosystem
+
+REMOVAL CHALLENGES:
+- Cannot "delete" data from Index Exchange
+- Must OPT OUT of behavioral targeting instead
+- Opt-out prevents personalized ads (still see generic ads)
+- Multiple opt-out mechanisms required (Index, NAI, DAA)
+- Opt-out cookies can be cleared (requires re-opting out)
+
+HOW TO OPT OUT AND REDUCE TRACKING:
+
+1. INDEX EXCHANGE OPT-OUT PAGE:
+   - Visit: https://www.indexexchange.com/privacy/
+   - Click on opt-out link or "Consumer Opt-Out"
+   - Sets opt-out cookie in your browser
+   - Prevents Index Exchange from personalizing ads
+   - Still see ads, just not behaviorally targeted
+   - Must re-do if you clear cookies
+   - Per-browser (do on all browsers/devices)
+
+2. NAI OPT-OUT (NETWORK ADVERTISING INITIATIVE):
+   - Visit: https://optout.networkadvertising.org
+   - Opt out of Index Exchange and 100+ ad networks
+   - Industry self-regulatory program
+   - Sets opt-out cookies for participating networks
+   - Index Exchange is NAI member (honors opt-out)
+   - Must re-do if cookies cleared
+
+3. DAA OPT-OUT (DIGITAL ADVERTISING ALLIANCE):
+   - Visit: https://optout.aboutads.info (US)
+   - Visit: https://youronlinechoices.com (Europe)
+   - Opt out of Index Exchange and other ad networks
+   - Similar to NAI, different industry group
+   - Sets opt-out cookies
+   - Must re-do if cookies cleared
+
+4. BROWSER-LEVEL BLOCKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add filter rules:
+     * ||casalemedia.com^
+     * ||indexww.com^
+     * ||indexexchange.com^
+   - Blocks Index Exchange tracking and ads entirely
+   - May impact website functionality (header bidding)
+   - Most effective method for prevention
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Index Exchange automatically)
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - Chrome with third-party cookie blocking
+   - All limit Index Exchange tracking effectiveness
+
+6. CLEAR INDEX EXCHANGE COOKIES:
+   - Delete cookies from:
+     * .casalemedia.com (primary domain)
+     * .indexww.com (tracking domain)
+   - Cookie names: CMID, CMPS, CMPRO
+   - Breaks cross-site tracking temporarily
+   - Index Exchange re-assigns new ID on next visit
+
+7. DISABLE THIRD-PARTY COOKIES:
+   - Browser Settings → Privacy → Block third-party cookies
+   - Prevents Index Exchange cookie tracking
+   - May break some website features
+   - Increasingly common (browsers phasing out third-party cookies)
+
+8. USE PRIVACY BROWSER EXTENSIONS:
+   - Privacy Badger: automatically blocks Index Exchange
+   - Ghostery: blocks ad exchanges and trackers
+   - Disconnect: blocks advertising trackers
+   - All reduce Index Exchange tracking
+
+9. MOBILE DEVICE OPT-OUT:
+   - iOS: Settings → Privacy & Security → Tracking → Off
+   - Android: Settings → Google → Ads → Opt out of Ads Personalization
+   - Limits mobile app advertising ID tracking
+   - Applies to Index Exchange mobile SDK
+
+REALITY CHECK:
+- Index Exchange on thousands of websites
+- Real-time bidding shares your data with hundreds of companies
+- Opt-out reduces targeting, doesn't eliminate tracking
+- Still see ads (just not personalized)
+- Browser blocking most effective
+- Best strategy: multiple opt-outs + browser blocking
+
+TECHNICAL DETAILS:
+- Primary domain: casalemedia.com (legacy Casale Media)
+- Tracking domains:
+  * casalemedia.com (cookie domain)
+  * indexww.com (tracking pixels)
+  * indexexchange.com (corporate site)
+- Cookies:
+  * CMID (Casale Media ID, 1-year expiration)
+  * CMPS (page visit timestamp)
+  * CMPRO (profile data)
+  * CMRUM3 (user match)
+  * CMST (session tracking)
+- Header bidding: Prebid.js integration (common)
+
+PUBLISHERS USING INDEX EXCHANGE:
+- News: New York Times, Washington Post, Reuters
+- Entertainment: Hulu, Spotify, Twitch
+- E-commerce: Many major retail websites
+- Thousands of websites via header bidding
+- Very common across premium publishers
+
+INDEX EXCHANGE'S GDPR/CCPA COMPLIANCE:
+- Claims full GDPR/CCPA compliance
+- Provides opt-out mechanisms (legally required)
+- Consent framework: IAB Transparency & Consent Framework (TCF)
+- Privacy Policy: https://www.indexexchange.com/privacy/
+- DPA available for publisher customers
+- NAI and DAA member (self-regulatory compliance)
+
+DATA RETENTION:
+- Index Exchange retains data for:
+  * Cookie data: 1 year (refreshed on activity)
+  * Log data: varies by data type
+  * Aggregate data: indefinitely
+- After opt-out, personalization stops immediately
+- Historical data may be retained (anonymized)
+- No direct deletion mechanism for users
+
+REAL-TIME BIDDING (RTB) PRIVACY CONCERNS:
+- Every ad request broadcasts your data to hundreds of companies
+- Bid request contains:
+  * Device information
+  * Browser details
+  * IP address (geo-location)
+  * Cookie ID
+  * Page URL and context
+- Shared with demand-side platforms (DSPs) and advertisers
+- Privacy violation: data shared before consent in many cases
+- GDPR concerns: "data leakage" in RTB auctions
+
+HEADER BIDDING:
+- Index Exchange major player in header bidding
+- Multiple ad exchanges bid simultaneously on client-side
+- Increases competition (higher ad revenue for publishers)
+- More bid requests = more data sharing
+- Your data sent to multiple exchanges at once
+
+AUDIENCE SEGMENTS:
+- Index Exchange creates audience segments:
+  * Demographics: age, gender, income
+  * Interests: sports, technology, travel
+  * Purchase intent: in-market for products
+  * Behavioral: site visit frequency, engagement
+- Segments sold to advertisers
+- Opt-out prevents segment targeting
+
+DEVICE GRAPH:
+- Index Exchange may link devices to same user
+- Cross-device tracking: desktop, mobile, tablet
+- Uses probabilistic matching (IP, browser patterns)
+- Opt-out limits cross-device tracking
+
+COOKIE SYNCING:
+- Index Exchange syncs cookies with other ad tech companies
+- Enables cross-platform user identification
+- Your Index cookie ID matched with other companies' IDs
+- Privacy concern: data sharing across ecosystem
+- Opt-out reduces cookie syncing
+
+SUPPLY-SIDE PLATFORM (SSP):
+- Index Exchange is SSP (represents publishers)
+- Connects to demand-side platforms (DSPs)
+- DSPs represent advertisers
+- SSP-DSP connection enables RTB
+- Your data flows through both SSP and DSP
+
+COMPARISON TO COMPETITORS:
+Major programmatic exchanges:
+- Google Ad Exchange (largest)
+- PubMatic (major competitor)
+- OpenX (similar size)
+- Rubicon Project / Magnite
+- AppNexus / Xandr
+- Opt out from all via NAI/DAA
+
+OPT-OUT PERSISTENCE:
+- Opt-out via cookies (cleared when you clear cookies)
+- Browser-level blocking more persistent
+- Privacy extensions maintain opt-outs
+- Consider using browser with built-in tracking protection
+
+EFFECTIVENESS:
+- Medium difficulty: opt-out available but cookie-based
+- Index Exchange honors NAI/DAA opt-outs
+- Opt-out immediate (stops personalization)
+- Browser blocking very effective (stops all tracking)
+- Requires multi-layered approach (multiple opt-outs + blocking)
+- Opt-out cookies can be fragile (cleared easily)
+- Browser-level protection more reliable than opt-out cookies
+"""
+
+[removal.cookies]
+patterns = ["CMID", "CMPS", "CMPRO", "CMRUM3", "CMST"]
+domains = [".casalemedia.com", ".indexww.com"]

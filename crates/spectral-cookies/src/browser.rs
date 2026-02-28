@@ -121,6 +121,20 @@ impl Browser {
             }
         }
 
+        // Firefox-based browsers (Zen, Floorp, Librewolf, Waterfox, etc.)
+        match Self::detect_firefox_forks() {
+            Ok(fork_profiles) => {
+                tracing::info!(
+                    "Found {} Firefox-based browser profiles",
+                    fork_profiles.len()
+                );
+                profiles.extend(fork_profiles);
+            }
+            Err(e) => {
+                tracing::warn!("Firefox fork detection failed: {}", e);
+            }
+        }
+
         tracing::info!("Total browser profiles detected: {}", profiles.len());
         Ok(profiles)
     }
@@ -267,6 +281,105 @@ impl Browser {
         Ok(profiles)
     }
 
+    /// Detect Firefox-based browsers (Zen, Floorp, Librewolf, Waterfox, etc.).
+    fn detect_firefox_forks() -> Result<Vec<BrowserProfile>> {
+        let mut profiles = Vec::new();
+
+        // Common Firefox-based browsers
+        let fork_names = vec![
+            ("zen", "Zen"),
+            ("floorp", "Floorp"),
+            ("librewolf", "LibreWolf"),
+            ("Waterfox", "Waterfox"),
+            ("palemoon", "Pale Moon"),
+        ];
+
+        for (dir_name, display_name) in fork_names {
+            match Self::detect_firefox_fork(dir_name, display_name) {
+                Ok(fork_profiles) => {
+                    if !fork_profiles.is_empty() {
+                        tracing::info!("Found {} {} profiles", fork_profiles.len(), display_name);
+                        profiles.extend(fork_profiles);
+                    }
+                }
+                Err(e) => {
+                    tracing::debug!("{} detection failed: {}", display_name, e);
+                }
+            }
+        }
+
+        Ok(profiles)
+    }
+
+    /// Detect a specific Firefox-based browser.
+    fn detect_firefox_fork(dir_name: &str, display_name: &str) -> Result<Vec<BrowserProfile>> {
+        let mut profiles = Vec::new();
+        let home = dirs::home_dir()
+            .ok_or_else(|| CookieError::BrowserNotFound(display_name.to_string()))?;
+
+        #[cfg(target_os = "macos")]
+        let base_path = home.join(format!("Library/Application Support/{}", dir_name));
+
+        #[cfg(target_os = "linux")]
+        let base_path = home.join(format!(".{}", dir_name));
+
+        #[cfg(target_os = "windows")]
+        let base_path = home.join(format!("AppData/Roaming/{}", dir_name));
+
+        if !base_path.exists() {
+            tracing::debug!(
+                "{} base path does not exist: {}",
+                display_name,
+                base_path.display()
+            );
+            return Ok(profiles);
+        }
+
+        tracing::info!(
+            "Found {} installation at: {}",
+            display_name,
+            base_path.display()
+        );
+
+        // Check for Profiles subdirectory (like Firefox)
+        let profiles_dir = base_path.join("Profiles");
+        let search_dir = if profiles_dir.exists() {
+            tracing::debug!("{} uses Profiles subdirectory", display_name);
+            profiles_dir
+        } else {
+            tracing::debug!("{} stores profiles in base directory", display_name);
+            base_path
+        };
+
+        // Firefox-based browsers store cookies in cookies.sqlite in each profile directory
+        for entry in std::fs::read_dir(&search_dir).map_err(CookieError::IoError)? {
+            let entry = entry.map_err(CookieError::IoError)?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                let cookies_path = path.join("cookies.sqlite");
+                if cookies_path.exists() {
+                    let profile_name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+
+                    tracing::info!("Found {} profile: {}", display_name, profile_name);
+
+                    profiles.push(BrowserProfile {
+                        browser_type: BrowserType::Firefox, // Use Firefox type for compatibility
+                        profile_name: format!("{} ({})", display_name, profile_name),
+                        cookie_db_path: cookies_path,
+                        is_default: profile_name.contains("default"),
+                    });
+                }
+            }
+        }
+
+        Ok(profiles)
+    }
+
     /// Detect Safari installation (macOS only).
     #[cfg(target_os = "macos")]
     fn detect_safari() -> Result<BrowserProfile> {
@@ -291,26 +404,65 @@ impl Browser {
         let mut profiles = Vec::new();
         let base_path = Self::edge_base_path()?;
 
+        tracing::info!("=== Edge Detection Debug ===");
+        tracing::info!("Edge base path: {}", base_path.display());
+        tracing::info!("Edge base path exists: {}", base_path.exists());
+
         if !base_path.exists() {
-            tracing::debug!("Edge base path does not exist: {}", base_path.display());
+            tracing::warn!(
+                "Edge base path does not exist - Edge not installed or in non-standard location"
+            );
             return Ok(profiles);
+        }
+
+        // List all directories in Edge base path for debugging
+        if let Ok(entries) = std::fs::read_dir(&base_path) {
+            tracing::info!("Contents of Edge User Data directory:");
+            for entry in entries.flatten() {
+                if let Ok(file_type) = entry.file_type() {
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    if file_type.is_dir() {
+                        tracing::info!("  [DIR]  {}", name_str);
+                    } else {
+                        tracing::info!("  [FILE] {}", name_str);
+                    }
+                }
+            }
+        } else {
+            tracing::error!("Failed to read Edge base directory");
         }
 
         tracing::debug!("Edge base path exists: {}", base_path.display());
 
         // Edge uses same structure as Chrome - check both old and new cookie locations
         let default_profile_path = base_path.join("Default");
-        tracing::debug!(
+        tracing::info!(
             "Checking Default profile at: {}",
             default_profile_path.display()
         );
+        tracing::info!("Default profile exists: {}", default_profile_path.exists());
 
         if default_profile_path.exists() {
-            tracing::debug!("Default profile directory exists");
+            // List contents of Default profile for debugging
+            if let Ok(entries) = std::fs::read_dir(&default_profile_path) {
+                tracing::info!("Contents of Edge Default profile:");
+                for entry in entries.flatten() {
+                    if let Ok(file_type) = entry.file_type() {
+                        let name = entry.file_name();
+                        let name_str = name.to_string_lossy();
+                        if file_type.is_dir() {
+                            tracing::info!("  [DIR]  {}", name_str);
+                        } else {
+                            tracing::info!("  [FILE] {}", name_str);
+                        }
+                    }
+                }
+            }
 
             // Try new location first (Edge 96+): Default/Network/Cookies
             let new_cookies_path = default_profile_path.join("Network").join("Cookies");
-            tracing::debug!(
+            tracing::info!(
                 "Checking new cookie path: {} [exists: {}]",
                 new_cookies_path.display(),
                 new_cookies_path.exists()
@@ -318,21 +470,23 @@ impl Browser {
 
             // Try old location: Default/Cookies
             let old_cookies_path = default_profile_path.join("Cookies");
-            tracing::debug!(
+            tracing::info!(
                 "Checking old cookie path: {} [exists: {}]",
                 old_cookies_path.display(),
                 old_cookies_path.exists()
             );
 
             let cookies_path = if new_cookies_path.exists() {
-                tracing::info!("Found Edge Default profile (new location)");
+                tracing::info!("✓ Found Edge Default profile (new location)");
                 new_cookies_path
             } else if old_cookies_path.exists() {
-                tracing::info!("Found Edge Default profile (old location)");
+                tracing::info!("✓ Found Edge Default profile (old location)");
                 old_cookies_path
             } else {
-                tracing::warn!("Edge Default profile directory exists but no Cookies file found");
-                tracing::debug!(
+                tracing::error!(
+                    "✗ Edge Default profile directory exists but no Cookies file found"
+                );
+                tracing::error!(
                     "Expected at: {} or {}",
                     new_cookies_path.display(),
                     old_cookies_path.display()

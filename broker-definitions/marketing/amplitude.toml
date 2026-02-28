@@ -1,0 +1,171 @@
+# Amplitude - Product Analytics and Digital Optimization Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "amplitude"
+name = "Amplitude"
+url = "https://amplitude.com"
+domain = "amplitude.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://amplitude.com"
+instructions = "Amplitude is a product analytics platform that tracks user behavior, feature usage, and conversion events across digital products. Cannot search directly - data is owned by companies using Amplitude analytics."
+
+[removal]
+method = "email"
+email = "privacy@amplitude.com"
+subject = "CCPA/GDPR Data Deletion Request - Amplitude Analytics"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data and behavioral analytics tracked through Amplitude
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Amplitude ID: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Amplitude's systems
+2. Notify client companies to delete my data from their Amplitude projects
+3. Stop processing my event data through Amplitude infrastructure
+4. Remove all user properties, event data, and behavioral cohorts
+5. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Amplitude tracking and removal (MODERATE COMPLEXITY):
+
+WHAT AMPLITUDE IS:
+- Leading product analytics platform with 60,000+ customers
+- Tracks user behavior across web, mobile, and connected devices
+- Powers product analytics, A/B testing, and behavioral cohorts
+- Used for conversion optimization, retention analysis, and growth
+- Major competitor to Mixpanel and Google Analytics
+
+HOW IT WORKS:
+1. Company integrates Amplitude SDK into their product
+2. Amplitude tracks user events (clicks, views, purchases, custom actions)
+3. Data sent to Amplitude's cloud infrastructure
+4. Companies analyze user journeys, funnels, and retention
+5. Behavioral data used to optimize product features
+
+WHAT THEY TRACK:
+- Event data: every interaction (pageviews, clicks, form submissions)
+- User properties: name, email, signup date, subscription plan
+- Device properties: browser, OS, device model, screen size
+- Location data: IP address, country, region, city
+- Session data: visit duration, frequency, session depth
+- Behavioral cohorts: grouping users by behavior patterns
+- Revenue data: purchases, subscriptions, transaction amounts
+- Custom properties: unlimited custom tracking defined by companies
+
+REMOVAL CHALLENGES:
+- Amplitude is a data processor (not data controller)
+- Data legally owned by companies using Amplitude
+- No direct search capability for end users
+- Must request deletion from individual companies
+- Amplitude provides deletion tools but companies must initiate
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Amplitude (check network requests)
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of all analytics data
+   - Companies should use Amplitude's User Privacy API
+   - This deletes all events and properties associated with your user ID
+
+2. EMAIL AMPLITUDE PRIVACY TEAM:
+   - Address: privacy@amplitude.com
+   - Include email, name, any known user IDs
+   - Amplitude may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+
+3. DETECT AMPLITUDE TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to: api.amplitude.com, api2.amplitude.com
+   - Cookies: amplitude_id_{api_key}, amplitude_*
+   - LocalStorage: amplitude_ entries
+   - These indicate active Amplitude tracking
+
+4. BLOCK AMPLITUDE TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules: ||amplitude.com^
+   - Blocks tracking across all Amplitude-enabled sites
+   - May impact site functionality (some features depend on analytics)
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Amplitude automatically)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - Chrome with Privacy Sandbox enabled
+
+6. CLEAR TRACKING DATA:
+   - Delete all amplitude_* cookies
+   - Clear LocalStorage amplitude entries
+   - Amplitude assigns new device ID on next visit
+   - Breaks cross-session user identification
+
+7. USE DO NOT TRACK:
+   - Some Amplitude implementations respect DNT header
+   - Enable in browser settings
+   - Not consistently honored across all implementations
+
+REALITY CHECK:
+- Amplitude used by major companies (Microsoft, PayPal, NBCUniversal, Ford)
+- Extremely detailed behavioral tracking
+- Server-side tracking also common (harder to detect)
+- Best strategy: combine blocking + deletion requests
+- Companies legally obligated to honor GDPR/CCPA requests
+
+TECHNICAL DETAILS:
+- Tracking domains: api.amplitude.com, api2.amplitude.com, cdn.amplitude.com
+- Cookies: amplitude_id_{api_key}, amplitude_unsent_{api_key}
+- LocalStorage: amplitude_cookie_test, AMP_{api_key}
+- IndexedDB: also used for client-side event buffering
+- Persistence: multi-layered approach to prevent data loss
+
+COMPANIES KNOWN TO USE AMPLITUDE:
+- Microsoft, PayPal, NBCUniversal, Ford, Ancestry, Figma
+- Thousands of SaaS, fintech, e-commerce companies
+- Check BuiltWith.com or Wappalyzer to identify usage
+
+AMPLITUDE'S GDPR COMPLIANCE:
+- Provides User Privacy API for deletion/suppression
+- Companies can delete all data for specific users
+- Supports data portability requests
+- DPA (Data Processing Agreement) with enterprise customers
+- Claims GDPR/CCPA compliance as data processor
+
+DATA RETENTION:
+- Amplitude retains data as long as customer maintains account
+- After deletion request, data removed within 30 days
+- Backups may retain data for additional 90 days
+- Request confirmation of full deletion including backups
+
+EFFECTIVENESS:
+- Medium difficulty: most companies respond to deletion requests
+- Amplitude provides good deletion tooling
+- Browser blocking is effective for prevention
+- Requires ongoing monitoring for new tracking
+"""
+
+[removal.cookies]
+patterns = ["amplitude_*", "AMP_*"]
+domains = [".amplitude.com"]
