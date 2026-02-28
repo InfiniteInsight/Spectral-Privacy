@@ -4,7 +4,8 @@
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
 	import { vaultStore } from '$lib/stores';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
-	import { substituteEmailVariables } from '$lib/utils/email-template';
+	import EmailTemplatePreview from '$lib/components/broker/EmailTemplatePreview.svelte';
+	import EmailFallbackDisplay from '$lib/components/broker/EmailFallbackDisplay.svelte';
 
 	const adtechId = $derived($page.params.adtechId);
 
@@ -224,190 +225,12 @@
 
 					<!-- Email Template Preview -->
 					{#if adtech.email_template}
-						{@const substituted = substituteEmailVariables(adtech.email_template)}
-						<div class="mb-8 p-6 border-2 border-gray-200 rounded-lg bg-gray-50">
-							<h2 class="text-xl font-bold text-gray-900 mb-4">Email Removal Template</h2>
-
-							<div class="space-y-4">
-								<!-- To -->
-								<div>
-									<label class="text-sm font-medium text-gray-700">To:</label>
-									<div class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm">
-										{substituted.email}
-									</div>
-								</div>
-
-								<!-- Subject -->
-								<div>
-									<label class="text-sm font-medium text-gray-700">Subject:</label>
-									<div class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm">
-										{substituted.subject}
-									</div>
-								</div>
-
-								<!-- Body -->
-								<div>
-									<label class="text-sm font-medium text-gray-700">Body:</label>
-									<div
-										class="mt-1 p-4 bg-white border border-gray-300 rounded font-mono text-sm whitespace-pre-wrap max-h-96 overflow-y-auto"
-									>
-										{substituted.body}
-									</div>
-								</div>
-
-								<!-- Expected Response Time -->
-								<div class="flex items-center gap-2 text-sm text-gray-600">
-									<span class="font-medium">Expected Response:</span>
-									<span
-										>{adtech.email_template.response_days}
-										{adtech.email_template.response_days === 1 ? 'day' : 'days'}</span
-									>
-								</div>
-
-								<!-- Notes -->
-								{#if adtech.email_template.notes}
-									<div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-										<h4 class="font-medium text-blue-900 mb-2">Notes:</h4>
-										<p class="text-sm text-blue-800 whitespace-pre-wrap">
-											{adtech.email_template.notes}
-										</p>
-									</div>
-								{/if}
-							</div>
-						</div>
+						<EmailTemplatePreview template={adtech.email_template} />
 					{/if}
 
 					<!-- Email Fallback Section -->
 					{#if adtech.email_fallback && adtech.email_fallback.enabled}
-						<div class="mb-8 p-6 border-2 border-orange-300 rounded-lg bg-orange-50">
-							<h2 class="text-xl font-bold text-orange-900 mb-2 flex items-center gap-2">
-								<span class="text-2xl">📧</span>
-								Email Fallback Available
-							</h2>
-							<p class="text-sm text-orange-800 mb-4">
-								If the web form doesn't work or you don't receive a response within {adtech
-									.email_fallback.processing_days}
-								{adtech.email_fallback.processing_days === 1 ? 'day' : 'days'}, you can send an
-								email removal request to:
-							</p>
-
-							<!-- Email Address -->
-							<div class="mb-4">
-								<label class="text-sm font-medium text-gray-700">Email:</label>
-								<div
-									class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm flex items-center justify-between"
-								>
-									<span>{adtech!.email_fallback!.email}</span>
-									<button
-										onclick={() => navigator.clipboard.writeText(adtech!.email_fallback!.email)}
-										class="px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-									>
-										Copy
-									</button>
-								</div>
-							</div>
-
-							<!-- Phone Numbers -->
-							{#if adtech.email_fallback.phone || adtech.email_fallback.ccpa_phone}
-								<div class="mb-4 space-y-2">
-									{#if adtech.email_fallback.phone}
-										<div>
-											<label class="text-sm font-medium text-gray-700">Phone:</label>
-											<div
-												class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm"
-											>
-												{adtech.email_fallback.phone}
-											</div>
-										</div>
-									{/if}
-									{#if adtech.email_fallback.ccpa_phone}
-										<div>
-											<label class="text-sm font-medium text-gray-700"
-												>CCPA Phone (CA residents):</label
-											>
-											<div
-												class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm"
-											>
-												{adtech.email_fallback.ccpa_phone}
-											</div>
-										</div>
-									{/if}
-								</div>
-							{/if}
-
-							<!-- Subject Line -->
-							{#if adtech.email_fallback.subject}
-								<div class="mb-4">
-									<label class="text-sm font-medium text-gray-700">
-										Subject:
-										{#if adtech.email_fallback.subject_required}
-											<span class="text-red-600">*</span>
-											<span class="text-xs text-red-600">(Must match exactly)</span>
-										{/if}
-									</label>
-									<div
-										class="mt-1 p-3 bg-white border border-gray-300 rounded font-mono text-sm flex items-center justify-between"
-									>
-										<span>{adtech!.email_fallback!.subject}</span>
-										<button
-											onclick={() =>
-												navigator.clipboard.writeText(adtech!.email_fallback!.subject || '')}
-											class="px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-										>
-											Copy
-										</button>
-									</div>
-								</div>
-							{/if}
-
-							<!-- Required Fields -->
-							<div class="mb-4">
-								<label class="text-sm font-medium text-gray-700">Include in Email Body:</label>
-								<div class="mt-1 p-3 bg-white border border-gray-300 rounded text-sm">
-									<ul class="list-disc list-inside space-y-1">
-										{#each adtech.email_fallback.required_fields as field}
-											<li class="text-gray-700">
-												{field.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-											</li>
-										{/each}
-									</ul>
-								</div>
-							</div>
-
-							<!-- Notes -->
-							{#if adtech.email_fallback.notes}
-								<div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-									<h4 class="font-medium text-blue-900 mb-2">Important Notes:</h4>
-									<p class="text-sm text-blue-800 whitespace-pre-wrap">
-										{adtech.email_fallback.notes}
-									</p>
-								</div>
-							{/if}
-
-							<!-- Network Note -->
-							{#if adtech.email_fallback.network_note}
-								<div class="p-4 bg-green-50 border border-green-200 rounded">
-									<h4 class="font-medium text-green-900 mb-2">✨ Bonus:</h4>
-									<p class="text-sm text-green-800 whitespace-pre-wrap">
-										{adtech.email_fallback.network_note}
-									</p>
-								</div>
-							{/if}
-
-							<!-- CCPA/GDPR Compliance Badges -->
-							<div class="mt-4 flex gap-2">
-								{#if adtech.email_fallback.ccpa_compliant}
-									<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded font-medium">
-										CCPA Compliant
-									</span>
-								{/if}
-								{#if adtech.email_fallback.gdpr_compliant}
-									<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded font-medium">
-										GDPR Compliant
-									</span>
-								{/if}
-							</div>
-						</div>
+						<EmailFallbackDisplay emailFallback={adtech.email_fallback} />
 					{/if}
 
 					<!-- Action Buttons -->
