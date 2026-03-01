@@ -563,6 +563,42 @@ pub async fn diagnose_browser_detection() -> Result<Vec<(String, String, bool)>,
     Ok(diagnostics)
 }
 
+/// Reconstruct cookie groupings by browser and broker for a specific scan.
+async fn reconstruct_cookie_groupings(
+    db_pool: &sqlx::Pool<sqlx::Sqlite>,
+    vault_id: &str,
+    scan_timestamp: &str,
+) -> Result<(HashMap<String, usize>, HashMap<String, usize>), String> {
+    // Get all cookies from this scan based on scan_timestamp
+    let cookies = spectral_db::cookies::get_scanned_cookies(db_pool, vault_id)
+        .await
+        .map_err(|e| format!("Failed to get cookies: {}", e))?;
+
+    // Filter cookies by scan timestamp (only get cookies from this specific scan)
+    let scan_cookies: Vec<_> = cookies
+        .into_iter()
+        .filter(|c| c.scan_timestamp == scan_timestamp)
+        .collect();
+
+    // Group by browser
+    let mut cookies_by_browser: HashMap<String, usize> = HashMap::new();
+    for cookie in &scan_cookies {
+        *cookies_by_browser
+            .entry(cookie.browser_type.clone())
+            .or_insert(0) += 1;
+    }
+
+    // Group by broker (only matched cookies)
+    let mut cookies_by_broker: HashMap<String, usize> = HashMap::new();
+    for cookie in &scan_cookies {
+        if let Some(broker_id) = &cookie.matched_broker_id {
+            *cookies_by_broker.entry(broker_id.clone()).or_insert(0) += 1;
+        }
+    }
+
+    Ok((cookies_by_browser, cookies_by_broker))
+}
+
 /// Get recent cookie scans.
 #[tauri::command]
 pub async fn get_recent_cookie_scans(
@@ -580,18 +616,26 @@ pub async fn get_recent_cookie_scans(
         .await
         .map_err(|e| format!("Failed to get scans: {}", e))?;
 
-    Ok(scans
-        .into_iter()
-        .map(|scan| CookieScanResponse {
+    let mut scan_responses = Vec::new();
+
+    for scan in scans {
+        // Reconstruct cookie groupings from the actual cookie data
+        let (cookies_by_browser, cookies_by_broker) =
+            reconstruct_cookie_groupings(db.pool(), &vault_id, &scan.scan_timestamp.to_rfc3339())
+                .await?;
+
+        scan_responses.push(CookieScanResponse {
             scan_id: scan.id,
             total_cookies: scan.total_cookies_found as usize,
             matched_cookies: scan.matched_cookies as usize,
-            cookies_by_browser: HashMap::new(), // Not stored in scan summary
-            cookies_by_broker: HashMap::new(),  // Not stored in scan summary
+            cookies_by_browser,
+            cookies_by_broker,
             browsers_scanned: scan.browsers_scanned,
             timestamp: scan.scan_timestamp.to_rfc3339(),
-        })
-        .collect())
+        });
+    }
+
+    Ok(scan_responses)
 }
 
 /// Get unmatched cookies from the most recent scan.
