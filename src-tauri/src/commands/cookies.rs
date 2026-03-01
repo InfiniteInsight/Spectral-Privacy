@@ -29,6 +29,7 @@ pub struct CookieScanResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScannedCookieResponse {
+    pub id: String,
     pub cookie_name: String,
     pub cookie_domain: String,
     pub browser_type: String,
@@ -291,6 +292,7 @@ pub async fn get_cookies_for_broker(
     Ok(cookies
         .into_iter()
         .map(|c| ScannedCookieResponse {
+            id: c.id,
             cookie_name: c.cookie_name,
             cookie_domain: c.cookie_domain,
             browser_type: c.browser_type,
@@ -455,6 +457,264 @@ pub async fn remove_cookies_for_broker(
     .await;
 
     Ok(removal_responses)
+}
+
+/// Remove all scanned cookies (both matched and unmatched).
+#[tauri::command]
+pub async fn remove_all_cookies(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<CookieRemovalResponse>, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not unlocked".to_string())?;
+
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Get all scanned cookies
+    let db_cookies = spectral_db::cookies::get_scanned_cookies(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("Failed to get cookies: {}", e))?;
+
+    if db_cookies.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // Group cookies by browser and profile
+    let mut cookies_by_browser: HashMap<(String, String), Vec<(String, Cookie)>> = HashMap::new();
+
+    for db_cookie in db_cookies {
+        let cookie = Cookie {
+            name: db_cookie.cookie_name.clone(),
+            value: db_cookie.cookie_value.clone().unwrap_or_default(),
+            domain: db_cookie.cookie_domain.clone(),
+            path: db_cookie.cookie_path.clone(),
+            creation_time: db_cookie.creation_time,
+            expiry_time: db_cookie.expiry_time,
+            last_access_time: db_cookie.last_access_time,
+            is_secure: db_cookie.is_secure != 0,
+            is_httponly: db_cookie.is_httponly != 0,
+            same_site: db_cookie.same_site.as_ref().and_then(|s| s.parse().ok()),
+        };
+
+        let key = (
+            db_cookie.browser_type.clone(),
+            db_cookie.profile_name.clone().unwrap_or_default(),
+        );
+
+        cookies_by_browser
+            .entry(key)
+            .or_default()
+            .push((db_cookie.id.clone(), cookie));
+    }
+
+    // Detect browsers and remove cookies
+    let browser_profiles = Browser::detect_installed().map_err(|e| e.to_string())?;
+    let remover = CookieRemover::new();
+    let mut removal_responses = Vec::new();
+
+    for ((browser_type_str, profile_name), cookies_with_ids) in cookies_by_browser {
+        let profile = browser_profiles.iter().find(|p| {
+            p.browser_type.as_str() == browser_type_str && p.profile_name == profile_name
+        });
+
+        if let Some(profile) = profile {
+            let response = remove_cookies_for_profile(
+                db.pool(),
+                &browser_type_str,
+                &profile_name,
+                cookies_with_ids,
+                profile,
+                &remover,
+            )
+            .await;
+            removal_responses.push(response);
+        }
+    }
+
+    // Log to audit log
+    let total_removed: usize = removal_responses.iter().map(|r| r.cookies_removed).sum();
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "AllCookiesRemoved".to_string(),
+        format!("Removed all {} scanned cookies", total_removed),
+        None,
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
+
+    Ok(removal_responses)
+}
+
+/// Remove all tracking cookies (only matched cookies).
+#[tauri::command]
+pub async fn remove_all_tracking_cookies(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<Vec<CookieRemovalResponse>, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not unlocked".to_string())?;
+
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Get all matched cookies (tracking cookies)
+    let db_cookies = spectral_db::cookies::get_scanned_cookies(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("Failed to get cookies: {}", e))?
+        .into_iter()
+        .filter(|c| c.matched_broker_id.is_some())
+        .collect::<Vec<_>>();
+
+    if db_cookies.is_empty() {
+        return Ok(vec![]);
+    }
+
+    // Group cookies by browser and profile
+    let mut cookies_by_browser: HashMap<(String, String), Vec<(String, Cookie)>> = HashMap::new();
+
+    for db_cookie in db_cookies {
+        let cookie = Cookie {
+            name: db_cookie.cookie_name.clone(),
+            value: db_cookie.cookie_value.clone().unwrap_or_default(),
+            domain: db_cookie.cookie_domain.clone(),
+            path: db_cookie.cookie_path.clone(),
+            creation_time: db_cookie.creation_time,
+            expiry_time: db_cookie.expiry_time,
+            last_access_time: db_cookie.last_access_time,
+            is_secure: db_cookie.is_secure != 0,
+            is_httponly: db_cookie.is_httponly != 0,
+            same_site: db_cookie.same_site.as_ref().and_then(|s| s.parse().ok()),
+        };
+
+        let key = (
+            db_cookie.browser_type.clone(),
+            db_cookie.profile_name.clone().unwrap_or_default(),
+        );
+
+        cookies_by_browser
+            .entry(key)
+            .or_default()
+            .push((db_cookie.id.clone(), cookie));
+    }
+
+    // Detect browsers and remove cookies
+    let browser_profiles = Browser::detect_installed().map_err(|e| e.to_string())?;
+    let remover = CookieRemover::new();
+    let mut removal_responses = Vec::new();
+
+    for ((browser_type_str, profile_name), cookies_with_ids) in cookies_by_browser {
+        let profile = browser_profiles.iter().find(|p| {
+            p.browser_type.as_str() == browser_type_str && p.profile_name == profile_name
+        });
+
+        if let Some(profile) = profile {
+            let response = remove_cookies_for_profile(
+                db.pool(),
+                &browser_type_str,
+                &profile_name,
+                cookies_with_ids,
+                profile,
+                &remover,
+            )
+            .await;
+            removal_responses.push(response);
+        }
+    }
+
+    // Log to audit log
+    let total_removed: usize = removal_responses.iter().map(|r| r.cookies_removed).sum();
+    let _ = spectral_db::audit_log::insert_audit_entry(
+        db.pool(),
+        vault_id.clone(),
+        "TrackingCookiesRemoved".to_string(),
+        format!("Removed all {} tracking cookies", total_removed),
+        None,
+        "LocalOnly".to_string(),
+        "Allowed".to_string(),
+    )
+    .await;
+
+    Ok(removal_responses)
+}
+
+/// Remove a single cookie by its database ID.
+#[tauri::command]
+pub async fn remove_single_cookie(
+    state: State<'_, AppState>,
+    vault_id: String,
+    cookie_id: String,
+) -> Result<CookieRemovalResponse, String> {
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| "Vault not unlocked".to_string())?;
+
+    let db = vault.database().map_err(|e| e.to_string())?;
+
+    // Get the specific cookie
+    let db_cookies = spectral_db::cookies::get_scanned_cookies(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("Failed to get cookies: {}", e))?;
+
+    let db_cookie = db_cookies
+        .into_iter()
+        .find(|c| c.id == cookie_id)
+        .ok_or_else(|| format!("Cookie not found: {}", cookie_id))?;
+
+    let cookie = Cookie {
+        name: db_cookie.cookie_name.clone(),
+        value: db_cookie.cookie_value.clone().unwrap_or_default(),
+        domain: db_cookie.cookie_domain.clone(),
+        path: db_cookie.cookie_path.clone(),
+        creation_time: db_cookie.creation_time,
+        expiry_time: db_cookie.expiry_time,
+        last_access_time: db_cookie.last_access_time,
+        is_secure: db_cookie.is_secure != 0,
+        is_httponly: db_cookie.is_httponly != 0,
+        same_site: db_cookie.same_site.as_ref().and_then(|s| s.parse().ok()),
+    };
+
+    let browser_type_str = db_cookie.browser_type.clone();
+    let profile_name = db_cookie.profile_name.clone().unwrap_or_default();
+
+    // Find matching browser profile
+    let browser_profiles = Browser::detect_installed().map_err(|e| e.to_string())?;
+    let profile = browser_profiles
+        .iter()
+        .find(|p| p.browser_type.as_str() == browser_type_str && p.profile_name == profile_name)
+        .ok_or_else(|| format!("Browser profile not found: {}", browser_type_str))?;
+
+    let remover = CookieRemover::new();
+    let response = remove_cookies_for_profile(
+        db.pool(),
+        &browser_type_str,
+        &profile_name,
+        vec![(db_cookie.id.clone(), cookie)],
+        profile,
+        &remover,
+    )
+    .await;
+
+    // Log to audit log
+    if response.cookies_removed > 0 {
+        let _ = spectral_db::audit_log::insert_audit_entry(
+            db.pool(),
+            vault_id,
+            "CookieRemoved".to_string(),
+            format!(
+                "Removed cookie {} from {}",
+                db_cookie.cookie_name, browser_type_str
+            ),
+            None,
+            "LocalOnly".to_string(),
+            "Allowed".to_string(),
+        )
+        .await;
+    }
+
+    Ok(response)
 }
 
 /// Diagnostic: Get browser detection paths and status.
@@ -657,6 +917,7 @@ pub async fn get_unmatched_cookies(
     Ok(cookies
         .into_iter()
         .map(|c| ScannedCookieResponse {
+            id: c.id,
             cookie_name: c.cookie_name,
             cookie_domain: c.cookie_domain,
             browser_type: c.browser_type,

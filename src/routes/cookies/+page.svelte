@@ -11,6 +11,12 @@
 	let error = $state<string | null>(null);
 	let removingBroker = $state<string | null>(null);
 	let showUnmatched = $state(false);
+	let expandedBroker = $state<string | null>(null);
+	let brokerCookies = $state<Map<string, ScannedCookie[]>>(new Map());
+	let loadingBrokerCookies = $state(false);
+	let removingAll = $state(false);
+	let removingAllTracking = $state(false);
+	let removingCookie = $state<string | null>(null);
 
 	// Load data on mount
 	$effect(() => {
@@ -90,14 +96,117 @@
 		removingBroker = brokerId;
 		try {
 			await cookiesAPI.removeCookiesForBroker(vaultStore.currentVaultId, brokerId);
-			// Reload scans to reflect changes
+			// Reload scans and clear expanded state
 			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
 			recentScans = scans;
+			expandedBroker = null;
+			brokerCookies.delete(brokerId);
 		} catch (err) {
 			error = err instanceof Error ? err.message : String(err);
 			console.error('Failed to remove cookies:', err);
 		} finally {
 			removingBroker = null;
+		}
+	}
+
+	async function handleRemoveAllCookies() {
+		if (
+			!vaultStore.currentVaultId ||
+			!confirm('Remove ALL cookies (including unmatched)? This cannot be undone.')
+		)
+			return;
+
+		removingAll = true;
+		try {
+			await cookiesAPI.removeAllCookies(vaultStore.currentVaultId);
+			// Reload scans
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+			expandedBroker = null;
+			brokerCookies.clear();
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove all cookies:', err);
+		} finally {
+			removingAll = false;
+		}
+	}
+
+	async function handleRemoveAllTrackingCookies() {
+		if (
+			!vaultStore.currentVaultId ||
+			!confirm('Remove all tracking cookies? This cannot be undone.')
+		)
+			return;
+
+		removingAllTracking = true;
+		try {
+			await cookiesAPI.removeAllTrackingCookies(vaultStore.currentVaultId);
+			// Reload scans
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+			expandedBroker = null;
+			brokerCookies.clear();
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove tracking cookies:', err);
+		} finally {
+			removingAllTracking = false;
+		}
+	}
+
+	async function handleRemoveSingleCookie(cookieId: string, cookieName: string) {
+		if (!vaultStore.currentVaultId || !confirm(`Remove cookie "${cookieName}"?`)) return;
+
+		removingCookie = cookieId;
+		try {
+			await cookiesAPI.removeSingleCookie(vaultStore.currentVaultId, cookieId);
+
+			// Remove from local state
+			if (expandedBroker) {
+				const cookies = brokerCookies.get(expandedBroker);
+				if (cookies) {
+					brokerCookies.set(
+						expandedBroker,
+						cookies.filter((c) => c.id !== cookieId)
+					);
+				}
+			}
+
+			// Reload scans to update counts
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove cookie:', err);
+		} finally {
+			removingCookie = null;
+		}
+	}
+
+	async function toggleBrokerCookies(brokerId: string) {
+		if (expandedBroker === brokerId) {
+			expandedBroker = null;
+			return;
+		}
+
+		if (!vaultStore.currentVaultId) return;
+
+		expandedBroker = brokerId;
+
+		// Load cookies if not already loaded
+		if (!brokerCookies.has(brokerId)) {
+			loadingBrokerCookies = true;
+			try {
+				const cookies = await cookiesAPI.getCookiesForBroker(vaultStore.currentVaultId, brokerId);
+				brokerCookies.set(brokerId, cookies);
+			} catch (err) {
+				error = err instanceof Error ? err.message : String(err);
+				console.error('Failed to load broker cookies:', err);
+				expandedBroker = null;
+			} finally {
+				loadingBrokerCookies = false;
+			}
 		}
 	}
 
@@ -117,6 +226,24 @@
 						<p class="text-gray-600">View and manage tracking cookies from your browsers</p>
 					</div>
 					<div class="flex gap-2">
+						{#if latestScan && latestScan.totalCookies > 0}
+							<button
+								onclick={handleRemoveAllTrackingCookies}
+								disabled={removingAllTracking}
+								class="rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+								title="Remove all tracking cookies (matched to brokers)"
+							>
+								{removingAllTracking ? 'Removing...' : 'Delete All Tracking'}
+							</button>
+							<button
+								onclick={handleRemoveAllCookies}
+								disabled={removingAll}
+								class="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+								title="Remove all scanned cookies (including unmatched)"
+							>
+								{removingAll ? 'Removing...' : 'Delete All Cookies'}
+							</button>
+						{/if}
 						<button
 							onclick={() => goto('/scan')}
 							class="rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
@@ -236,12 +363,19 @@
 												{broker?.domain || 'Unknown'}
 											</td>
 											<td class="whitespace-nowrap px-6 py-4">
-												<span
-													class="inline-flex rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800"
+												<button
+													onclick={() => toggleBrokerCookies(brokerId)}
+													class="inline-flex cursor-pointer rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800 transition-colors hover:bg-orange-200"
+													title="Click to view cookie details"
 												>
 													{count}
 													{count === 1 ? 'cookie' : 'cookies'}
-												</span>
+													{#if expandedBroker === brokerId}
+														▲
+													{:else}
+														▼
+													{/if}
+												</button>
 											</td>
 											<td class="whitespace-nowrap px-6 py-4 text-sm">
 												<button
@@ -253,6 +387,102 @@
 												</button>
 											</td>
 										</tr>
+
+										<!-- Expanded cookie details -->
+										{#if expandedBroker === brokerId}
+											<tr>
+												<td colspan="4" class="bg-gray-50 px-6 py-4">
+													{#if loadingBrokerCookies}
+														<div class="flex items-center justify-center py-4">
+															<div
+																class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-purple-600"
+															></div>
+															<span class="ml-2 text-sm text-gray-600">Loading cookies...</span>
+														</div>
+													{:else if brokerCookies.has(brokerId)}
+														{@const cookies = brokerCookies.get(brokerId) || []}
+														{#if cookies.length > 0}
+															<div
+																class="overflow-hidden rounded-lg border border-gray-200 bg-white"
+															>
+																<table class="min-w-full divide-y divide-gray-200">
+																	<thead class="bg-gray-100">
+																		<tr>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Cookie Name
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Domain
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Browser
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Profile
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Actions
+																			</th>
+																		</tr>
+																	</thead>
+																	<tbody class="divide-y divide-gray-200 bg-white">
+																		{#each cookies as cookie}
+																			<tr class="hover:bg-gray-50">
+																				<td class="px-4 py-2 text-sm font-medium text-gray-900">
+																					{cookie.cookieName}
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.cookieDomain}
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.browserType}
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.profileName}
+																				</td>
+																				<td class="px-4 py-2 text-sm">
+																					{#if cookie.id}
+																						<button
+																							onclick={() =>
+																								handleRemoveSingleCookie(
+																									cookie.id!,
+																									cookie.cookieName
+																								)}
+																							disabled={removingCookie === cookie.id}
+																							class="text-red-600 hover:text-red-900 disabled:opacity-50"
+																						>
+																							{removingCookie === cookie.id
+																								? 'Deleting...'
+																								: 'Delete'}
+																						</button>
+																					{:else}
+																						<span class="text-gray-400">N/A</span>
+																					{/if}
+																				</td>
+																			</tr>
+																		{/each}
+																	</tbody>
+																</table>
+															</div>
+														{:else}
+															<div class="py-4 text-center text-sm text-gray-600">
+																No cookies found for this broker.
+															</div>
+														{/if}
+													{/if}
+												</td>
+											</tr>
+										{/if}
 									{/each}
 								</tbody>
 							</table>
