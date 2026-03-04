@@ -9,6 +9,13 @@
 	let mapBlurError = $state<string | null>(null);
 	let generatingRequests = $state(false);
 
+	// Load profiles when vault is unlocked
+	$effect(() => {
+		if (vaultStore.isCurrentVaultUnlocked && vaultStore.currentVaultId) {
+			profileStore.loadProfiles(vaultStore.currentVaultId);
+		}
+	});
+
 	// Load map blur requests when component mounts
 	$effect(() => {
 		async function loadData() {
