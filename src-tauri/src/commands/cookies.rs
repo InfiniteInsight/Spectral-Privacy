@@ -115,13 +115,13 @@ fn log_detected_browsers() {
 async fn save_scan_results_to_db(
     db_pool: &sqlx::Pool<sqlx::Sqlite>,
     vault_id: &str,
+    scan_timestamp: &str,
     scanned_cookies: &[spectral_cookies::ScannedCookie],
 ) -> Result<(), String> {
     let browser_cookies: Vec<spectral_db::cookies::BrowserCookie> = scanned_cookies
         .iter()
         .map(|scanned_cookie| {
             let cookie_id = uuid::Uuid::new_v4().to_string();
-            let scan_timestamp = chrono::Utc::now().to_rfc3339();
 
             spectral_db::cookies::BrowserCookie {
                 id: cookie_id,
@@ -147,7 +147,7 @@ async fn save_scan_results_to_db(
                 },
                 same_site: scanned_cookie.cookie.same_site.map(|s| s.to_string()),
                 matched_broker_id: scanned_cookie.matched_broker_id.clone(),
-                scan_timestamp,
+                scan_timestamp: scan_timestamp.to_string(),
                 removal_status: "Pending".to_string(),
                 removed_at: None,
             }
@@ -163,6 +163,7 @@ async fn save_scan_results_to_db(
 async fn create_scan_session_record(
     db_pool: &sqlx::Pool<sqlx::Sqlite>,
     vault_id: &str,
+    scan_timestamp: &str,
     scan_result: &spectral_cookies::CookieScanResult,
 ) -> Result<String, String> {
     let browsers_scanned: Vec<String> = scan_result
@@ -187,6 +188,7 @@ async fn create_scan_session_record(
     let scan_id = spectral_db::cookies::create_cookie_scan(
         db_pool,
         vault_id,
+        scan_timestamp,
         browsers_scanned,
         scan_result.total_cookies as i32,
         scan_result.matched_cookies as i32,
@@ -249,11 +251,21 @@ pub async fn scan_cookies(
         scan_result.cookies_by_browser.len()
     );
 
-    // Save results to database
-    save_scan_results_to_db(db.pool(), &vault_id, &scan_result.scanned_cookies).await?;
+    // Generate a single timestamp for this entire scan
+    let scan_timestamp = chrono::Utc::now().to_rfc3339();
 
-    // Create scan session record
-    let scan_id = create_scan_session_record(db.pool(), &vault_id, &scan_result).await?;
+    // Save results to database (all cookies share the same timestamp)
+    save_scan_results_to_db(
+        db.pool(),
+        &vault_id,
+        &scan_timestamp,
+        &scan_result.scanned_cookies,
+    )
+    .await?;
+
+    // Create scan session record (using the same timestamp)
+    let scan_id =
+        create_scan_session_record(db.pool(), &vault_id, &scan_timestamp, &scan_result).await?;
 
     let browsers_scanned: Vec<String> = scan_result
         .cookies_by_browser
@@ -268,7 +280,7 @@ pub async fn scan_cookies(
         cookies_by_browser: scan_result.cookies_by_browser,
         cookies_by_broker: scan_result.cookies_by_broker,
         browsers_scanned,
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: scan_timestamp,
     })
 }
 

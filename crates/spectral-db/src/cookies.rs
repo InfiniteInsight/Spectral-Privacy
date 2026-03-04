@@ -107,13 +107,13 @@ pub async fn insert_scanned_cookies(
 pub async fn create_cookie_scan(
     pool: &Pool<Sqlite>,
     vault_id: &str,
+    scan_timestamp: &str,
     browsers_scanned: Vec<String>,
     total_cookies: i32,
     matched_cookies: i32,
     brokers_matched: Option<Vec<String>>,
 ) -> Result<String, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
-    let now = Utc::now();
     let browsers_json = serde_json::to_string(&browsers_scanned).unwrap_or_default();
     let brokers_json = brokers_matched
         .as_ref()
@@ -126,7 +126,7 @@ pub async fn create_cookie_scan(
     )
     .bind(&id)
     .bind(vault_id)
-    .bind(now.to_rfc3339())
+    .bind(scan_timestamp)
     .bind(&browsers_json)
     .bind(total_cookies)
     .bind(matched_cookies)
