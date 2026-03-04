@@ -261,7 +261,7 @@
 							<button
 								onclick={handleRemoveAllTrackingCookies}
 								disabled={removingAllTracking}
-								class="rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:opacity-50"
+								class="cursor-pointer rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
 								title="Remove all tracking cookies (matched to brokers)"
 							>
 								{removingAllTracking ? 'Removing...' : 'Delete All Tracking'}
@@ -269,7 +269,7 @@
 							<button
 								onclick={handleRemoveAllCookies}
 								disabled={removingAll}
-								class="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+								class="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
 								title="Remove all scanned cookies (including unmatched)"
 							>
 								{removingAll ? 'Removing...' : 'Delete All Cookies'}
@@ -277,13 +277,13 @@
 						{/if}
 						<button
 							onclick={() => goto('/scan')}
-							class="rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
+							class="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
 						>
 							Run New Scan
 						</button>
 						<button
 							onclick={() => goto('/')}
-							class="px-4 py-2 text-gray-600 transition-colors hover:text-gray-900"
+							class="cursor-pointer px-4 py-2 text-gray-600 transition-colors hover:text-gray-900"
 						>
 							← Back
 						</button>
@@ -310,7 +310,7 @@
 					</p>
 					<button
 						onclick={() => goto('/scan')}
-						class="rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700"
+						class="cursor-pointer rounded-lg bg-purple-600 px-6 py-3 text-white hover:bg-purple-700"
 					>
 						Run Cookie Scan
 					</button>
@@ -412,7 +412,7 @@
 												<button
 													onclick={() => handleRemoveCookies(brokerId)}
 													disabled={removingBroker === brokerId}
-													class="text-red-600 hover:text-red-900 disabled:opacity-50"
+													class="cursor-pointer text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
 												>
 													{removingBroker === brokerId ? 'Removing...' : 'Remove Cookies'}
 												</button>
@@ -489,7 +489,7 @@
 																									cookie.browserType,
 																									cookie.profileName
 																								)}
-																							class="text-blue-600 hover:text-blue-900"
+																							class="cursor-pointer text-blue-600 hover:text-blue-900"
 																							title="Open cookie location in file browser"
 																						>
 																							📁
@@ -502,7 +502,7 @@
 																										cookie.cookieName
 																									)}
 																								disabled={removingCookie === cookie.id}
-																								class="text-red-600 hover:text-red-900 disabled:opacity-50"
+																								class="cursor-pointer text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
 																							>
 																								{removingCookie === cookie.id
 																									? 'Deleting...'
@@ -553,7 +553,7 @@
 							</div>
 							<button
 								onclick={() => (showUnmatched = !showUnmatched)}
-								class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+								class="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 							>
 								{showUnmatched ? 'Hide' : 'Show'} Details
 							</button>
