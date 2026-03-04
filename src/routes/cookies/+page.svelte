@@ -206,6 +206,15 @@
 		}
 	}
 
+	async function handleOpenCookieLocation(browserType: string, profileName: string) {
+		try {
+			await cookiesAPI.openCookieLocation(browserType, profileName);
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to open cookie location:', err);
+		}
+	}
+
 	async function toggleBrokerCookies(brokerId: string) {
 		if (expandedBroker === brokerId) {
 			expandedBroker = null;
@@ -473,23 +482,36 @@
 																					{cookie.profileName}
 																				</td>
 																				<td class="px-4 py-2 text-sm">
-																					{#if cookie.id}
+																					<div class="flex gap-2">
 																						<button
 																							onclick={() =>
-																								handleRemoveSingleCookie(
-																									cookie.id!,
-																									cookie.cookieName
+																								handleOpenCookieLocation(
+																									cookie.browserType,
+																									cookie.profileName
 																								)}
-																							disabled={removingCookie === cookie.id}
-																							class="text-red-600 hover:text-red-900 disabled:opacity-50"
+																							class="text-blue-600 hover:text-blue-900"
+																							title="Open cookie location in file browser"
 																						>
-																							{removingCookie === cookie.id
-																								? 'Deleting...'
-																								: 'Delete'}
+																							📁
 																						</button>
-																					{:else}
-																						<span class="text-gray-400">N/A</span>
-																					{/if}
+																						{#if cookie.id}
+																							<button
+																								onclick={() =>
+																									handleRemoveSingleCookie(
+																										cookie.id!,
+																										cookie.cookieName
+																									)}
+																								disabled={removingCookie === cookie.id}
+																								class="text-red-600 hover:text-red-900 disabled:opacity-50"
+																							>
+																								{removingCookie === cookie.id
+																									? 'Deleting...'
+																									: 'Delete'}
+																							</button>
+																						{:else}
+																							<span class="text-gray-400">N/A</span>
+																						{/if}
+																					</div>
 																				</td>
 																			</tr>
 																		{/each}

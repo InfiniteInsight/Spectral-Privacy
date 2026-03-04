@@ -1102,3 +1102,86 @@ async fn parse_broker_cookie_patterns(
 
     Ok(None)
 }
+
+/// Open the browser cookie database location in file explorer.
+#[tauri::command]
+pub async fn open_cookie_location(
+    browser_type: String,
+    profile_name: String,
+) -> Result<(), String> {
+    // Detect all browser profiles
+    let profiles = spectral_cookies::Browser::detect_installed()
+        .map_err(|e| format!("Failed to detect browsers: {}", e))?;
+
+    // Find matching profile
+    let profile = profiles
+        .iter()
+        .find(|p| {
+            p.browser_type.as_str().eq_ignore_ascii_case(&browser_type)
+                && p.profile_name == profile_name
+        })
+        .ok_or_else(|| {
+            format!(
+                "Browser profile not found: {} - {}",
+                browser_type, profile_name
+            )
+        })?;
+
+    // Get the parent directory of the cookie database file
+    let db_dir = profile
+        .cookie_db_path
+        .parent()
+        .ok_or_else(|| "Could not determine cookie database directory".to_string())?;
+
+    // Open in file explorer
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(db_dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open file explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(db_dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try xdg-open first (most common)
+        let result = std::process::Command::new("xdg-open").arg(db_dir).spawn();
+
+        if result.is_err() {
+            // Fall back to common file managers
+            let file_managers = ["nautilus", "dolphin", "thunar", "nemo", "caja"];
+            let mut opened = false;
+
+            for fm in &file_managers {
+                if std::process::Command::new(fm).arg(db_dir).spawn().is_ok() {
+                    opened = true;
+                    break;
+                }
+            }
+
+            if !opened {
+                return Err(format!(
+                    "No file manager found. Cookie database location: {}",
+                    db_dir.display()
+                ));
+            }
+        }
+    }
+
+    tracing::info!(
+        "Opened cookie location for {} - {} at: {}",
+        browser_type,
+        profile_name,
+        db_dir.display()
+    );
+
+    Ok(())
+}

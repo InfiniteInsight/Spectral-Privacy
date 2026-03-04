@@ -159,6 +159,7 @@ pub fn run() {
             commands::cookies::get_recent_cookie_scans,
             commands::cookies::get_unmatched_cookies,
             commands::cookies::diagnose_browser_detection,
+            commands::cookies::open_cookie_location,
             commands::privacy::set_llm_primary_provider,
             commands::privacy::set_llm_task_provider,
             commands::privacy::set_llm_api_key,

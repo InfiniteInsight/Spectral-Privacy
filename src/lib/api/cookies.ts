@@ -109,5 +109,12 @@ export const cookiesAPI = {
 	 */
 	async getUnmatchedCookies(vaultId: string): Promise<ScannedCookie[]> {
 		return await invoke<ScannedCookie[]>('get_unmatched_cookies', { vaultId });
+	},
+
+	/**
+	 * Open the cookie's browser database location in file explorer.
+	 */
+	async openCookieLocation(browserType: string, profileName: string): Promise<void> {
+		return await invoke('open_cookie_location', { browserType, profileName });
 	}
 };
