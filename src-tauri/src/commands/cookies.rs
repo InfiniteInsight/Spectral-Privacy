@@ -834,11 +834,34 @@ async fn reconstruct_cookie_groupings(
         .await
         .map_err(|e| format!("Failed to get cookies: {}", e))?;
 
+    tracing::debug!(
+        "[RECONSTRUCT] Total cookies in DB for vault {}: {}",
+        vault_id,
+        cookies.len()
+    );
+    tracing::debug!(
+        "[RECONSTRUCT] Looking for scan_timestamp: {}",
+        scan_timestamp
+    );
+
+    // Show sample of actual timestamps in DB
+    if !cookies.is_empty() {
+        tracing::debug!("[RECONSTRUCT] Sample cookie timestamps from DB:");
+        for (i, cookie) in cookies.iter().take(3).enumerate() {
+            tracing::debug!("  [{}] {}", i, cookie.scan_timestamp);
+        }
+    }
+
     // Filter cookies by scan timestamp (only get cookies from this specific scan)
     let scan_cookies: Vec<_> = cookies
         .into_iter()
         .filter(|c| c.scan_timestamp == scan_timestamp)
         .collect();
+
+    tracing::debug!(
+        "[RECONSTRUCT] Cookies matching timestamp: {}",
+        scan_cookies.len()
+    );
 
     // Group by browser
     let mut cookies_by_browser: HashMap<String, usize> = HashMap::new();
@@ -855,6 +878,12 @@ async fn reconstruct_cookie_groupings(
             *cookies_by_broker.entry(broker_id.clone()).or_insert(0) += 1;
         }
     }
+
+    tracing::info!(
+        "[RECONSTRUCT] Results - Browsers: {:?}, Brokers: {:?}",
+        cookies_by_browser,
+        cookies_by_broker
+    );
 
     Ok((cookies_by_browser, cookies_by_broker))
 }
