@@ -42,6 +42,7 @@
 				// Load all brokers to map IDs to names
 				const brokers = await brokerAPI.listBrokers();
 				brokerMap = new Map(brokers.map((b) => [b.id, b]));
+				console.log('[DEBUG] Loaded broker map with', brokerMap.size, 'brokers');
 			} catch (err) {
 				error = err instanceof Error ? err.message : String(err);
 				console.error('Failed to load cookie data:', err);
@@ -54,22 +55,43 @@
 	});
 
 	// Get the most recent scan
-	const latestScan = $derived(recentScans.length > 0 ? recentScans[0] : null);
+	const latestScan = $derived.by(() => {
+		const scan = recentScans.length > 0 ? recentScans[0] : null;
+		if (scan) {
+			console.log('[DEBUG] latestScan updated:', {
+				scanId: scan.scanId,
+				totalCookies: scan.totalCookies,
+				matchedCookies: scan.matchedCookies,
+				cookiesByBroker: scan.cookiesByBroker
+			});
+		} else {
+			console.log('[DEBUG] latestScan is null, recentScans.length:', recentScans.length);
+		}
+		return scan;
+	});
 
 	// Get brokers that have cookies in the latest scan
 	const brokersWithCookies = $derived.by(() => {
-		if (!latestScan) return [];
+		if (!latestScan) {
+			console.log('[DEBUG] brokersWithCookies: No latest scan');
+			return [];
+		}
 
-		return (
-			Object.entries(latestScan.cookiesByBroker)
-				.map(([brokerId, count]) => ({
-					broker: brokerMap.get(brokerId),
-					brokerId,
-					count
-				}))
-				// Don't filter out unknown brokers - show them with ID
-				.sort((a, b) => b.count - a.count)
-		);
+		console.log('[DEBUG] latestScan.cookiesByBroker:', latestScan.cookiesByBroker);
+		console.log('[DEBUG] cookiesByBroker type:', typeof latestScan.cookiesByBroker);
+		console.log('[DEBUG] cookiesByBroker entries:', Object.entries(latestScan.cookiesByBroker));
+
+		const result = Object.entries(latestScan.cookiesByBroker)
+			.map(([brokerId, count]) => ({
+				broker: brokerMap.get(brokerId),
+				brokerId,
+				count
+			}))
+			// Don't filter out unknown brokers - show them with ID
+			.sort((a, b) => b.count - a.count);
+
+		console.log('[DEBUG] brokersWithCookies result:', result);
+		return result;
 	});
 
 	// Group unmatched cookies by domain
