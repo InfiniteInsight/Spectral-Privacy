@@ -155,6 +155,33 @@
 					<p class="mt-4 text-sm text-red-500">Failed to load dashboard data.</p>
 				{/if}
 
+				<!-- Privacy Actions -->
+				<div class="mt-6">
+					<h3 class="text-sm font-medium text-gray-700 mb-3">Privacy Actions</h3>
+					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<a
+							href="/cookies"
+							class="cursor-pointer flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 hover:border-purple-300 hover:shadow-sm transition-all"
+						>
+							<div class="text-2xl">🍪</div>
+							<div>
+								<p class="font-medium text-gray-900">Cookie Scanner</p>
+								<p class="text-xs text-gray-500">Detect & remove tracking cookies</p>
+							</div>
+						</a>
+						<a
+							href="/maps"
+							class="cursor-pointer flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 hover:border-purple-300 hover:shadow-sm transition-all"
+						>
+							<div class="text-2xl">🗺️</div>
+							<div>
+								<p class="font-medium text-gray-900">Map Blurring</p>
+								<p class="text-xs text-gray-500">Blur your address on maps</p>
+							</div>
+						</a>
+					</div>
+				</div>
+
 				{#if dashboard}
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<!-- Privacy Score Card -->
