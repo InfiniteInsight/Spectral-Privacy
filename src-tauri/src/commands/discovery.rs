@@ -22,6 +22,72 @@ pub struct DiscoveryFinding {
     pub found_at: String,
 }
 
+/// Scan directory with progress events
+async fn scan_directory_with_progress<R: tauri::Runtime>(
+    dir: &Path,
+    patterns: &PiiPatterns,
+    app: &tauri::AppHandle<R>,
+    files_scanned: &mut usize,
+) -> Vec<FileScanResult> {
+    let max_depth = 10;
+    let mut results = Vec::new();
+    scan_recursive(dir, patterns, app, files_scanned, &mut results, max_depth).await;
+    results
+}
+
+/// Recursive scan with progress updates
+fn scan_recursive<'a, R: tauri::Runtime + 'static>(
+    dir: &'a Path,
+    patterns: &'a PiiPatterns,
+    app: &'a tauri::AppHandle<R>,
+    files_scanned: &'a mut usize,
+    results: &'a mut Vec<FileScanResult>,
+    max_depth: usize,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
+    use tokio::fs;
+
+    Box::pin(async move {
+        if max_depth == 0 {
+            return;
+        }
+
+        let mut entries = match fs::read_dir(dir).await {
+            Ok(entries) => entries,
+            Err(_) => return,
+        };
+
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+
+            // Emit progress every 10 files
+            if *files_scanned % 10 == 0 {
+                let file_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("Unknown");
+                let _ = app.emit(
+                    "discovery:progress",
+                    serde_json::json!({
+                        "directory": file_name,
+                        "path": path.to_string_lossy(),
+                        "files_scanned": *files_scanned
+                    }),
+                );
+            }
+
+            if path.is_dir() {
+                scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1).await;
+            } else if path.is_file() {
+                *files_scanned += 1;
+
+                if let Some(result) = spectral_discovery::scan_file(&path, patterns).await {
+                    results.push(result);
+                }
+            }
+        }
+    })
+}
+
 /// Process scan results and insert findings into the database
 async fn process_scan_results(
     results: Vec<FileScanResult>,
@@ -135,6 +201,7 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         ];
 
         let mut total_findings = 0;
+        let mut files_scanned = 0;
 
         for dir in scan_dirs {
             if !dir.exists() {
@@ -150,12 +217,16 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
                 "discovery:progress",
                 serde_json::json!({
                     "directory": dir_name,
-                    "path": dir.to_string_lossy()
+                    "path": dir.to_string_lossy(),
+                    "files_scanned": files_scanned
                 }),
             );
 
             info!("Scanning directory: {:?}", dir);
-            let results = spectral_discovery::scan_directory(&dir, &patterns).await;
+
+            // Scan directory with progress updates
+            let results =
+                scan_directory_with_progress(&dir, &patterns, &app, &mut files_scanned).await;
             let findings = process_scan_results(results, &pool, &vault_id_clone).await;
             total_findings += findings;
         }
