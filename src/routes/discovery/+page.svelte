@@ -16,6 +16,11 @@
 	let currentDirectory = $state<string | null>(null);
 	let scannedPaths = $state<Array<{ path: string; name: string; timestamp: number }>>([]);
 
+	// Custom directory scanning
+	let customDirectories = $state<string[]>([]);
+	let newDirectory = $state<string>('');
+	let scanMode = $state<'full' | 'custom'>('full');
+
 	// Filter state
 	let piiTypeFilter = $state<Set<string>>(new Set());
 	let riskLevelFilter = $state<Set<string>>(new Set());
@@ -101,11 +106,27 @@
 			scanning = true;
 			error = null;
 			scannedPaths = []; // Clear previous scan paths
-			await startDiscoveryScan(vid);
+
+			// Pass custom directories if in custom mode
+			const dirsToScan = scanMode === 'custom' ? customDirectories : undefined;
+			await startDiscoveryScan(vid, dirsToScan);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 			scanning = false;
 		}
+	}
+
+	// Add custom directory
+	function addCustomDirectory() {
+		if (newDirectory && !customDirectories.includes(newDirectory)) {
+			customDirectories = [...customDirectories, newDirectory];
+			newDirectory = '';
+		}
+	}
+
+	// Remove custom directory
+	function removeCustomDirectory(dir: string) {
+		customDirectories = customDirectories.filter((d) => d !== dir);
 	}
 
 	// Mark finding as remediated
@@ -193,26 +214,104 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-4 py-8">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-bold text-gray-900">Local PII Discovery</h1>
-		<button
-			onclick={startScan}
-			disabled={scanning || loading}
-			class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-		>
-			{#if scanning}
-				<span class="flex items-center gap-2">
-					<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-					{#if currentDirectory}
-						Scanning {currentDirectory}...
+	<div class="mb-6">
+		<h1 class="text-2xl font-bold text-gray-900 mb-4">Local PII Discovery</h1>
+
+		<!-- Scan Mode Selector -->
+		<div class="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+			<div class="mb-3 flex gap-4">
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input
+						type="radio"
+						name="scanMode"
+						value="full"
+						checked={scanMode === 'full'}
+						onchange={() => (scanMode = 'full')}
+						class="cursor-pointer"
+					/>
+					<span class="text-sm font-medium text-gray-700"
+						>Scan entire user profile (%USERPROFILE%)</span
+					>
+				</label>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input
+						type="radio"
+						name="scanMode"
+						value="custom"
+						checked={scanMode === 'custom'}
+						onchange={() => (scanMode = 'custom')}
+						class="cursor-pointer"
+					/>
+					<span class="text-sm font-medium text-gray-700">Scan custom directories</span>
+				</label>
+			</div>
+
+			<!-- Custom Directory Input -->
+			{#if scanMode === 'custom'}
+				<div class="border-t border-gray-200 pt-3">
+					<div class="mb-2 flex gap-2">
+						<input
+							type="text"
+							bind:value={newDirectory}
+							placeholder="Enter directory path (e.g., C:\MyDocuments)"
+							class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
+							onkeydown={(e) => {
+								if (e.key === 'Enter') addCustomDirectory();
+							}}
+						/>
+						<button
+							onclick={addCustomDirectory}
+							disabled={!newDirectory}
+							class="cursor-pointer rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Add
+						</button>
+					</div>
+
+					<!-- Custom Directory List -->
+					{#if customDirectories.length > 0}
+						<div class="space-y-1">
+							{#each customDirectories as dir}
+								<div class="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm">
+									<span class="font-mono text-gray-700">{dir}</span>
+									<button
+										onclick={() => removeCustomDirectory(dir)}
+										class="cursor-pointer text-red-600 hover:text-red-800"
+										title="Remove directory"
+									>
+										✕
+									</button>
+								</div>
+							{/each}
+						</div>
 					{:else}
-						Scanning...
+						<p class="text-sm text-gray-500 italic">No custom directories added</p>
 					{/if}
-				</span>
-			{:else}
-				Run Discovery Scan
+				</div>
 			{/if}
-		</button>
+		</div>
+
+		<!-- Scan Button -->
+		<div class="flex justify-end">
+			<button
+				onclick={startScan}
+				disabled={scanning || loading || (scanMode === 'custom' && customDirectories.length === 0)}
+				class="cursor-pointer rounded-md bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+			>
+				{#if scanning}
+					<span class="flex items-center gap-2">
+						<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+						{#if currentDirectory}
+							Scanning {currentDirectory}...
+						{:else}
+							Scanning...
+						{/if}
+					</span>
+				{:else}
+					Run Discovery Scan
+				{/if}
+			</button>
+		</div>
 	</div>
 
 	{#if scanning && scannedPaths.length > 0}

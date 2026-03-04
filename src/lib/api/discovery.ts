@@ -19,10 +19,16 @@ export interface DiscoveryFinding {
 
 /**
  * Start a discovery scan of local files
- * Scans common user directories for PII
+ * Scans entire user profile by default, or custom directories if specified
  */
-export async function startDiscoveryScan(vaultId: string): Promise<string> {
-	return invoke('start_discovery_scan', { vaultId });
+export async function startDiscoveryScan(
+	vaultId: string,
+	customDirectories?: string[]
+): Promise<string> {
+	return invoke('start_discovery_scan', {
+		vaultId,
+		customDirectories: customDirectories ?? null
+	});
 }
 
 /**

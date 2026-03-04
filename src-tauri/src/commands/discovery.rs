@@ -22,6 +22,38 @@ pub struct DiscoveryFinding {
     pub found_at: String,
 }
 
+/// Check if a directory should be excluded from scanning
+fn should_exclude_directory(path: &Path) -> bool {
+    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+        let name_lower = name.to_lowercase();
+
+        // Exclude common system, cache, and development directories
+        matches!(
+            name_lower.as_str(),
+            // System directories
+            "appdata" | "application data" | ".cache" | "cache" | "caches" |
+            // Browser caches
+            "google" | "mozilla" | "microsoft edge" | "brave-browser" |
+            // Cloud sync temp
+            "onedrive" | "dropbox" | "google drive" | ".icloud" |
+            // Development
+            "node_modules" | ".git" | ".svn" | ".hg" | "target" | "build" | "dist" |
+            // Windows system
+            "windows" | "program files" | "program files (x86)" | "programdata" |
+            // Package managers
+            ".npm" | ".cargo" | ".rustup" | ".gradle" | ".maven" |
+            // Temp directories
+            "temp" | "tmp" | ".tmp" |
+            // Virtual environments
+            "venv" | ".venv" | "env" | ".env" | "virtualenv" |
+            // IDE
+            ".vscode" | ".idea" | ".vs"
+        )
+    } else {
+        false
+    }
+}
+
 /// Scan directory with progress events
 async fn scan_directory_with_progress<R: tauri::Runtime>(
     dir: &Path,
@@ -76,7 +108,11 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
             }
 
             if path.is_dir() {
-                scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1).await;
+                // Skip excluded directories
+                if !should_exclude_directory(&path) {
+                    scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1)
+                        .await;
+                }
             } else if path.is_file() {
                 *files_scanned += 1;
 
@@ -148,14 +184,15 @@ async fn insert_pii_finding(
 
 /// Start a discovery scan of local files
 ///
-/// Scans common user directories (Documents, Downloads, Desktop) for PII
-/// and stores findings in the database. Runs in background and emits
-/// `discovery:complete` event when done.
+/// Scans the entire user profile directory for PII by default, or custom
+/// directories if specified. Runs in background and emits `discovery:complete`
+/// event when done.
 #[tauri::command]
 pub async fn start_discovery_scan<R: tauri::Runtime>(
     state: State<'_, AppState>,
     app: tauri::AppHandle<R>,
     vault_id: String,
+    custom_directories: Option<Vec<String>>,
 ) -> Result<String, String> {
     info!("start_discovery_scan: vault_id={}", vault_id);
 
@@ -194,11 +231,16 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         };
 
         // Directories to scan
-        let scan_dirs = vec![
-            home_dir.join("Documents"),
-            home_dir.join("Downloads"),
-            home_dir.join("Desktop"),
-        ];
+        let scan_dirs: Vec<std::path::PathBuf> = if let Some(custom_dirs) = custom_directories {
+            // Use custom directories specified by user
+            custom_dirs
+                .into_iter()
+                .map(std::path::PathBuf::from)
+                .collect()
+        } else {
+            // Scan entire user profile by default
+            vec![home_dir.clone()]
+        };
 
         let mut total_findings = 0;
         let mut files_scanned = 0;
