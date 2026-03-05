@@ -21,6 +21,7 @@
 	let customDirectories = $state<string[]>([]);
 	let newDirectory = $state<string>('');
 	let scanMode = $state<'full' | 'custom'>('full');
+	let showInfoSection = $state(true);
 
 	// Filter state
 	let piiTypeFilter = $state<Set<string>>(new Set());
@@ -226,6 +227,72 @@
 <div class="mx-auto max-w-6xl px-4 py-8">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold text-gray-900 mb-4">Local PII Discovery</h1>
+
+		<!-- Info Section -->
+		<div class="mb-6 rounded-lg border border-blue-200 bg-blue-50">
+			<button
+				onclick={() => (showInfoSection = !showInfoSection)}
+				class="cursor-pointer w-full flex items-center justify-between p-4 text-left"
+			>
+				<div class="flex items-center gap-2">
+					<span class="text-lg">ℹ️</span>
+					<h2 class="text-base font-semibold text-blue-900">
+						What is PII and how does Spectral find it?
+					</h2>
+				</div>
+				<span class="text-blue-600 text-xl">{showInfoSection ? '▼' : '▶'}</span>
+			</button>
+
+			{#if showInfoSection}
+				<div class="px-4 pb-4 text-sm text-blue-800 space-y-3">
+					<div>
+						<h3 class="font-semibold mb-1">What is Personally Identifiable Information (PII)?</h3>
+						<p>
+							PII is any information that can be used to identify, contact, or locate you. This
+							includes sensitive data like Social Security numbers, email addresses, phone numbers,
+							and more. When PII is exposed in files on your computer, it can put your privacy and
+							security at risk.
+						</p>
+					</div>
+
+					<div>
+						<h3 class="font-semibold mb-1">How Spectral searches for PII:</h3>
+						<ul class="list-disc list-inside space-y-1 ml-2">
+							<li>
+								<strong>Email Addresses:</strong> Scans for email patterns in documents, logs, configuration
+								files, and browser data
+							</li>
+							<li>
+								<strong>Phone Numbers:</strong> Detects US phone numbers in various formats (with/without
+								area codes, dashes, parentheses)
+							</li>
+							<li>
+								<strong>Social Security Numbers:</strong> Identifies SSN patterns (XXX-XX-XXXX) in text
+								files and documents
+							</li>
+						</ul>
+					</div>
+
+					<div>
+						<h3 class="font-semibold mb-1">Where Spectral looks:</h3>
+						<p>
+							Spectral scans readable text files including documents (.txt, .pdf, .docx),
+							configuration files (.json, .xml, .yaml), code files, logs, browser data, and more. It
+							skips system directories, caches, and development folders to focus on your personal
+							files.
+						</p>
+					</div>
+
+					<div class="mt-4 p-3 bg-blue-100 rounded-lg">
+						<p class="font-medium text-blue-900">🔒 Your privacy is protected:</p>
+						<p class="text-blue-700 text-xs mt-1">
+							All scanning happens locally on your computer. No data is sent to external servers.
+							Findings are encrypted and stored only in your vault.
+						</p>
+					</div>
+				</div>
+			{/if}
+		</div>
 
 		<!-- Scan Mode Selector -->
 		<div class="mb-4 rounded-lg border border-gray-200 bg-white p-4">
