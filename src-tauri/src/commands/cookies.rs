@@ -1103,6 +1103,41 @@ async fn parse_broker_cookie_patterns(
     Ok(None)
 }
 
+/// Helper: Check if running in WSL
+#[cfg(target_os = "linux")]
+fn is_wsl() -> bool {
+    std::path::Path::new("/proc/version").exists()
+        && std::fs::read_to_string("/proc/version")
+            .map(|s| s.to_lowercase().contains("microsoft"))
+            .unwrap_or(false)
+}
+
+/// Helper: Try to open directory with native Linux file manager
+#[cfg(target_os = "linux")]
+fn try_linux_file_manager(db_dir: &std::path::Path) -> Result<(), String> {
+    // Try xdg-open first (most common)
+    if std::process::Command::new("xdg-open")
+        .arg(db_dir)
+        .spawn()
+        .is_ok()
+    {
+        return Ok(());
+    }
+
+    // Fall back to common file managers
+    let file_managers = ["nautilus", "dolphin", "thunar", "nemo", "caja"];
+    for fm in &file_managers {
+        if std::process::Command::new(fm).arg(db_dir).spawn().is_ok() {
+            return Ok(());
+        }
+    }
+
+    Err(format!(
+        "No file manager found. Cookie database location: {}",
+        db_dir.display()
+    ))
+}
+
 /// Open the browser cookie database location in file explorer.
 #[tauri::command]
 pub async fn open_cookie_location(
@@ -1161,41 +1196,15 @@ pub async fn open_cookie_location(
 
     #[cfg(target_os = "linux")]
     {
-        // Check if we're in WSL (browsers will be Windows browsers with Windows paths)
-        let is_wsl = std::path::Path::new("/proc/version").exists()
-            && std::fs::read_to_string("/proc/version")
-                .map(|s| s.to_lowercase().contains("microsoft"))
-                .unwrap_or(false);
-
-        if is_wsl {
+        if is_wsl() {
             // In WSL, use Windows explorer.exe with the Windows path
             std::process::Command::new("explorer.exe")
                 .arg(db_dir)
                 .spawn()
                 .map_err(|e| format!("Failed to open Windows Explorer from WSL: {}", e))?;
         } else {
-            // Native Linux: Try xdg-open first (most common)
-            let result = std::process::Command::new("xdg-open").arg(db_dir).spawn();
-
-            if result.is_err() {
-                // Fall back to common file managers
-                let file_managers = ["nautilus", "dolphin", "thunar", "nemo", "caja"];
-                let mut opened = false;
-
-                for fm in &file_managers {
-                    if std::process::Command::new(fm).arg(db_dir).spawn().is_ok() {
-                        opened = true;
-                        break;
-                    }
-                }
-
-                if !opened {
-                    return Err(format!(
-                        "No file manager found. Cookie database location: {}",
-                        db_dir.display()
-                    ));
-                }
-            }
+            // Native Linux: Try various file managers
+            try_linux_file_manager(db_dir)?;
         }
     }
 
