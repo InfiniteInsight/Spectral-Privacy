@@ -308,7 +308,7 @@
 						{/if}
 					</span>
 				{:else}
-					Run Discovery Scan
+					Run PII Discovery Scan
 				{/if}
 			</button>
 		</div>
@@ -319,9 +319,25 @@
 			<div class="mb-3 flex items-center gap-2">
 				<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
 				<h3 class="text-sm font-semibold text-indigo-900">
-					Scanning for PII... ({scannedPaths.length} locations scanned)
+					Scanning for PII... ({scannedPaths.length} files scanned)
 				</h3>
 			</div>
+
+			<!-- Current File Being Scanned -->
+			{#if scannedPaths.length > 0}
+				<div class="mb-3 rounded-lg border border-indigo-300 bg-white p-3">
+					<div class="text-xs font-medium text-indigo-700 mb-1">Currently scanning:</div>
+					<div class="font-mono text-sm font-semibold text-gray-900 break-all">
+						{scannedPaths[0].name}
+					</div>
+					<div class="font-mono text-xs text-gray-500 break-all mt-1">
+						{scannedPaths[0].path}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Recent Files Scrolling List -->
+			<div class="text-xs text-gray-600 mb-2 font-medium">Recent files:</div>
 			<div class="max-h-48 overflow-y-auto rounded border border-indigo-200 bg-white">
 				<div class="divide-y divide-gray-100">
 					{#each scannedPaths.slice(0, 20) as item (item.timestamp)}
@@ -408,7 +424,7 @@
 	{:else if findings.length === 0}
 		<div class="rounded-md bg-gray-50 p-8 text-center">
 			<p class="text-gray-600">
-				No findings yet. Click "Run Discovery Scan" to scan your local files for PII.
+				No findings yet. Click "Run PII Discovery Scan" to scan your local files for PII.
 			</p>
 		</div>
 	{:else}

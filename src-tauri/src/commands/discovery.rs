@@ -91,8 +91,16 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
 
-            // Emit progress every 10 files
-            if *files_scanned % 10 == 0 {
+            if path.is_dir() {
+                // Skip excluded directories
+                if !should_exclude_directory(&path) {
+                    scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1)
+                        .await;
+                }
+            } else if path.is_file() {
+                *files_scanned += 1;
+
+                // Emit progress for EVERY file
                 let file_name = path
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -105,16 +113,6 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
                         "files_scanned": *files_scanned
                     }),
                 );
-            }
-
-            if path.is_dir() {
-                // Skip excluded directories
-                if !should_exclude_directory(&path) {
-                    scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1)
-                        .await;
-                }
-            } else if path.is_file() {
-                *files_scanned += 1;
 
                 if let Some(result) = spectral_discovery::scan_file(&path, patterns).await {
                     results.push(result);
