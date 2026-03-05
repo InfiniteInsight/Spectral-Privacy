@@ -152,8 +152,12 @@
 	$effect(() => {
 		loadFindings();
 
+		let cleanupProgress: (() => void) | null = null;
+		let cleanupComplete: (() => void) | null = null;
+
 		// Listen for scan progress
-		const unlistenProgress = listen('discovery:progress', (event: any) => {
+		listen('discovery:progress', (event: any) => {
+			console.log('Discovery progress event:', event.payload);
 			currentDirectory = event.payload.directory;
 			// Add to scanned paths list (keep last 100 for performance)
 			scannedPaths = [
@@ -164,19 +168,24 @@
 				},
 				...scannedPaths.slice(0, 99)
 			];
+			console.log('Scanned paths length:', scannedPaths.length);
+		}).then((unlisten) => {
+			cleanupProgress = unlisten;
 		});
 
 		// Listen for scan completion
-		const unlistenComplete = listen('discovery:complete', () => {
+		listen('discovery:complete', () => {
 			scanning = false;
 			currentDirectory = null;
 			loadFindings();
+		}).then((unlisten) => {
+			cleanupComplete = unlisten;
 		});
 
 		// Clean up listeners on unmount
 		return () => {
-			unlistenProgress.then((fn) => fn());
-			unlistenComplete.then((fn) => fn());
+			if (cleanupProgress) cleanupProgress();
+			if (cleanupComplete) cleanupComplete();
 		};
 	});
 
@@ -314,27 +323,32 @@
 		</div>
 	</div>
 
-	{#if scanning && scannedPaths.length > 0}
+	{#if scanning}
 		<div class="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
 			<div class="mb-3 flex items-center gap-2">
 				<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
 				<h3 class="text-sm font-semibold text-indigo-900">
-					Scanning for PII... ({scannedPaths.length} files scanned)
+					Scanning for PII...
+					{#if scannedPaths.length > 0}
+						({scannedPaths.length} files scanned)
+					{/if}
 				</h3>
 			</div>
 
 			<!-- Current File Being Scanned -->
-			{#if scannedPaths.length > 0}
-				<div class="mb-3 rounded-lg border border-indigo-300 bg-white p-3">
-					<div class="text-xs font-medium text-indigo-700 mb-1">Currently scanning:</div>
+			<div class="mb-3 rounded-lg border border-indigo-300 bg-white p-3">
+				<div class="text-xs font-medium text-indigo-700 mb-1">Currently scanning:</div>
+				{#if scannedPaths.length > 0}
 					<div class="font-mono text-sm font-semibold text-gray-900 break-all">
 						{scannedPaths[0].name}
 					</div>
 					<div class="font-mono text-xs text-gray-500 break-all mt-1">
 						{scannedPaths[0].path}
 					</div>
-				</div>
-			{/if}
+				{:else}
+					<div class="text-sm text-gray-600 italic">Initializing scan...</div>
+				{/if}
+			</div>
 
 			<!-- Recent Files Scrolling List -->
 			<div class="text-xs text-gray-600 mb-2 font-medium">Recent files:</div>
