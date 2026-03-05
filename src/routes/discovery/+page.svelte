@@ -14,7 +14,8 @@
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 	let currentDirectory = $state<string | null>(null);
-	let scannedPaths = $state<Array<{ path: string; name: string; timestamp: number }>>([]);
+	let scannedPaths = $state<Array<{ path: string; name: string; id: string }>>([]);
+	let scanCounter = 0; // Unique counter for each scanned file
 
 	// Custom directory scanning
 	let customDirectories = $state<string[]>([]);
@@ -106,6 +107,7 @@
 			scanning = true;
 			error = null;
 			scannedPaths = []; // Clear previous scan paths
+			scanCounter = 0; // Reset counter for new scan
 
 			// Pass custom directories if in custom mode
 			const dirsToScan = scanMode === 'custom' ? customDirectories : undefined;
@@ -157,18 +159,17 @@
 
 		// Listen for scan progress
 		listen('discovery:progress', (event: any) => {
-			console.log('Discovery progress event:', event.payload);
 			currentDirectory = event.payload.directory;
 			// Add to scanned paths list (keep last 100 for performance)
+			scanCounter++;
 			scannedPaths = [
 				{
 					path: event.payload.path || event.payload.directory,
 					name: event.payload.directory,
-					timestamp: Date.now()
+					id: `${scanCounter}-${Date.now()}`
 				},
 				...scannedPaths.slice(0, 99)
 			];
-			console.log('Scanned paths length:', scannedPaths.length);
 		}).then((unlisten) => {
 			cleanupProgress = unlisten;
 		});
@@ -354,7 +355,7 @@
 			<div class="text-xs text-gray-600 mb-2 font-medium">Recent files:</div>
 			<div class="max-h-48 overflow-y-auto rounded border border-indigo-200 bg-white">
 				<div class="divide-y divide-gray-100">
-					{#each scannedPaths.slice(0, 20) as item (item.timestamp)}
+					{#each scannedPaths.slice(0, 20) as item (item.id)}
 						<div class="px-3 py-2 text-xs">
 							<div class="font-mono text-gray-900">{item.name}</div>
 							<div class="text-gray-500 truncate">{item.path}</div>
