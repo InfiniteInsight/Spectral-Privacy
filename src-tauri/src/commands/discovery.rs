@@ -73,19 +73,21 @@ async fn process_scanned_file<R: tauri::Runtime>(
 ) {
     *files_scanned += 1;
 
-    // Emit progress for EVERY file
-    let file_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("Unknown");
-    let _ = app.emit(
-        "discovery:progress",
-        serde_json::json!({
-            "directory": file_name,
-            "path": path.to_string_lossy(),
-            "files_scanned": *files_scanned
-        }),
-    );
+    // Emit progress only every 50 files to avoid IPC overhead
+    if *files_scanned % 50 == 0 {
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown");
+        let _ = app.emit(
+            "discovery:progress",
+            serde_json::json!({
+                "directory": file_name,
+                "path": path.to_string_lossy(),
+                "files_scanned": *files_scanned
+            }),
+        );
+    }
 
     if let Some(result) = spectral_discovery::scan_file(path, patterns).await {
         results.push(result);
@@ -101,23 +103,35 @@ fn should_exclude_directory(path: &Path) -> bool {
         matches!(
             name_lower.as_str(),
             // System directories
-            "appdata" | "application data" | ".cache" | "cache" | "caches" |
-            // Browser caches
-            "google" | "mozilla" | "microsoft edge" | "brave-browser" |
+            "appdata" | "application data" | ".cache" | "cache" | "caches" | ".local" |
+            "library" | "application support" | ".config" | "snap" | ".snapshots" |
+            // Browser caches and data
+            "google" | "mozilla" | "microsoft edge" | "brave-browser" | "firefox" | "chrome" |
             // Cloud sync temp
-            "onedrive" | "dropbox" | "google drive" | ".icloud" |
+            "onedrive" | "dropbox" | "google drive" | ".icloud" | "box" | "sync" |
             // Development
-            "node_modules" | ".git" | ".svn" | ".hg" | "target" | "build" | "dist" |
+            "node_modules" | ".git" | ".svn" | ".hg" | "target" | "build" | "dist" | ".next" |
+            "out" | "output" | ".output" | ".nuxt" | ".svelte-kit" | "coverage" |
             // Windows system
-            "windows" | "program files" | "program files (x86)" | "programdata" |
-            // Package managers
-            ".npm" | ".cargo" | ".rustup" | ".gradle" | ".maven" |
+            "windows" | "program files" | "program files (x86)" | "programdata" | "$recycle.bin" |
+            "system volume information" | "recovery" | "perflogs" |
+            // Package managers and tooling
+            ".npm" | ".cargo" | ".rustup" | ".gradle" | ".maven" | ".pnpm-store" | ".yarn" |
+            ".composer" | ".bundler" | "vendor" |
             // Temp directories
-            "temp" | "tmp" | ".tmp" |
+            "temp" | "tmp" | ".tmp" | "temps" |
             // Virtual environments
-            "venv" | ".venv" | "env" | ".env" | "virtualenv" |
-            // IDE
-            ".vscode" | ".idea" | ".vs"
+            "venv" | ".venv" | "env" | ".env" | "virtualenv" | ".virtualenv" | "venvs" |
+            // IDE and editors
+            ".vscode" | ".idea" | ".vs" | ".eclipse" | ".settings" | ".metadata" |
+            // Media and large files
+            "steam" | "steamapps" | "games" | "videos" | "movies" | ".steam" |
+            // Container and VM
+            "docker" | ".docker" | "virtualbox" | ".vagrant" | "vmware" |
+            // macOS specific
+            ".trash" | ".spotlight-v100" | ".fseventsd" | ".documentrevisions-v100" |
+            // Linux specific
+            ".thumbnails" | ".gvfs" | ".dbus" | ".mozilla-thunderbird"
         )
     } else {
         false
@@ -168,7 +182,9 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
 
             if path.is_dir() {
                 // Skip excluded directories
-                if !should_exclude_directory(&path) {
+                if should_exclude_directory(&path) {
+                    tracing::debug!("Skipping excluded directory: {:?}", path);
+                } else {
                     scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1)
                         .await;
                 }
@@ -357,8 +373,21 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             total_findings += findings;
         }
 
+        // Emit final progress update to ensure UI shows correct count
+        let _ = app.emit(
+            "discovery:progress",
+            serde_json::json!({
+                "directory": "Finalizing...",
+                "path": "",
+                "files_scanned": files_scanned
+            }),
+        );
+
         if was_stopped {
-            info!("Discovery scan stopped: {} findings so far", total_findings);
+            info!(
+                "Discovery scan stopped: {} findings in {} files",
+                total_findings, files_scanned
+            );
             // Emit stopped event
             let _ = app.emit(
                 "discovery:stopped",
@@ -368,7 +397,10 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
                 }),
             );
         } else {
-            info!("Discovery scan complete: {} findings", total_findings);
+            info!(
+                "Discovery scan complete: {} findings in {} files",
+                total_findings, files_scanned
+            );
             // Emit completion event
             let _ = app.emit(
                 "discovery:complete",
