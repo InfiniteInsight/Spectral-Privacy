@@ -177,10 +177,24 @@
 		}
 	}
 
-	// Open file with system default application
+	// Open file with system default application (cross-platform)
 	async function openFile(filePath: string) {
 		try {
-			await open(filePath);
+			// Convert file path to file:// URL for cross-platform compatibility
+			// This handles Windows (C:\...), macOS (/Users/...), and Linux (/home/...) paths
+			let fileUrl = filePath;
+
+			// On Windows, paths start with drive letter (C:\) and use backslashes
+			// Convert to file:///C:/... format
+			if (filePath.match(/^[A-Za-z]:\\/)) {
+				// Windows path detected (e.g., C:\Users\...)
+				fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
+			} else if (filePath.startsWith('/')) {
+				// Unix-like path (macOS/Linux) - prepend file://
+				fileUrl = 'file://' + filePath;
+			}
+
+			await open(fileUrl);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 			console.error('Failed to open file:', e);
