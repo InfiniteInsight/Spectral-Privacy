@@ -9,7 +9,8 @@
 			"identifier": "shell:allow-open",
 			"allow": [
 				{
-					"path": "file://**"
+					"validator": "^file://",
+					"raw": true
 				}
 			]
 		}
