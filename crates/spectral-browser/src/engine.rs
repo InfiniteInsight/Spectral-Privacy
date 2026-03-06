@@ -78,6 +78,7 @@ fn is_wsl2() -> bool {
 }
 
 /// Helper: Apply platform-specific browser configuration
+#[allow(unused_mut)] // mut only needed on Linux/WSL2
 fn apply_platform_config(
     mut config: chromiumoxide::browser::BrowserConfigBuilder,
 ) -> chromiumoxide::browser::BrowserConfigBuilder {

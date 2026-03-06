@@ -12,6 +12,10 @@ authors.workspace = true
 name = "spectral_app"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "spectral"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build.workspace = true
 
