@@ -19,6 +19,7 @@
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 	let scannedPaths = $state<Array<{ path: string; name: string; id: string }>>([]);
+	let totalFilesScanned = $state(0); // Actual count from backend
 	let scanCounter = 0; // Unique counter for each scanned file
 
 	// Custom directory scanning
@@ -112,6 +113,7 @@
 			scanning = true;
 			error = null;
 			scannedPaths = []; // Clear previous scan paths
+			totalFilesScanned = 0; // Reset total count
 			scanCounter = 0; // Reset counter for new scan
 
 			// Pass custom directories if in custom mode
@@ -219,6 +221,9 @@
 		listen('discovery:progress', (event: any) => {
 			// Only update UI if not paused
 			if (!paused) {
+				// Update actual count from backend
+				totalFilesScanned = event.payload.files_scanned || 0;
+
 				// Add to scanned paths list (keep last 100 for performance)
 				scanCounter++;
 				scannedPaths = [
@@ -485,16 +490,16 @@
 					<div class="rounded-full h-5 w-5 bg-yellow-600"></div>
 					<h3 class="text-sm font-semibold text-yellow-900">
 						Scan Paused
-						{#if scannedPaths.length > 0}
-							({scannedPaths.length} files scanned so far)
+						{#if totalFilesScanned > 0}
+							({totalFilesScanned.toLocaleString()} files scanned so far)
 						{/if}
 					</h3>
 				{:else}
 					<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
 					<h3 class="text-sm font-semibold text-indigo-900">
 						Scanning for PII...
-						{#if scannedPaths.length > 0}
-							({scannedPaths.length} files scanned)
+						{#if totalFilesScanned > 0}
+							({totalFilesScanned.toLocaleString()} files scanned)
 						{/if}
 					</h3>
 				{/if}
@@ -533,11 +538,6 @@
 					{/each}
 				</div>
 			</div>
-			{#if scannedPaths.length > 20}
-				<div class="mt-2 text-xs text-indigo-700">
-					Showing 20 most recent. {scannedPaths.length - 20} more scanned...
-				</div>
-			{/if}
 		</div>
 	{/if}
 
