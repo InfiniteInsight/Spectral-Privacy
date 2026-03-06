@@ -11,6 +11,7 @@
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
 	import { listen } from '@tauri-apps/api/event';
+	import { open } from '@tauri-apps/plugin-shell';
 
 	let findings = $state<DiscoveryFinding[]>([]);
 	let loading = $state(true);
@@ -173,6 +174,16 @@
 			}, 3000);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	// Open file with system default application
+	async function openFile(filePath: string) {
+		try {
+			await open(filePath);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+			console.error('Failed to open file:', e);
 		}
 	}
 
@@ -678,7 +689,16 @@
 											in the file. Please verify the issue has been resolved.
 										</div>
 									{/if}
-									<div class="text-xs text-gray-500">{finding.source_detail}</div>
+									<div class="flex items-center gap-2">
+										<div class="text-xs text-gray-500 truncate">{finding.source_detail}</div>
+										<button
+											onclick={() => openFile(finding.source_detail)}
+											class="flex-shrink-0 cursor-pointer rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200"
+											title="Open file"
+										>
+											📂 Open
+										</button>
+									</div>
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
 											<strong>Recommended action:</strong>
@@ -751,7 +771,16 @@
 											in the file. Please verify the issue has been resolved.
 										</div>
 									{/if}
-									<div class="text-xs text-gray-500">{finding.source_detail}</div>
+									<div class="flex items-center gap-2">
+										<div class="text-xs text-gray-500 truncate">{finding.source_detail}</div>
+										<button
+											onclick={() => openFile(finding.source_detail)}
+											class="flex-shrink-0 cursor-pointer rounded-md bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200"
+											title="Open file"
+										>
+											📂 Open
+										</button>
+									</div>
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
 											<strong>Recommended action:</strong>
