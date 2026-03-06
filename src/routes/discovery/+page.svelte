@@ -699,6 +699,19 @@
 											📂 Open
 										</button>
 									</div>
+									{#if finding.matched_value || finding.line_number}
+										<div class="mt-1 rounded-md bg-gray-50 p-2 font-mono text-sm">
+											{#if finding.matched_value}
+												<div class="text-gray-900">
+													<span class="font-semibold">Found:</span>
+													{finding.matched_value}
+												</div>
+											{/if}
+											{#if finding.line_number}
+												<div class="text-xs text-gray-600">Line {finding.line_number}</div>
+											{/if}
+										</div>
+									{/if}
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
 											<strong>Recommended action:</strong>
@@ -781,6 +794,19 @@
 											📂 Open
 										</button>
 									</div>
+									{#if finding.matched_value || finding.line_number}
+										<div class="mt-1 rounded-md bg-gray-50 p-2 font-mono text-sm">
+											{#if finding.matched_value}
+												<div class="text-gray-900">
+													<span class="font-semibold">Found:</span>
+													{finding.matched_value}
+												</div>
+											{/if}
+											{#if finding.line_number}
+												<div class="text-xs text-gray-600">Line {finding.line_number}</div>
+											{/if}
+										</div>
+									{/if}
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
 											<strong>Recommended action:</strong>

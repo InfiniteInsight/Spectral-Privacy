@@ -66,19 +66,38 @@ impl PiiPatterns {
         self.ssn.is_match(text)
     }
 
-    /// Find all PII matches in text
+    /// Find all PII matches in text with line numbers
     #[must_use]
     pub fn find_all(&self, text: &str) -> Vec<PiiMatch> {
         let mut matches = Vec::new();
 
-        if self.has_email(text) {
-            matches.push(PiiMatch::Email);
-        }
-        if self.has_phone(text) {
-            matches.push(PiiMatch::Phone);
-        }
-        if self.has_ssn(text) {
-            matches.push(PiiMatch::Ssn);
+        for (line_num, line) in text.lines().enumerate() {
+            // Find emails
+            for email_match in self.email.find_iter(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Email,
+                    matched_value: email_match.as_str().to_string(),
+                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                });
+            }
+
+            // Find phone numbers
+            for phone_match in self.phone.find_iter(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Phone,
+                    matched_value: phone_match.as_str().to_string(),
+                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                });
+            }
+
+            // Find SSNs
+            for ssn_match in self.ssn.find_iter(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Ssn,
+                    matched_value: ssn_match.as_str().to_string(),
+                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                });
+            }
         }
 
         matches
@@ -91,22 +110,30 @@ impl Default for PiiPatterns {
     }
 }
 
-/// Type of PII found
+/// Type of PII found with details
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PiiMatch {
+pub struct PiiMatch {
+    pub pii_type: PiiType,
+    pub matched_value: String,
+    pub line_number: usize,
+}
+
+/// Type of PII
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PiiType {
     Email,
     Phone,
     Ssn,
 }
 
-impl PiiMatch {
+impl PiiType {
     /// Get human-readable description of the PII type
     #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
-            PiiMatch::Email => "Email address",
-            PiiMatch::Phone => "Phone number",
-            PiiMatch::Ssn => "Social Security Number",
+            PiiType::Email => "Email address",
+            PiiType::Phone => "Phone number",
+            PiiType::Ssn => "Social Security Number",
         }
     }
 
@@ -114,20 +141,40 @@ impl PiiMatch {
     #[must_use]
     pub fn risk_level(&self) -> &'static str {
         match self {
-            PiiMatch::Email => "medium",
-            PiiMatch::Phone => "medium",
-            PiiMatch::Ssn => "critical",
+            PiiType::Email => "medium",
+            PiiType::Phone => "medium",
+            PiiType::Ssn => "critical",
         }
     }
 
     /// Get PII type identifier for database storage
     #[must_use]
-    pub fn pii_type(&self) -> &'static str {
+    pub fn pii_type_str(&self) -> &'static str {
         match self {
-            PiiMatch::Email => "email",
-            PiiMatch::Phone => "phone",
-            PiiMatch::Ssn => "ssn",
+            PiiType::Email => "email",
+            PiiType::Phone => "phone",
+            PiiType::Ssn => "ssn",
         }
+    }
+}
+
+impl PiiMatch {
+    /// Get human-readable description of the PII type
+    #[must_use]
+    pub fn description(&self) -> &'static str {
+        self.pii_type.description()
+    }
+
+    /// Get risk level for this type of PII
+    #[must_use]
+    pub fn risk_level(&self) -> &'static str {
+        self.pii_type.risk_level()
+    }
+
+    /// Get PII type identifier for database storage
+    #[must_use]
+    pub fn pii_type_str(&self) -> &'static str {
+        self.pii_type.pii_type_str()
     }
 }
 
@@ -302,23 +349,27 @@ mod tests {
         let matches = patterns.find_all(text);
 
         assert_eq!(matches.len(), 3);
-        assert!(matches.contains(&PiiMatch::Email));
-        assert!(matches.contains(&PiiMatch::Phone));
-        assert!(matches.contains(&PiiMatch::Ssn));
+        assert_eq!(matches[0].pii_type, PiiType::Email);
+        assert_eq!(matches[0].matched_value, "john@example.com");
+        assert_eq!(matches[0].line_number, 1);
+        assert_eq!(matches[1].pii_type, PiiType::Phone);
+        assert_eq!(matches[1].matched_value, "555-123-4567");
+        assert_eq!(matches[2].pii_type, PiiType::Ssn);
+        assert_eq!(matches[2].matched_value, "123-45-6789");
     }
 
     #[test]
-    fn test_pii_match_description() {
-        assert_eq!(PiiMatch::Email.description(), "Email address");
-        assert_eq!(PiiMatch::Phone.description(), "Phone number");
-        assert_eq!(PiiMatch::Ssn.description(), "Social Security Number");
+    fn test_pii_type_description() {
+        assert_eq!(PiiType::Email.description(), "Email address");
+        assert_eq!(PiiType::Phone.description(), "Phone number");
+        assert_eq!(PiiType::Ssn.description(), "Social Security Number");
     }
 
     #[test]
-    fn test_pii_match_risk_level() {
-        assert_eq!(PiiMatch::Email.risk_level(), "medium");
-        assert_eq!(PiiMatch::Phone.risk_level(), "medium");
-        assert_eq!(PiiMatch::Ssn.risk_level(), "critical");
+    fn test_pii_type_risk_level() {
+        assert_eq!(PiiType::Email.risk_level(), "medium");
+        assert_eq!(PiiType::Phone.risk_level(), "medium");
+        assert_eq!(PiiType::Ssn.risk_level(), "critical");
     }
 
     #[test]

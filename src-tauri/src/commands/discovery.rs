@@ -188,7 +188,7 @@ async fn process_scan_results(
     let mut findings_count = 0;
 
     for result in results {
-        for pii_match in result.matches {
+        for pii_match in &result.matches {
             if insert_pii_finding(&result.path, pii_match, pool, vault_id)
                 .await
                 .is_ok()
@@ -204,7 +204,7 @@ async fn process_scan_results(
 /// Insert a PII finding into the database
 async fn insert_pii_finding(
     file_path: &Path,
-    pii_match: PiiMatch,
+    pii_match: &PiiMatch,
     pool: &sqlx::SqlitePool,
     vault_id: &str,
 ) -> Result<(), sqlx::Error> {
@@ -216,7 +216,12 @@ async fn insert_pii_finding(
         }
     };
 
-    let description = format!("{} found in file: {}", pii_match.description(), file_name);
+    let description = format!(
+        "{} found in file: {} (line {})",
+        pii_match.description(),
+        file_name,
+        pii_match.line_number
+    );
 
     spectral_db::discovery_findings::insert_discovery_finding(
         pool,
@@ -230,7 +235,9 @@ async fn insert_pii_finding(
             recommended_action: Some(
                 "Review file and remove sensitive information if no longer needed".to_string(),
             ),
-            pii_type: pii_match.pii_type().to_string(),
+            pii_type: pii_match.pii_type_str().to_string(),
+            matched_value: Some(pii_match.matched_value.clone()),
+            line_number: Some(pii_match.line_number),
         },
     )
     .await

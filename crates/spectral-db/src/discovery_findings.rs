@@ -35,6 +35,10 @@ pub struct DiscoveryFinding {
     pub still_present_after_remediation: bool,
     /// ISO 8601 timestamp when found
     pub found_at: String,
+    /// The actual matched value (e.g., the phone number or email address)
+    pub matched_value: Option<String>,
+    /// Line number where the PII was found
+    pub line_number: Option<i64>,
 }
 
 /// Parameters for creating a discovery finding
@@ -56,6 +60,10 @@ pub struct CreateDiscoveryFinding {
     pub recommended_action: Option<String>,
     /// PII type
     pub pii_type: String,
+    /// The actual matched value
+    pub matched_value: Option<String>,
+    /// Line number where found
+    pub line_number: Option<usize>,
 }
 
 /// Check if a finding already exists (to prevent duplicates)
@@ -68,7 +76,7 @@ async fn find_existing_finding(
     pii_type: &str,
 ) -> Result<Option<DiscoveryFinding>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at, matched_value, line_number
          FROM discovery_findings
          WHERE vault_id = ? AND source_detail = ? AND pii_type = ?
          LIMIT 1",
@@ -93,6 +101,8 @@ async fn find_existing_finding(
         ignored: row.get::<i64, _>("ignored") != 0,
         still_present_after_remediation: row.get::<i64, _>("still_present_after_remediation") != 0,
         found_at: row.get("found_at"),
+        matched_value: row.get("matched_value"),
+        line_number: row.get("line_number"),
     }))
 }
 
@@ -141,8 +151,8 @@ pub async fn insert_discovery_finding(
     let found_at = chrono::Utc::now().to_rfc3339();
 
     sqlx::query(
-        "INSERT INTO discovery_findings (id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, found_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO discovery_findings (id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, found_at, matched_value, line_number)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&params.vault_id)
@@ -154,6 +164,8 @@ pub async fn insert_discovery_finding(
     .bind(&params.recommended_action)
     .bind(&params.pii_type)
     .bind(&found_at)
+    .bind(&params.matched_value)
+    .bind(params.line_number.map(|n| i64::try_from(n).unwrap_or(0)))
     .execute(pool)
     .await?;
 
@@ -171,6 +183,8 @@ pub async fn insert_discovery_finding(
         ignored: false,
         still_present_after_remediation: false,
         found_at,
+        matched_value: params.matched_value,
+        line_number: params.line_number.map(|n| i64::try_from(n).unwrap_or(0)),
     })
 }
 
@@ -183,7 +197,7 @@ pub async fn get_discovery_findings(
     vault_id: &str,
 ) -> Result<Vec<DiscoveryFinding>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at, matched_value, line_number
          FROM discovery_findings
          WHERE vault_id = ? AND ignored = 0
          ORDER BY found_at DESC",
@@ -209,6 +223,8 @@ pub async fn get_discovery_findings(
             still_present_after_remediation: row.get::<i64, _>("still_present_after_remediation")
                 != 0,
             found_at: row.get("found_at"),
+            matched_value: row.get("matched_value"),
+            line_number: row.get("line_number"),
         })
         .collect();
 

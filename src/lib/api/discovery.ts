@@ -17,6 +17,8 @@ export interface DiscoveryFinding {
 	ignored: boolean;
 	still_present_after_remediation: boolean;
 	found_at: string;
+	matched_value?: string | null;
+	line_number?: number | null;
 }
 
 /**
