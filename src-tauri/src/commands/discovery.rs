@@ -37,6 +37,61 @@ pub struct DiscoveryFinding {
     pub found_at: String,
 }
 
+/// Wait for scan to be running (handle pause/stop state)
+/// Returns true if scan should continue, false if stopped
+async fn wait_for_scan_running() -> bool {
+    loop {
+        let control = SCAN_CONTROL
+            .lock()
+            .expect("Failed to acquire scan control lock")
+            .clone();
+        match control {
+            ScanControl::Stopped => {
+                // Scan was stopped, exit
+                return false;
+            }
+            ScanControl::Paused => {
+                // Scan is paused, wait and check again
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                continue;
+            }
+            ScanControl::Running => {
+                // Continue scanning
+                return true;
+            }
+        }
+    }
+}
+
+/// Process a single file during scan
+async fn process_scanned_file<R: tauri::Runtime>(
+    path: &Path,
+    patterns: &PiiPatterns,
+    app: &tauri::AppHandle<R>,
+    files_scanned: &mut usize,
+    results: &mut Vec<FileScanResult>,
+) {
+    *files_scanned += 1;
+
+    // Emit progress for EVERY file
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Unknown");
+    let _ = app.emit(
+        "discovery:progress",
+        serde_json::json!({
+            "directory": file_name,
+            "path": path.to_string_lossy(),
+            "files_scanned": *files_scanned
+        }),
+    );
+
+    if let Some(result) = spectral_discovery::scan_file(path, patterns).await {
+        results.push(result);
+    }
+}
+
 /// Check if a directory should be excluded from scanning
 fn should_exclude_directory(path: &Path) -> bool {
     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
@@ -104,27 +159,9 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
         };
 
         while let Ok(Some(entry)) = entries.next_entry().await {
-            // Check scan control state
-            loop {
-                let control = SCAN_CONTROL
-                    .lock()
-                    .expect("Failed to acquire scan control lock")
-                    .clone();
-                match control {
-                    ScanControl::Stopped => {
-                        // Scan was stopped, exit immediately
-                        return;
-                    }
-                    ScanControl::Paused => {
-                        // Scan is paused, wait a bit and check again
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                        continue;
-                    }
-                    ScanControl::Running => {
-                        // Continue scanning
-                        break;
-                    }
-                }
+            // Check if scan should continue (handles pause/stop)
+            if !wait_for_scan_running().await {
+                return;
             }
 
             let path = entry.path();
@@ -136,25 +173,7 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
                         .await;
                 }
             } else if path.is_file() {
-                *files_scanned += 1;
-
-                // Emit progress for EVERY file
-                let file_name = path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("Unknown");
-                let _ = app.emit(
-                    "discovery:progress",
-                    serde_json::json!({
-                        "directory": file_name,
-                        "path": path.to_string_lossy(),
-                        "files_scanned": *files_scanned
-                    }),
-                );
-
-                if let Some(result) = spectral_discovery::scan_file(&path, patterns).await {
-                    results.push(result);
-                }
+                process_scanned_file(&path, patterns, app, files_scanned, results).await;
             }
         }
     })
