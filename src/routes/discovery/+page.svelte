@@ -237,15 +237,27 @@
 		// Listen for scan completion
 		listen('discovery:complete', () => {
 			scanning = false;
+			paused = false;
 			loadFindings();
 		}).then((unlisten) => {
 			cleanupComplete = unlisten;
+		});
+
+		// Listen for scan stopped
+		let cleanupStopped: (() => void) | null = null;
+		listen('discovery:stopped', () => {
+			scanning = false;
+			paused = false;
+			loadFindings();
+		}).then((unlisten) => {
+			cleanupStopped = unlisten;
 		});
 
 		// Clean up listeners on unmount
 		return () => {
 			if (cleanupProgress) cleanupProgress();
 			if (cleanupComplete) cleanupComplete();
+			if (cleanupStopped) cleanupStopped();
 		};
 	});
 
@@ -591,8 +603,9 @@
 	{/if}
 
 	{#if loading}
-		<div class="flex justify-center py-12">
+		<div class="flex flex-col items-center justify-center py-12">
 			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+			<p class="mt-4 text-sm text-gray-600">Loading previous findings from database...</p>
 		</div>
 	{:else if findings.length === 0}
 		<div class="rounded-md bg-gray-50 p-8 text-center">

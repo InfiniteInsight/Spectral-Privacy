@@ -289,8 +289,21 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 
         let mut total_findings = 0;
         let mut files_scanned = 0;
+        let mut was_stopped = false;
 
         for dir in scan_dirs {
+            // Check if scan was stopped
+            {
+                let control = SCAN_CONTROL
+                    .lock()
+                    .expect("Failed to acquire scan control lock");
+                if matches!(*control, ScanControl::Stopped) {
+                    info!("Scan stopped by user");
+                    was_stopped = true;
+                    break;
+                }
+            }
+
             if !dir.exists() {
                 continue;
             }
@@ -318,16 +331,27 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             total_findings += findings;
         }
 
-        info!("Discovery scan complete: {} findings", total_findings);
-
-        // Emit completion event
-        let _ = app.emit(
-            "discovery:complete",
-            serde_json::json!({
-                "vault_id": vault_id_clone,
-                "findings_count": total_findings
-            }),
-        );
+        if was_stopped {
+            info!("Discovery scan stopped: {} findings so far", total_findings);
+            // Emit stopped event
+            let _ = app.emit(
+                "discovery:stopped",
+                serde_json::json!({
+                    "vault_id": vault_id_clone,
+                    "findings_count": total_findings
+                }),
+            );
+        } else {
+            info!("Discovery scan complete: {} findings", total_findings);
+            // Emit completion event
+            let _ = app.emit(
+                "discovery:complete",
+                serde_json::json!({
+                    "vault_id": vault_id_clone,
+                    "findings_count": total_findings
+                }),
+            );
+        }
     });
 
     Ok("Scan started".to_string())
