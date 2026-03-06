@@ -8,10 +8,10 @@
 		pauseDiscoveryScan,
 		resumeDiscoveryScan,
 		stopDiscoveryScan,
+		openFileLocation,
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
 	import { listen } from '@tauri-apps/api/event';
-	import { open } from '@tauri-apps/plugin-shell';
 
 	let findings = $state<DiscoveryFinding[]>([]);
 	let loading = $state(true);
@@ -177,27 +177,13 @@
 		}
 	}
 
-	// Open file with system default application (cross-platform)
+	// Open the folder containing the file
 	async function openFile(filePath: string) {
 		try {
-			// Convert file path to file:// URL for cross-platform compatibility
-			// This handles Windows (C:\...), macOS (/Users/...), and Linux (/home/...) paths
-			let fileUrl = filePath;
-
-			// On Windows, paths start with drive letter (C:\) and use backslashes
-			// Convert to file:///C:/... format
-			if (filePath.match(/^[A-Za-z]:\\/)) {
-				// Windows path detected (e.g., C:\Users\...)
-				fileUrl = 'file:///' + filePath.replace(/\\/g, '/');
-			} else if (filePath.startsWith('/')) {
-				// Unix-like path (macOS/Linux) - prepend file://
-				fileUrl = 'file://' + filePath;
-			}
-
-			await open(fileUrl);
+			await openFileLocation(filePath);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
-			console.error('Failed to open file:', e);
+			console.error('Failed to open file location:', e);
 		}
 	}
 

@@ -78,3 +78,10 @@ export async function resumeDiscoveryScan(): Promise<void> {
 export async function stopDiscoveryScan(): Promise<void> {
 	return invoke('stop_discovery_scan');
 }
+
+/**
+ * Open the folder containing a file
+ */
+export async function openFileLocation(filePath: string): Promise<void> {
+	return invoke('open_file_location', { filePath });
+}

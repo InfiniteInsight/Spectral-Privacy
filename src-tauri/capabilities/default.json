@@ -3,16 +3,5 @@
 	"identifier": "default",
 	"description": "enables the default permissions",
 	"windows": ["main"],
-	"permissions": [
-		"core:default",
-		{
-			"identifier": "shell:allow-open",
-			"allow": [
-				{
-					"validator": "^file://",
-					"raw": true
-				}
-			]
-		}
-	]
+	"permissions": ["core:default"]
 }

@@ -514,3 +514,45 @@ pub fn stop_discovery_scan() -> Result<(), String> {
     *control = ScanControl::Stopped;
     Ok(())
 }
+
+/// Open the folder containing a file
+#[tauri::command]
+pub fn open_file_location(file_path: String) -> Result<(), String> {
+    use std::process::Command;
+
+    let path = std::path::Path::new(&file_path);
+
+    // Get the parent directory
+    let dir = path
+        .parent()
+        .ok_or_else(|| "Could not determine parent directory".to_string())?;
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: Use explorer /select to highlight the file
+        Command::new("explorer")
+            .args(["/select,", &file_path])
+            .spawn()
+            .map_err(|e| format!("Failed to open file location: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: Use open -R to reveal the file in Finder
+        Command::new("open")
+            .args(["-R", &file_path])
+            .spawn()
+            .map_err(|e| format!("Failed to open file location: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: Open the parent directory with xdg-open
+        Command::new("xdg-open")
+            .arg(dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open file location: {}", e))?;
+    }
+
+    Ok(())
+}
