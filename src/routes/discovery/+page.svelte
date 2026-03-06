@@ -235,16 +235,28 @@
 				// Update actual count from backend
 				totalFilesScanned = event.payload.files_scanned || 0;
 
-				// Add to scanned paths list (keep last 100 for performance)
-				scanCounter++;
-				scannedPaths = [
-					{
-						path: event.payload.path || event.payload.directory,
-						name: event.payload.directory,
-						id: `${scanCounter}-${Date.now()}`
-					},
-					...scannedPaths.slice(0, 99)
-				];
+				// Handle batch of files if present
+				if (event.payload.batch && Array.isArray(event.payload.batch)) {
+					// Add all files from the batch
+					const newFiles = event.payload.batch.map((file: any) => ({
+						path: file.path,
+						name: file.name,
+						id: `${++scanCounter}-${Date.now()}`
+					}));
+					// Keep last 1000 files for performance while showing complete recent history
+					scannedPaths = [...newFiles, ...scannedPaths.slice(0, 1000 - newFiles.length)];
+				} else if (event.payload.path || event.payload.directory) {
+					// Fallback: single file update (for final progress event)
+					scanCounter++;
+					scannedPaths = [
+						{
+							path: event.payload.path || event.payload.directory,
+							name: event.payload.directory,
+							id: `${scanCounter}-${Date.now()}`
+						},
+						...scannedPaths.slice(0, 999)
+					];
+				}
 			}
 		}).then((unlisten) => {
 			cleanupProgress = unlisten;

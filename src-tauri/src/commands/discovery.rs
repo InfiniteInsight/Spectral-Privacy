@@ -63,6 +63,13 @@ async fn wait_for_scan_running() -> bool {
     }
 }
 
+/// Scanned file information for batch progress updates
+#[derive(Clone, serde::Serialize)]
+struct ScannedFileInfo {
+    name: String,
+    path: String,
+}
+
 /// Process a single file during scan
 async fn process_scanned_file<R: tauri::Runtime>(
     path: &Path,
@@ -70,23 +77,31 @@ async fn process_scanned_file<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     files_scanned: &mut usize,
     results: &mut Vec<FileScanResult>,
+    file_batch: &mut Vec<ScannedFileInfo>,
 ) {
     *files_scanned += 1;
 
-    // Emit progress only every 50 files to avoid IPC overhead
-    if *files_scanned % 50 == 0 {
-        let file_name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Unknown");
+    // Add file to batch
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Unknown")
+        .to_string();
+    file_batch.push(ScannedFileInfo {
+        name: file_name,
+        path: path.to_string_lossy().to_string(),
+    });
+
+    // Emit batch progress every 50 files
+    if file_batch.len() >= 50 {
         let _ = app.emit(
             "discovery:progress",
             serde_json::json!({
-                "directory": file_name,
-                "path": path.to_string_lossy(),
-                "files_scanned": *files_scanned
+                "files_scanned": *files_scanned,
+                "batch": file_batch.clone()
             }),
         );
+        file_batch.clear();
     }
 
     if let Some(result) = spectral_discovery::scan_file(path, patterns).await {
@@ -147,7 +162,29 @@ async fn scan_directory_with_progress<R: tauri::Runtime>(
 ) -> Vec<FileScanResult> {
     let max_depth = 10;
     let mut results = Vec::new();
-    scan_recursive(dir, patterns, app, files_scanned, &mut results, max_depth).await;
+    let mut file_batch = Vec::new();
+    scan_recursive(
+        dir,
+        patterns,
+        app,
+        files_scanned,
+        &mut results,
+        &mut file_batch,
+        max_depth,
+    )
+    .await;
+
+    // Emit any remaining files in the batch
+    if !file_batch.is_empty() {
+        let _ = app.emit(
+            "discovery:progress",
+            serde_json::json!({
+                "files_scanned": *files_scanned,
+                "batch": file_batch
+            }),
+        );
+    }
+
     results
 }
 
@@ -158,6 +195,7 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
     app: &'a tauri::AppHandle<R>,
     files_scanned: &'a mut usize,
     results: &'a mut Vec<FileScanResult>,
+    file_batch: &'a mut Vec<ScannedFileInfo>,
     max_depth: usize,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
     use tokio::fs;
@@ -185,11 +223,20 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
                 if should_exclude_directory(&path) {
                     tracing::debug!("Skipping excluded directory: {:?}", path);
                 } else {
-                    scan_recursive(&path, patterns, app, files_scanned, results, max_depth - 1)
-                        .await;
+                    scan_recursive(
+                        &path,
+                        patterns,
+                        app,
+                        files_scanned,
+                        results,
+                        file_batch,
+                        max_depth - 1,
+                    )
+                    .await;
                 }
             } else if path.is_file() {
-                process_scanned_file(&path, patterns, app, files_scanned, results).await;
+                process_scanned_file(&path, patterns, app, files_scanned, results, file_batch)
+                    .await;
             }
         }
     })
