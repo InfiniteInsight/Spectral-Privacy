@@ -57,3 +57,24 @@ export async function markFindingIgnored(
 ): Promise<void> {
 	return invoke('mark_finding_ignored', { vaultId, findingId, ignored });
 }
+
+/**
+ * Pause the current discovery scan
+ */
+export async function pauseDiscoveryScan(): Promise<void> {
+	return invoke('pause_discovery_scan');
+}
+
+/**
+ * Resume a paused discovery scan
+ */
+export async function resumeDiscoveryScan(): Promise<void> {
+	return invoke('resume_discovery_scan');
+}
+
+/**
+ * Stop the current discovery scan
+ */
+export async function stopDiscoveryScan(): Promise<void> {
+	return invoke('stop_discovery_scan');
+}

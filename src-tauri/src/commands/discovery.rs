@@ -4,8 +4,21 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_discovery::{FileScanResult, PiiMatch, PiiPatterns};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, State};
 use tracing::{error, info};
+
+/// Scan control state for pause/resume/stop
+#[derive(Debug, Clone)]
+enum ScanControl {
+    Running,
+    Paused,
+    Stopped,
+}
+
+/// Global scan control state
+static SCAN_CONTROL: once_cell::sync::Lazy<Arc<Mutex<ScanControl>>> =
+    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(ScanControl::Running)));
 
 /// Discovery finding response
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,6 +104,29 @@ fn scan_recursive<'a, R: tauri::Runtime + 'static>(
         };
 
         while let Ok(Some(entry)) = entries.next_entry().await {
+            // Check scan control state
+            loop {
+                let control = SCAN_CONTROL
+                    .lock()
+                    .expect("Failed to acquire scan control lock")
+                    .clone();
+                match control {
+                    ScanControl::Stopped => {
+                        // Scan was stopped, exit immediately
+                        return;
+                    }
+                    ScanControl::Paused => {
+                        // Scan is paused, wait a bit and check again
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        continue;
+                    }
+                    ScanControl::Running => {
+                        // Continue scanning
+                        break;
+                    }
+                }
+            }
+
             let path = entry.path();
 
             if path.is_dir() {
@@ -213,6 +249,15 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
     // Spawn background scan task
     tokio::spawn(async move {
         info!("Starting filesystem scan for vault {}", vault_id_clone);
+
+        // Reset scan control to Running
+        {
+            let mut control = SCAN_CONTROL
+                .lock()
+                .expect("Failed to acquire scan control lock for reset");
+            *control = ScanControl::Running;
+        }
+
         let patterns = PiiPatterns::new();
 
         // Get user home directory
@@ -391,5 +436,38 @@ pub async fn mark_finding_ignored(
         .await
         .map_err(|e| format!("Failed to mark finding as ignored: {e}"))?;
 
+    Ok(())
+}
+
+/// Pause the current discovery scan
+#[tauri::command]
+pub fn pause_discovery_scan() -> Result<(), String> {
+    info!("pause_discovery_scan");
+    let mut control = SCAN_CONTROL
+        .lock()
+        .expect("Failed to acquire scan control lock for pause");
+    *control = ScanControl::Paused;
+    Ok(())
+}
+
+/// Resume a paused discovery scan
+#[tauri::command]
+pub fn resume_discovery_scan() -> Result<(), String> {
+    info!("resume_discovery_scan");
+    let mut control = SCAN_CONTROL
+        .lock()
+        .expect("Failed to acquire scan control lock for resume");
+    *control = ScanControl::Running;
+    Ok(())
+}
+
+/// Stop the current discovery scan
+#[tauri::command]
+pub fn stop_discovery_scan() -> Result<(), String> {
+    info!("stop_discovery_scan");
+    let mut control = SCAN_CONTROL
+        .lock()
+        .expect("Failed to acquire scan control lock for stop");
+    *control = ScanControl::Stopped;
     Ok(())
 }

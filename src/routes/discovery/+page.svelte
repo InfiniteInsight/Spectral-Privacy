@@ -5,6 +5,9 @@
 		markFindingRemediated,
 		markFindingIgnored,
 		startDiscoveryScan,
+		pauseDiscoveryScan,
+		resumeDiscoveryScan,
+		stopDiscoveryScan,
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
 	import { listen } from '@tauri-apps/api/event';
@@ -171,20 +174,38 @@
 		}
 	}
 
-	// Pause scan (stops updating UI but scan continues in background)
-	function pauseScan() {
-		paused = true;
+	// Pause scan
+	async function pauseScan() {
+		try {
+			await pauseDiscoveryScan();
+			paused = true;
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+			console.error('Failed to pause scan:', e);
+		}
 	}
 
-	// Resume scan (resumes UI updates)
-	function resumeScan() {
-		paused = false;
+	// Resume scan
+	async function resumeScan() {
+		try {
+			await resumeDiscoveryScan();
+			paused = false;
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+			console.error('Failed to resume scan:', e);
+		}
 	}
 
-	// Stop scan (stops UI updates and resets state)
-	function stopScan() {
-		scanning = false;
-		paused = false;
+	// Stop scan
+	async function stopScan() {
+		try {
+			await stopDiscoveryScan();
+			scanning = false;
+			paused = false;
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+			console.error('Failed to stop scan:', e);
+		}
 	}
 
 	// Set up event listeners and load findings
