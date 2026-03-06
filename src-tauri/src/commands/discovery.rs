@@ -19,6 +19,8 @@ pub struct DiscoveryFinding {
     pub recommended_action: Option<String>,
     pub pii_type: String,
     pub remediated: bool,
+    pub ignored: bool,
+    pub still_present_after_remediation: bool,
     pub found_at: String,
 }
 
@@ -322,6 +324,8 @@ pub async fn get_discovery_findings(
             recommended_action: f.recommended_action,
             pii_type: f.pii_type,
             remediated: f.remediated,
+            ignored: f.ignored,
+            still_present_after_remediation: f.still_present_after_remediation,
             found_at: f.found_at,
         })
         .collect();
@@ -355,6 +359,37 @@ pub async fn mark_finding_remediated(
     spectral_db::discovery_findings::update_finding_remediated(db.pool(), &finding_id, true)
         .await
         .map_err(|e| format!("Failed to mark finding as remediated: {e}"))?;
+
+    Ok(())
+}
+
+/// Mark a finding as ignored (false positive or acceptable)
+#[tauri::command]
+pub async fn mark_finding_ignored(
+    state: State<'_, AppState>,
+    vault_id: String,
+    finding_id: String,
+    ignored: bool,
+) -> Result<(), String> {
+    info!(
+        "mark_finding_ignored: vault_id={}, finding_id={}, ignored={}",
+        vault_id, finding_id, ignored
+    );
+
+    // Get the unlocked vault
+    let vault = state
+        .get_vault(&vault_id)
+        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
+
+    // Get the vault's database
+    let db = vault
+        .database()
+        .map_err(|e| format!("Failed to get vault database: {e}"))?;
+
+    // Update finding
+    spectral_db::discovery_findings::mark_finding_ignored(db.pool(), &finding_id, ignored)
+        .await
+        .map_err(|e| format!("Failed to mark finding as ignored: {e}"))?;
 
     Ok(())
 }

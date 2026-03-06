@@ -14,6 +14,8 @@ export interface DiscoveryFinding {
 	recommended_action: string | null;
 	pii_type?: 'email' | 'phone' | 'ssn';
 	remediated: boolean;
+	ignored: boolean;
+	still_present_after_remediation: boolean;
 	found_at: string;
 }
 
@@ -43,4 +45,15 @@ export async function getDiscoveryFindings(vaultId: string): Promise<DiscoveryFi
  */
 export async function markFindingRemediated(vaultId: string, findingId: string): Promise<void> {
 	return invoke('mark_finding_remediated', { vaultId, findingId });
+}
+
+/**
+ * Mark a finding as ignored (false positive or acceptable)
+ */
+export async function markFindingIgnored(
+	vaultId: string,
+	findingId: string,
+	ignored: boolean
+): Promise<void> {
+	return invoke('mark_finding_ignored', { vaultId, findingId, ignored });
 }

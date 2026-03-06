@@ -27,8 +27,12 @@ pub struct DiscoveryFinding {
     pub recommended_action: Option<String>,
     /// PII type (email, phone, ssn, address, etc.)
     pub pii_type: String,
-    /// Whether this finding has been remediated
+    /// Whether this finding has been remediated (user claims to have fixed it)
     pub remediated: bool,
+    /// Whether this finding is ignored (user accepts it as false positive or acceptable)
+    pub ignored: bool,
+    /// Whether PII is still present despite being marked as remediated
+    pub still_present_after_remediation: bool,
     /// ISO 8601 timestamp when found
     pub found_at: String,
 }
@@ -64,7 +68,7 @@ async fn find_existing_finding(
     pii_type: &str,
 ) -> Result<Option<DiscoveryFinding>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, found_at
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at
          FROM discovery_findings
          WHERE vault_id = ? AND source_detail = ? AND pii_type = ?
          LIMIT 1",
@@ -86,6 +90,8 @@ async fn find_existing_finding(
         recommended_action: row.get("recommended_action"),
         pii_type: row.get("pii_type"),
         remediated: row.get::<i64, _>("remediated") != 0,
+        ignored: row.get::<i64, _>("ignored") != 0,
+        still_present_after_remediation: row.get::<i64, _>("still_present_after_remediation") != 0,
         found_at: row.get("found_at"),
     }))
 }
@@ -95,6 +101,11 @@ async fn find_existing_finding(
 /// This prevents duplicate findings from being created when the same PII
 /// is found in the same location across multiple scans.
 ///
+/// Special handling:
+/// - If existing finding is ignored: returns it (won't be shown in UI)
+/// - If existing finding is remediated: marks it as `still_present_after_remediation`
+/// - Otherwise: returns existing finding as-is
+///
 /// # Errors
 /// Returns `sqlx::Error` if the database operation fails.
 pub async fn insert_discovery_finding(
@@ -102,7 +113,7 @@ pub async fn insert_discovery_finding(
     params: CreateDiscoveryFinding,
 ) -> Result<DiscoveryFinding, sqlx::Error> {
     // Check if a finding already exists for this location and PII type
-    if let Some(existing) = find_existing_finding(
+    if let Some(mut existing) = find_existing_finding(
         pool,
         &params.vault_id,
         &params.source_detail,
@@ -110,7 +121,18 @@ pub async fn insert_discovery_finding(
     )
     .await?
     {
-        // Return the existing finding (whether remediated or not)
+        // If the existing finding is remediated but still found, mark it
+        if existing.remediated && !existing.still_present_after_remediation {
+            sqlx::query(
+                "UPDATE discovery_findings SET still_present_after_remediation = 1 WHERE id = ?",
+            )
+            .bind(&existing.id)
+            .execute(pool)
+            .await?;
+            existing.still_present_after_remediation = true;
+        }
+
+        // Return the existing finding (whether ignored, remediated, or neither)
         return Ok(existing);
     }
 
@@ -146,11 +168,13 @@ pub async fn insert_discovery_finding(
         recommended_action: params.recommended_action,
         pii_type: params.pii_type,
         remediated: false,
+        ignored: false,
+        still_present_after_remediation: false,
         found_at,
     })
 }
 
-/// Get all discovery findings for a vault
+/// Get all discovery findings for a vault (excluding ignored findings)
 ///
 /// # Errors
 /// Returns `sqlx::Error` if the database query fails.
@@ -159,9 +183,9 @@ pub async fn get_discovery_findings(
     vault_id: &str,
 ) -> Result<Vec<DiscoveryFinding>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, found_at
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at
          FROM discovery_findings
-         WHERE vault_id = ?
+         WHERE vault_id = ? AND ignored = 0
          ORDER BY found_at DESC",
     )
     .bind(vault_id)
@@ -181,6 +205,9 @@ pub async fn get_discovery_findings(
             recommended_action: row.get("recommended_action"),
             pii_type: row.get("pii_type"),
             remediated: row.get::<i64, _>("remediated") != 0,
+            ignored: row.get::<i64, _>("ignored") != 0,
+            still_present_after_remediation: row.get::<i64, _>("still_present_after_remediation")
+                != 0,
             found_at: row.get("found_at"),
         })
         .collect();
@@ -189,6 +216,9 @@ pub async fn get_discovery_findings(
 }
 
 /// Update the remediated status of a finding
+///
+/// When marking as remediated, also resets the `still_present_after_remediation` flag
+/// since the user is claiming to have fixed the issue.
 ///
 /// # Errors
 /// Returns `sqlx::Error` if the database update fails.
@@ -199,8 +229,35 @@ pub async fn update_finding_remediated(
 ) -> Result<(), sqlx::Error> {
     let remediated_int = i32::from(remediated);
 
-    sqlx::query("UPDATE discovery_findings SET remediated = ? WHERE id = ?")
-        .bind(remediated_int)
+    sqlx::query(
+        "UPDATE discovery_findings
+         SET remediated = ?, still_present_after_remediation = 0
+         WHERE id = ?",
+    )
+    .bind(remediated_int)
+    .bind(finding_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Mark a finding as ignored (false positive or acceptable risk)
+///
+/// Ignored findings are not shown in the UI and will not trigger warnings
+/// on future scans.
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database update fails.
+pub async fn mark_finding_ignored(
+    pool: &Pool<Sqlite>,
+    finding_id: &str,
+    ignored: bool,
+) -> Result<(), sqlx::Error> {
+    let ignored_int = i32::from(ignored);
+
+    sqlx::query("UPDATE discovery_findings SET ignored = ? WHERE id = ?")
+        .bind(ignored_int)
         .bind(finding_id)
         .execute(pool)
         .await?;

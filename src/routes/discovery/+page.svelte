@@ -3,6 +3,7 @@
 	import {
 		getDiscoveryFindings,
 		markFindingRemediated,
+		markFindingIgnored,
 		startDiscoveryScan,
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
@@ -143,6 +144,25 @@
 			await loadFindings();
 			// Show success message
 			successMessage = 'Finding marked as remediated';
+			setTimeout(() => {
+				successMessage = null;
+			}, 3000);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	// Mark finding as ignored
+	async function markIgnored(findingId: string) {
+		const vid = vaultStore.currentVaultId;
+		if (!vid) return;
+
+		try {
+			await markFindingIgnored(vid, findingId, true);
+			// Reload findings
+			await loadFindings();
+			// Show success message
+			successMessage = 'Finding marked as ignored (false positive)';
 			setTimeout(() => {
 				successMessage = null;
 			}, 3000);
@@ -560,7 +580,20 @@
 												Remediated
 											</span>
 										{/if}
+										{#if finding.still_present_after_remediation}
+											<span
+												class="inline-flex rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800"
+											>
+												⚠️ Still Present
+											</span>
+										{/if}
 									</div>
+									{#if finding.still_present_after_remediation}
+										<div class="mb-2 rounded-md bg-orange-50 p-2 text-xs text-orange-800">
+											<strong>Warning:</strong> This PII was marked as remediated but is still present
+											in the file. Please verify the issue has been resolved.
+										</div>
+									{/if}
 									<div class="text-xs text-gray-500">{finding.source_detail}</div>
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
@@ -573,12 +606,20 @@
 									</div>
 								</div>
 								{#if !finding.remediated}
-									<button
-										onclick={() => markRemediated(finding.id)}
-										class="ml-4 rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
-									>
-										Mark as Remediated
-									</button>
+									<div class="ml-4 flex flex-col gap-2">
+										<button
+											onclick={() => markRemediated(finding.id)}
+											class="cursor-pointer rounded-md bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200"
+										>
+											✓ Mark as Fixed
+										</button>
+										<button
+											onclick={() => markIgnored(finding.id)}
+											class="cursor-pointer rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
+										>
+											Ignore
+										</button>
+									</div>
 								{/if}
 							</div>
 						</div>
@@ -612,7 +653,20 @@
 												Remediated
 											</span>
 										{/if}
+										{#if finding.still_present_after_remediation}
+											<span
+												class="inline-flex rounded-full bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800"
+											>
+												⚠️ Still Present
+											</span>
+										{/if}
 									</div>
+									{#if finding.still_present_after_remediation}
+										<div class="mb-2 rounded-md bg-orange-50 p-2 text-xs text-orange-800">
+											<strong>Warning:</strong> This PII was marked as remediated but is still present
+											in the file. Please verify the issue has been resolved.
+										</div>
+									{/if}
 									<div class="text-xs text-gray-500">{finding.source_detail}</div>
 									{#if finding.recommended_action}
 										<div class="mt-2 text-sm text-gray-600">
@@ -625,12 +679,20 @@
 									</div>
 								</div>
 								{#if !finding.remediated}
-									<button
-										onclick={() => markRemediated(finding.id)}
-										class="ml-4 rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
-									>
-										Mark as Remediated
-									</button>
+									<div class="ml-4 flex flex-col gap-2">
+										<button
+											onclick={() => markRemediated(finding.id)}
+											class="cursor-pointer rounded-md bg-green-100 px-3 py-1 text-sm text-green-700 hover:bg-green-200"
+										>
+											✓ Mark as Fixed
+										</button>
+										<button
+											onclick={() => markIgnored(finding.id)}
+											class="cursor-pointer rounded-md bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
+										>
+											Ignore
+										</button>
+									</div>
 								{/if}
 							</div>
 						</div>

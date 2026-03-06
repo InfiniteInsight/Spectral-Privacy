@@ -146,6 +146,7 @@ pub fn run() {
             commands::discovery::start_discovery_scan,
             commands::discovery::get_discovery_findings,
             commands::discovery::mark_finding_remediated,
+            commands::discovery::mark_finding_ignored,
             commands::privacy::get_privacy_settings,
             commands::privacy::set_privacy_level,
             commands::privacy::set_custom_feature_flags,
