@@ -54,14 +54,67 @@ pub struct CreateDiscoveryFinding {
     pub pii_type: String,
 }
 
-/// Insert a new discovery finding
+/// Check if a finding already exists (to prevent duplicates)
+///
+/// Returns the existing finding if one matches the `vault_id`, `source_detail`, and `pii_type`.
+async fn find_existing_finding(
+    pool: &Pool<Sqlite>,
+    vault_id: &str,
+    source_detail: &str,
+    pii_type: &str,
+) -> Result<Option<DiscoveryFinding>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, found_at
+         FROM discovery_findings
+         WHERE vault_id = ? AND source_detail = ? AND pii_type = ?
+         LIMIT 1",
+    )
+    .bind(vault_id)
+    .bind(source_detail)
+    .bind(pii_type)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.map(|row| DiscoveryFinding {
+        id: row.get("id"),
+        vault_id: row.get("vault_id"),
+        source: row.get("source"),
+        source_detail: row.get("source_detail"),
+        finding_type: row.get("finding_type"),
+        risk_level: row.get("risk_level"),
+        description: row.get("description"),
+        recommended_action: row.get("recommended_action"),
+        pii_type: row.get("pii_type"),
+        remediated: row.get::<i64, _>("remediated") != 0,
+        found_at: row.get("found_at"),
+    }))
+}
+
+/// Insert a new discovery finding, or return existing if already present
+///
+/// This prevents duplicate findings from being created when the same PII
+/// is found in the same location across multiple scans.
 ///
 /// # Errors
-/// Returns `sqlx::Error` if the database insert fails.
+/// Returns `sqlx::Error` if the database operation fails.
 pub async fn insert_discovery_finding(
     pool: &Pool<Sqlite>,
     params: CreateDiscoveryFinding,
 ) -> Result<DiscoveryFinding, sqlx::Error> {
+    // Check if a finding already exists for this location and PII type
+    if let Some(existing) = find_existing_finding(
+        pool,
+        &params.vault_id,
+        &params.source_detail,
+        &params.pii_type,
+    )
+    .await?
+    {
+        // Return the existing finding (whether remediated or not)
+        return Ok(existing);
+    }
+
+    // Create a new finding if none exists
     let id = uuid::Uuid::new_v4().to_string();
     let found_at = chrono::Utc::now().to_rfc3339();
 
