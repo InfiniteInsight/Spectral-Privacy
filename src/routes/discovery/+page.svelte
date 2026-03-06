@@ -12,9 +12,9 @@
 	let findings = $state<DiscoveryFinding[]>([]);
 	let loading = $state(true);
 	let scanning = $state(false);
+	let paused = $state(false);
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
-	let currentDirectory = $state<string | null>(null);
 	let scannedPaths = $state<Array<{ path: string; name: string; id: string }>>([]);
 	let scanCounter = 0; // Unique counter for each scanned file
 
@@ -171,6 +171,22 @@
 		}
 	}
 
+	// Pause scan (stops updating UI but scan continues in background)
+	function pauseScan() {
+		paused = true;
+	}
+
+	// Resume scan (resumes UI updates)
+	function resumeScan() {
+		paused = false;
+	}
+
+	// Stop scan (stops UI updates and resets state)
+	function stopScan() {
+		scanning = false;
+		paused = false;
+	}
+
 	// Set up event listeners and load findings
 	$effect(() => {
 		loadFindings();
@@ -180,17 +196,19 @@
 
 		// Listen for scan progress
 		listen('discovery:progress', (event: any) => {
-			currentDirectory = event.payload.directory;
-			// Add to scanned paths list (keep last 100 for performance)
-			scanCounter++;
-			scannedPaths = [
-				{
-					path: event.payload.path || event.payload.directory,
-					name: event.payload.directory,
-					id: `${scanCounter}-${Date.now()}`
-				},
-				...scannedPaths.slice(0, 99)
-			];
+			// Only update UI if not paused
+			if (!paused) {
+				// Add to scanned paths list (keep last 100 for performance)
+				scanCounter++;
+				scannedPaths = [
+					{
+						path: event.payload.path || event.payload.directory,
+						name: event.payload.directory,
+						id: `${scanCounter}-${Date.now()}`
+					},
+					...scannedPaths.slice(0, 99)
+				];
+			}
 		}).then((unlisten) => {
 			cleanupProgress = unlisten;
 		});
@@ -198,7 +216,6 @@
 		// Listen for scan completion
 		listen('discovery:complete', () => {
 			scanning = false;
-			currentDirectory = null;
 			loadFindings();
 		}).then((unlisten) => {
 			cleanupComplete = unlisten;
@@ -388,45 +405,78 @@
 			{/if}
 		</div>
 
-		<!-- Scan Button -->
-		<div class="flex justify-end">
-			<button
-				onclick={startScan}
-				disabled={scanning || loading || (scanMode === 'custom' && customDirectories.length === 0)}
-				class="cursor-pointer rounded-md bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-			>
-				{#if scanning}
-					<span class="flex items-center gap-2">
-						<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-						{#if currentDirectory}
-							Scanning {currentDirectory}...
-						{:else}
-							Scanning...
-						{/if}
-					</span>
+		<!-- Scan Control Buttons -->
+		<div class="flex justify-end gap-2">
+			{#if scanning}
+				<!-- Pause/Resume Button -->
+				{#if paused}
+					<button
+						onclick={resumeScan}
+						class="cursor-pointer rounded-md bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700 min-w-[100px]"
+					>
+						▶ Resume
+					</button>
 				{:else}
-					Run PII Discovery Scan
+					<button
+						onclick={pauseScan}
+						class="cursor-pointer rounded-md bg-yellow-600 px-6 py-2 text-sm font-medium text-white hover:bg-yellow-700 min-w-[100px]"
+					>
+						⏸ Pause
+					</button>
 				{/if}
-			</button>
+
+				<!-- Stop Button -->
+				<button
+					onclick={stopScan}
+					class="cursor-pointer rounded-md bg-red-600 px-6 py-2 text-sm font-medium text-white hover:bg-red-700 min-w-[100px]"
+				>
+					⏹ Stop
+				</button>
+			{:else}
+				<!-- Start Scan Button -->
+				<button
+					onclick={startScan}
+					disabled={loading || (scanMode === 'custom' && customDirectories.length === 0)}
+					class="cursor-pointer rounded-md bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					Run PII Discovery Scan
+				</button>
+			{/if}
 		</div>
 	</div>
 
 	{#if scanning}
 		<div class="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-				<h3 class="text-sm font-semibold text-indigo-900">
-					Scanning for PII...
-					{#if scannedPaths.length > 0}
-						({scannedPaths.length} files scanned)
-					{/if}
-				</h3>
+				{#if paused}
+					<div class="rounded-full h-5 w-5 bg-yellow-600"></div>
+					<h3 class="text-sm font-semibold text-yellow-900">
+						Scan Paused
+						{#if scannedPaths.length > 0}
+							({scannedPaths.length} files scanned so far)
+						{/if}
+					</h3>
+				{:else}
+					<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+					<h3 class="text-sm font-semibold text-indigo-900">
+						Scanning for PII...
+						{#if scannedPaths.length > 0}
+							({scannedPaths.length} files scanned)
+						{/if}
+					</h3>
+				{/if}
 			</div>
 
 			<!-- Current File Being Scanned -->
 			<div class="mb-3 rounded-lg border border-indigo-300 bg-white p-3">
-				<div class="text-xs font-medium text-indigo-700 mb-1">Currently scanning:</div>
-				{#if scannedPaths.length > 0}
+				<div class="text-xs font-medium text-indigo-700 mb-1">
+					{paused ? 'Last file scanned:' : 'Currently scanning:'}
+				</div>
+				{#if paused}
+					<div class="text-sm text-yellow-800 italic font-medium">
+						Paused - Click Resume to continue
+					</div>
+				{:else if scannedPaths.length > 0}
 					<div class="font-mono text-sm font-semibold text-gray-900 break-all">
 						{scannedPaths[0].name}
 					</div>
