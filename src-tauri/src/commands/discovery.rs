@@ -520,13 +520,6 @@ pub fn stop_discovery_scan() -> Result<(), String> {
 pub fn open_file_location(file_path: String) -> Result<(), String> {
     use std::process::Command;
 
-    let path = std::path::Path::new(&file_path);
-
-    // Get the parent directory
-    let dir = path
-        .parent()
-        .ok_or_else(|| "Could not determine parent directory".to_string())?;
-
     #[cfg(target_os = "windows")]
     {
         // Windows: Use explorer /select to highlight the file
@@ -548,6 +541,10 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         // Linux: Open the parent directory with xdg-open
+        let path = std::path::Path::new(&file_path);
+        let dir = path
+            .parent()
+            .ok_or_else(|| "Could not determine parent directory".to_string())?;
         Command::new("xdg-open")
             .arg(dir)
             .spawn()
