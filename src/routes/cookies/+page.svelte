@@ -375,6 +375,13 @@
 						<p class="text-gray-600">View and manage tracking cookies from your browsers</p>
 					</div>
 					<div class="flex gap-2">
+						<button
+							onclick={handleRunNewScan}
+							disabled={scanning}
+							class="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{scanning ? 'Scanning...' : 'Run New Scan'}
+						</button>
 						{#if latestScan && latestScan.totalCookies > 0}
 							<button
 								onclick={handleRemoveAllTrackingCookies}
@@ -393,13 +400,6 @@
 								{removingAll ? 'Removing...' : 'Delete All Cookies'}
 							</button>
 						{/if}
-						<button
-							onclick={handleRunNewScan}
-							disabled={scanning}
-							class="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{scanning ? 'Scanning...' : 'Run New Scan'}
-						</button>
 						<button
 							onclick={() => goto('/')}
 							class="cursor-pointer px-4 py-2 text-gray-600 transition-colors hover:text-gray-900"
