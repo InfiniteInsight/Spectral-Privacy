@@ -158,6 +158,7 @@ pub fn run() {
             commands::cookies::scan_cookies,
             commands::cookies::get_cookies_for_broker,
             commands::cookies::remove_cookies_for_broker,
+            commands::cookies::remove_cookies_for_domain,
             commands::cookies::remove_all_cookies,
             commands::cookies::remove_all_tracking_cookies,
             commands::cookies::remove_single_cookie,

@@ -18,6 +18,9 @@
 	let removingAll = $state(false);
 	let removingAllTracking = $state(false);
 	let removingCookie = $state<string | null>(null);
+	let expandedDomain = $state<string | null>(null);
+	let domainCookies = $state<Map<string, ScannedCookie[]>>(new Map());
+	let removingDomain = $state<string | null>(null);
 
 	// Load data on mount
 	$effect(() => {
@@ -239,6 +242,77 @@
 			} finally {
 				loadingBrokerCookies = false;
 			}
+		}
+	}
+
+	async function handleRemoveCookiesForDomain(domain: string) {
+		if (!vaultStore.currentVaultId || !confirm(`Remove all cookies for domain "${domain}"?`))
+			return;
+
+		removingDomain = domain;
+		try {
+			await cookiesAPI.removeCookiesForDomain(vaultStore.currentVaultId, domain);
+			// Reload scans and unmatched cookies
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+			const unmatched = await cookiesAPI.getUnmatchedCookies(vaultStore.currentVaultId);
+			unmatchedCookies = unmatched;
+			expandedDomain = null;
+			domainCookies.delete(domain);
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove domain cookies:', err);
+		} finally {
+			removingDomain = null;
+		}
+	}
+
+	async function toggleDomainCookies(domain: string) {
+		if (expandedDomain === domain) {
+			expandedDomain = null;
+			return;
+		}
+
+		expandedDomain = domain;
+
+		// Filter cookies for this domain from unmatchedCookies
+		const cookies = unmatchedCookies.filter((c) => c.cookieDomain === domain);
+		domainCookies.set(domain, cookies);
+	}
+
+	async function handleRemoveSingleDomainCookie(
+		cookieId: string,
+		cookieName: string,
+		domain: string
+	) {
+		if (!vaultStore.currentVaultId || !confirm(`Remove cookie "${cookieName}"?`)) return;
+
+		removingCookie = cookieId;
+		try {
+			await cookiesAPI.removeSingleCookie(vaultStore.currentVaultId, cookieId);
+
+			// Remove from local state
+			if (expandedDomain === domain) {
+				const cookies = domainCookies.get(domain);
+				if (cookies) {
+					domainCookies.set(
+						domain,
+						cookies.filter((c) => c.id !== cookieId)
+					);
+				}
+			}
+
+			// Remove from unmatchedCookies
+			unmatchedCookies = unmatchedCookies.filter((c) => c.id !== cookieId);
+
+			// Reload scans to update counts
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to remove cookie:', err);
+		} finally {
+			removingCookie = null;
 		}
 	}
 
@@ -579,30 +653,147 @@
 											<th
 												class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
 											>
-												Cookie Names
+												Actions
 											</th>
 										</tr>
 									</thead>
 									<tbody class="divide-y divide-gray-200 bg-white">
-										{#each cookiesByDomain as { domain, cookies, count }}
+										{#each cookiesByDomain as { domain, count }}
 											<tr class="hover:bg-gray-50">
 												<td class="px-6 py-4">
 													<div class="font-medium text-gray-900">{domain}</div>
 												</td>
 												<td class="whitespace-nowrap px-6 py-4">
-													<span
-														class="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800"
+													<button
+														onclick={() => toggleDomainCookies(domain)}
+														class="inline-flex cursor-pointer rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-200"
+														title="Click to view cookie details"
 													>
 														{count}
 														{count === 1 ? 'cookie' : 'cookies'}
-													</span>
+														{#if expandedDomain === domain}
+															▲
+														{:else}
+															▼
+														{/if}
+													</button>
 												</td>
-												<td class="px-6 py-4">
-													<div class="max-w-2xl text-sm text-gray-600">
-														{cookies.map((c) => c.cookieName).join(', ')}
-													</div>
+												<td class="whitespace-nowrap px-6 py-4 text-sm">
+													<button
+														onclick={() => handleRemoveCookiesForDomain(domain)}
+														disabled={removingDomain === domain}
+														class="cursor-pointer text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+													>
+														{removingDomain === domain ? 'Removing...' : 'Remove Cookies'}
+													</button>
 												</td>
 											</tr>
+
+											<!-- Expanded cookie details -->
+											{#if expandedDomain === domain}
+												{@const cookies = domainCookies.get(domain) || []}
+												<tr>
+													<td colspan="3" class="bg-gray-50 px-6 py-4">
+														{#if cookies.length > 0}
+															<div
+																class="overflow-hidden rounded-lg border border-gray-200 bg-white"
+															>
+																<table class="min-w-full divide-y divide-gray-200">
+																	<thead class="bg-gray-100">
+																		<tr>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Cookie Name
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Domain
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Browser
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Profile
+																			</th>
+																			<th
+																				class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-600"
+																			>
+																				Actions
+																			</th>
+																		</tr>
+																	</thead>
+																	<tbody class="divide-y divide-gray-200 bg-white">
+																		{#each cookies as cookie}
+																			<tr class="hover:bg-gray-50">
+																				<td class="px-4 py-2">
+																					<div class="text-sm font-medium text-gray-900">
+																						{cookie.cookieName}
+																					</div>
+																					<div class="text-xs text-gray-500">
+																						{cookie.cookieDbFilename}
+																					</div>
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.cookieDomain}
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.browserType}
+																				</td>
+																				<td class="px-4 py-2 text-sm text-gray-600">
+																					{cookie.profileName}
+																				</td>
+																				<td class="px-4 py-2 text-sm">
+																					<div class="flex gap-2">
+																						<button
+																							onclick={() =>
+																								handleOpenCookieLocation(
+																									cookie.browserType,
+																									cookie.profileName
+																								)}
+																							class="cursor-pointer text-blue-600 hover:text-blue-900"
+																							title="Open browser profile folder (cookies are stored in the '{cookie.cookieDbFilename}' database file)"
+																						>
+																							📁 Profile
+																						</button>
+																						{#if cookie.id}
+																							<button
+																								onclick={() =>
+																									handleRemoveSingleDomainCookie(
+																										cookie.id!,
+																										cookie.cookieName,
+																										domain
+																									)}
+																								disabled={removingCookie === cookie.id}
+																								class="cursor-pointer text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+																							>
+																								{removingCookie === cookie.id
+																									? 'Deleting...'
+																									: 'Delete'}
+																							</button>
+																						{:else}
+																							<span class="text-gray-400">N/A</span>
+																						{/if}
+																					</div>
+																				</td>
+																			</tr>
+																		{/each}
+																	</tbody>
+																</table>
+															</div>
+														{:else}
+															<div class="py-4 text-center text-sm text-gray-600">
+																No cookies found for this domain.
+															</div>
+														{/if}
+													</td>
+												</tr>
+											{/if}
 										{/each}
 									</tbody>
 								</table>

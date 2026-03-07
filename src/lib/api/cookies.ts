@@ -78,6 +78,16 @@ export const cookiesAPI = {
 	},
 
 	/**
+	 * Remove all cookies for a specific domain.
+	 */
+	async removeCookiesForDomain(vaultId: string, domain: string): Promise<CookieRemovalResponse[]> {
+		return await invoke<CookieRemovalResponse[]>('remove_cookies_for_domain', {
+			vaultId,
+			domain
+		});
+	},
+
+	/**
 	 * Remove all scanned cookies (both matched and unmatched).
 	 */
 	async removeAllCookies(vaultId: string): Promise<CookieRemovalResponse[]> {

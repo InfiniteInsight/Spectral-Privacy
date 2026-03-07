@@ -232,6 +232,54 @@ pub async fn get_cookies_by_broker(
     Ok(cookies)
 }
 
+/// Get cookies for a specific domain (typically unmatched cookies).
+pub async fn get_cookies_by_domain(
+    pool: &Pool<Sqlite>,
+    vault_id: &str,
+    domain: &str,
+) -> Result<Vec<BrowserCookie>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, vault_id, browser_type, profile_name, cookie_name, cookie_domain,
+                cookie_value, cookie_path, creation_time, expiry_time, last_access_time,
+                is_secure, is_httponly, same_site, matched_broker_id,
+                scan_timestamp, removal_status, removed_at, cookie_db_filename
+         FROM browser_cookies
+         WHERE vault_id = ? AND cookie_domain = ? AND removal_status = 'Pending'
+         ORDER BY scan_timestamp DESC",
+    )
+    .bind(vault_id)
+    .bind(domain)
+    .fetch_all(pool)
+    .await?;
+
+    let cookies: Vec<BrowserCookie> = rows
+        .into_iter()
+        .map(|row| BrowserCookie {
+            id: row.get("id"),
+            vault_id: row.get("vault_id"),
+            browser_type: row.get("browser_type"),
+            profile_name: row.get("profile_name"),
+            cookie_name: row.get("cookie_name"),
+            cookie_domain: row.get("cookie_domain"),
+            cookie_value: row.get("cookie_value"),
+            cookie_path: row.get("cookie_path"),
+            creation_time: row.get("creation_time"),
+            expiry_time: row.get("expiry_time"),
+            last_access_time: row.get("last_access_time"),
+            is_secure: row.get("is_secure"),
+            is_httponly: row.get("is_httponly"),
+            same_site: row.get("same_site"),
+            matched_broker_id: row.get("matched_broker_id"),
+            scan_timestamp: row.get("scan_timestamp"),
+            removal_status: row.get("removal_status"),
+            removed_at: row.get("removed_at"),
+            cookie_db_filename: row.get("cookie_db_filename"),
+        })
+        .collect();
+
+    Ok(cookies)
+}
+
 /// Mark cookies as removed.
 pub async fn mark_cookies_removed(
     pool: &Pool<Sqlite>,
