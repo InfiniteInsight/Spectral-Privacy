@@ -26,6 +26,7 @@ export interface ScannedCookie {
 	cookieDomain: string;
 	browserType: string;
 	profileName: string;
+	cookieDbFilename: string;
 	matchedBrokerId: string | null;
 	isSecure: boolean;
 	isHttponly: boolean;

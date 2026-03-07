@@ -27,6 +27,7 @@ pub struct BrowserCookie {
     pub scan_timestamp: String,
     pub removal_status: String,
     pub removed_at: Option<String>,
+    pub cookie_db_filename: String,
 }
 
 /// Cookie scan session.
@@ -146,7 +147,7 @@ pub async fn get_scanned_cookies(
         "SELECT id, vault_id, browser_type, profile_name, cookie_name, cookie_domain,
                 cookie_value, cookie_path, creation_time, expiry_time, last_access_time,
                 is_secure, is_httponly, same_site, matched_broker_id,
-                scan_timestamp, removal_status, removed_at
+                scan_timestamp, removal_status, removed_at, cookie_db_filename
          FROM browser_cookies
          WHERE vault_id = ?
          ORDER BY scan_timestamp DESC",
@@ -176,6 +177,7 @@ pub async fn get_scanned_cookies(
             scan_timestamp: row.get("scan_timestamp"),
             removal_status: row.get("removal_status"),
             removed_at: row.get("removed_at"),
+            cookie_db_filename: row.get("cookie_db_filename"),
         })
         .collect();
 
@@ -192,7 +194,7 @@ pub async fn get_cookies_by_broker(
         "SELECT id, vault_id, browser_type, profile_name, cookie_name, cookie_domain,
                 cookie_value, cookie_path, creation_time, expiry_time, last_access_time,
                 is_secure, is_httponly, same_site, matched_broker_id,
-                scan_timestamp, removal_status, removed_at
+                scan_timestamp, removal_status, removed_at, cookie_db_filename
          FROM browser_cookies
          WHERE vault_id = ? AND matched_broker_id = ? AND removal_status = 'Pending'
          ORDER BY scan_timestamp DESC",
@@ -223,6 +225,7 @@ pub async fn get_cookies_by_broker(
             scan_timestamp: row.get("scan_timestamp"),
             removal_status: row.get("removal_status"),
             removed_at: row.get("removed_at"),
+            cookie_db_filename: row.get("cookie_db_filename"),
         })
         .collect();
 
@@ -339,7 +342,7 @@ pub async fn get_unmatched_cookies(
             "SELECT id, vault_id, browser_type, profile_name, cookie_name, cookie_domain,
                     cookie_value, cookie_path, creation_time, expiry_time, last_access_time,
                     is_secure, is_httponly, same_site, matched_broker_id,
-                    scan_timestamp, removal_status, removed_at
+                    scan_timestamp, removal_status, removed_at, cookie_db_filename
              FROM browser_cookies
              WHERE vault_id = ? AND matched_broker_id IS NULL AND scan_timestamp >= ?
              ORDER BY cookie_domain, cookie_name",
@@ -370,6 +373,7 @@ pub async fn get_unmatched_cookies(
                 scan_timestamp: row.get("scan_timestamp"),
                 removal_status: row.get("removal_status"),
                 removed_at: row.get("removed_at"),
+                cookie_db_filename: row.get("cookie_db_filename"),
             })
             .collect();
 

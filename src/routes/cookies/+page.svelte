@@ -469,8 +469,13 @@
 																	<tbody class="divide-y divide-gray-200 bg-white">
 																		{#each cookies as cookie}
 																			<tr class="hover:bg-gray-50">
-																				<td class="px-4 py-2 text-sm font-medium text-gray-900">
-																					{cookie.cookieName}
+																				<td class="px-4 py-2">
+																					<div class="text-sm font-medium text-gray-900">
+																						{cookie.cookieName}
+																					</div>
+																					<div class="text-xs text-gray-500">
+																						{cookie.cookieDbFilename}
+																					</div>
 																				</td>
 																				<td class="px-4 py-2 text-sm text-gray-600">
 																					{cookie.cookieDomain}

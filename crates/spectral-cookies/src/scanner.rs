@@ -15,6 +15,7 @@ pub struct ScannedCookie {
     pub cookie: Cookie,
     pub browser_type: BrowserType,
     pub profile_name: String,
+    pub cookie_db_filename: String,
     pub matched_broker_id: Option<String>,
 }
 
@@ -99,6 +100,13 @@ impl CookieScanner {
     fn scan_chromium_cookies(&self, profile: &BrowserProfile) -> Result<Vec<ScannedCookie>> {
         let db_path = &profile.cookie_db_path;
 
+        // Extract the database filename for display purposes
+        let cookie_db_filename = db_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Cookies")
+            .to_string();
+
         // Copy database to temporary location to avoid lock issues
         let temp_db = self.copy_to_temp(db_path)?;
 
@@ -145,6 +153,7 @@ impl CookieScanner {
                 cookie,
                 browser_type: profile.browser_type,
                 profile_name: profile.profile_name.clone(),
+                cookie_db_filename: cookie_db_filename.clone(),
                 matched_broker_id,
             });
         }
@@ -158,6 +167,13 @@ impl CookieScanner {
     /// Scan Firefox cookies.
     fn scan_firefox_cookies(&self, profile: &BrowserProfile) -> Result<Vec<ScannedCookie>> {
         let db_path = &profile.cookie_db_path;
+
+        // Extract the database filename for display purposes
+        let cookie_db_filename = db_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("cookies.sqlite")
+            .to_string();
 
         // Copy database to temporary location
         let temp_db = self.copy_to_temp(db_path)?;
@@ -205,6 +221,7 @@ impl CookieScanner {
                 cookie,
                 browser_type: profile.browser_type,
                 profile_name: profile.profile_name.clone(),
+                cookie_db_filename: cookie_db_filename.clone(),
                 matched_broker_id,
             });
         }

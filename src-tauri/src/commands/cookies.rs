@@ -34,6 +34,7 @@ pub struct ScannedCookieResponse {
     pub cookie_domain: String,
     pub browser_type: String,
     pub profile_name: String,
+    pub cookie_db_filename: String,
     pub matched_broker_id: Option<String>,
     pub is_secure: bool,
     pub is_httponly: bool,
@@ -150,6 +151,7 @@ async fn save_scan_results_to_db(
                 scan_timestamp: scan_timestamp.to_string(),
                 removal_status: "Pending".to_string(),
                 removed_at: None,
+                cookie_db_filename: scanned_cookie.cookie_db_filename.clone(),
             }
         })
         .collect();
@@ -309,6 +311,7 @@ pub async fn get_cookies_for_broker(
             cookie_domain: c.cookie_domain,
             browser_type: c.browser_type,
             profile_name: c.profile_name.unwrap_or_default(),
+            cookie_db_filename: c.cookie_db_filename,
             matched_broker_id: c.matched_broker_id,
             is_secure: c.is_secure != 0,
             is_httponly: c.is_httponly != 0,
@@ -963,6 +966,7 @@ pub async fn get_unmatched_cookies(
             cookie_domain: c.cookie_domain,
             browser_type: c.browser_type,
             profile_name: c.profile_name.unwrap_or_default(),
+            cookie_db_filename: c.cookie_db_filename,
             matched_broker_id: c.matched_broker_id,
             is_secure: c.is_secure != 0,
             is_httponly: c.is_httponly != 0,
