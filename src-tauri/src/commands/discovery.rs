@@ -467,8 +467,13 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 pub async fn get_discovery_findings(
     state: State<'_, AppState>,
     vault_id: String,
+    include_ignored: Option<bool>,
 ) -> Result<Vec<DiscoveryFinding>, String> {
-    info!("get_discovery_findings: vault_id={}", vault_id);
+    let include_ignored = include_ignored.unwrap_or(false);
+    info!(
+        "get_discovery_findings: vault_id={}, include_ignored={}",
+        vault_id, include_ignored
+    );
 
     // Get the unlocked vault
     let vault = state
@@ -481,9 +486,13 @@ pub async fn get_discovery_findings(
         .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
     // Query findings
-    let findings = spectral_db::discovery_findings::get_discovery_findings(db.pool(), &vault_id)
-        .await
-        .map_err(|e| format!("Failed to get discovery findings: {e}"))?;
+    let findings = spectral_db::discovery_findings::get_discovery_findings(
+        db.pool(),
+        &vault_id,
+        include_ignored,
+    )
+    .await
+    .map_err(|e| format!("Failed to get discovery findings: {e}"))?;
 
     // Convert to response format
     let response: Vec<DiscoveryFinding> = findings

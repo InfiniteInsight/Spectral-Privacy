@@ -26,11 +26,6 @@
 		type TaskType
 	} from '$lib/api/privacy';
 	import { auditAPI, type AuditLogEntry } from '$lib/api/audit';
-	import {
-		cookiesAPI,
-		type CookieScanResponse,
-		type CookieRemovalResponse
-	} from '$lib/api/cookies';
 	import EmailProviderAccordion from '$lib/components/EmailProviderAccordion.svelte';
 	import EmailSettings from '$lib/components/EmailSettings.svelte';
 
@@ -94,13 +89,6 @@
 	let loadingAudit = $state(false);
 	let auditError = $state<string | null>(null);
 	let auditFilter = $state<string>('all'); // 'all' or specific event type
-
-	// Cookie scanner state
-	let cookieScanResult = $state<CookieScanResponse | null>(null);
-	let cookieScanning = $state(false);
-	let cookieError = $state<string | null>(null);
-	let cookieRemovalInProgress = $state<Record<string, boolean>>({});
-	let cookieRemovalResults = $state<Record<string, CookieRemovalResponse[]>>({});
 
 	// Email setup help state
 	let showEmailHelp = $state(false);
@@ -336,38 +324,6 @@
 		}
 	}
 
-	async function handleScanCookies() {
-		if (!vaultStore.currentVaultId) return;
-		cookieScanning = true;
-		cookieError = null;
-		try {
-			cookieScanResult = await cookiesAPI.scanCookies(vaultStore.currentVaultId);
-		} catch (err) {
-			cookieError = err instanceof Error ? err.message : String(err);
-			console.error('Failed to scan cookies:', err);
-		} finally {
-			cookieScanning = false;
-		}
-	}
-
-	async function handleRemoveCookiesForBroker(brokerId: string) {
-		if (!vaultStore.currentVaultId) return;
-		cookieRemovalInProgress[brokerId] = true;
-		cookieError = null;
-		try {
-			const results = await cookiesAPI.removeCookiesForBroker(vaultStore.currentVaultId, brokerId);
-			cookieRemovalResults[brokerId] = results;
-
-			// Refresh scan results to show updated counts
-			cookieScanResult = await cookiesAPI.scanCookies(vaultStore.currentVaultId);
-		} catch (err) {
-			cookieError = err instanceof Error ? err.message : String(err);
-			console.error('Failed to remove cookies:', err);
-		} finally {
-			cookieRemovalInProgress[brokerId] = false;
-		}
-	}
-
 	function formatTimestamp(timestamp: string): string {
 		const date = new Date(timestamp);
 		return date.toLocaleString('en-US', {
@@ -397,7 +353,7 @@
 
 	<!-- Tab bar -->
 	<div class="mb-8 flex gap-1 border-b border-gray-200" role="tablist">
-		{#each [['privacy', 'Privacy Level'], ['llm', 'LLM Providers'], ['email', 'Email'], ['cookies', 'Cookie Scanner'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
+		{#each [['privacy', 'Privacy Level'], ['llm', 'LLM Providers'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
 			<a
 				href="/settings?tab={id}"
 				role="tab"
@@ -1604,151 +1560,6 @@
 					{/each}
 				</div>
 			{/if}
-		</section>
-	{:else if activeTab === 'cookies'}
-		<section>
-			<div class="mb-4">
-				<h2 class="text-lg font-semibold text-gray-800">Cookie Scanner</h2>
-				<p class="mt-2 text-sm text-gray-600">
-					Scan your browsers for tracking cookies and remove those associated with data brokers.
-				</p>
-			</div>
-
-			{#if cookieError}
-				<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-					{cookieError}
-				</div>
-			{/if}
-
-			<!-- Scan Button -->
-			<div class="mb-6">
-				<button
-					onclick={handleScanCookies}
-					disabled={cookieScanning}
-					class="rounded-lg bg-primary-600 px-6 py-3 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-				>
-					{cookieScanning ? 'Scanning...' : 'Scan All Browsers for Tracking Cookies'}
-				</button>
-			</div>
-
-			<!-- Scan Results -->
-			{#if cookieScanResult}
-				<div class="mb-8 rounded-lg border border-gray-200 bg-white p-6">
-					<h3 class="mb-4 text-lg font-semibold text-gray-900">Latest Scan Results</h3>
-
-					<!-- Summary Cards -->
-					<div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-						<div class="rounded-lg bg-blue-50 p-4">
-							<p class="text-sm font-medium text-blue-700">Total Cookies</p>
-							<p class="mt-1 text-3xl font-bold text-blue-900">{cookieScanResult.totalCookies}</p>
-						</div>
-						<div class="rounded-lg bg-orange-50 p-4">
-							<p class="text-sm font-medium text-orange-700">Matched to Brokers</p>
-							<p class="mt-1 text-3xl font-bold text-orange-900">
-								{cookieScanResult.matchedCookies}
-							</p>
-						</div>
-						<div class="rounded-lg bg-green-50 p-4">
-							<p class="text-sm font-medium text-green-700">Browsers Scanned</p>
-							<p class="mt-1 text-3xl font-bold text-green-900">
-								{cookieScanResult.browsersScanned.length}
-							</p>
-						</div>
-					</div>
-
-					<!-- Browsers Scanned -->
-					{#if cookieScanResult.browsersScanned.length > 0}
-						<div class="mb-6">
-							<h4 class="mb-2 font-medium text-gray-900">Browsers Scanned</h4>
-							<div class="flex flex-wrap gap-2">
-								{#each cookieScanResult.browsersScanned as browser}
-									<span class="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
-										>{browser}</span
-									>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<!-- Cookies by Broker -->
-					{#if Object.keys(cookieScanResult.cookiesByBroker).length > 0}
-						<div>
-							<h4 class="mb-3 font-medium text-gray-900">Cookies by Data Broker</h4>
-							<div class="space-y-3">
-								{#each Object.entries(cookieScanResult.cookiesByBroker) as [brokerId, count]}
-									<div
-										class="flex items-center justify-between rounded-lg border border-gray-200 p-4"
-									>
-										<div>
-											<p class="font-medium text-gray-900">{brokerId}</p>
-											<p class="text-sm text-gray-500">
-												{count}
-												{count === 1 ? 'cookie' : 'cookies'} found
-											</p>
-											{#if cookieRemovalResults[brokerId]}
-												<div class="mt-2 space-y-1">
-													{#each cookieRemovalResults[brokerId] as result}
-														<p class="text-xs text-gray-600">
-															{result.browserType} ({result.profileName}):
-															<span class="text-green-600">{result.cookiesRemoved} removed</span>
-															{#if result.cookiesFailed > 0}
-																<span class="text-red-600">, {result.cookiesFailed} failed</span>
-															{/if}
-														</p>
-													{/each}
-												</div>
-											{/if}
-										</div>
-										<button
-											onclick={() => handleRemoveCookiesForBroker(brokerId)}
-											disabled={cookieRemovalInProgress[brokerId]}
-											class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{cookieRemovalInProgress[brokerId] ? 'Removing...' : 'Remove Cookies'}
-										</button>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{:else}
-						<div class="rounded-lg bg-green-50 p-4 text-center">
-							<p class="text-sm text-green-700">
-								No tracking cookies found! Your browsers are clean.
-							</p>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-					<svg
-						class="mx-auto mb-4 h-12 w-12 text-gray-400"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-						/>
-					</svg>
-					<p class="text-gray-600">
-						No scan results yet. Click the button above to scan your browsers.
-					</p>
-				</div>
-			{/if}
-
-			<!-- Important Notes -->
-			<div class="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-				<h4 class="mb-2 font-medium text-blue-900">Important Notes</h4>
-				<ul class="space-y-1 text-sm text-blue-700">
-					<li>• Close all browsers before removing cookies to prevent database locks</li>
-					<li>• Automatic backups are created before cookie removal</li>
-					<li>• Cookie removal is logged in the audit log</li>
-					<li>• Some cookies may reappear after visiting broker websites again</li>
-				</ul>
-			</div>
 		</section>
 	{/if}
 </div>

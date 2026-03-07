@@ -32,12 +32,16 @@
 	// Filter state
 	let piiTypeFilter = $state<Set<string>>(new Set());
 	let riskLevelFilter = $state<Set<string>>(new Set());
+	let showIgnored = $state(false);
 
 	// Filtered findings based on active filters
 	const filteredFindings = $derived(
 		findings.filter((f) => {
 			// Never show remediated findings
 			if (f.remediated) return false;
+
+			// Show ignored findings only if toggle is on
+			if (!showIgnored && f.ignored) return false;
 
 			// PII type filter (OR logic within group)
 			const piiMatch = piiTypeFilter.size === 0 || (f.pii_type && piiTypeFilter.has(f.pii_type));
@@ -97,7 +101,7 @@
 		try {
 			loading = true;
 			error = null;
-			findings = await getDiscoveryFindings(vid);
+			findings = await getDiscoveryFindings(vid, showIgnored);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -618,6 +622,19 @@
 				</button>
 			</div>
 
+			<!-- Show Ignored Toggle -->
+			<div class="flex items-center gap-2">
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={showIgnored}
+						onchange={() => loadFindings()}
+						class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+					/>
+					<span class="text-sm font-medium text-gray-700">Show ignored findings</span>
+				</label>
+			</div>
+
 			<!-- Findings count -->
 			<div class="text-sm text-gray-600">
 				Showing {filteredFindings.length} of {findings.filter((f) => !f.remediated).length} findings
@@ -685,6 +702,13 @@
 												class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
 											>
 												Remediated
+											</span>
+										{/if}
+										{#if finding.ignored}
+											<span
+												class="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800"
+											>
+												Ignored
 											</span>
 										{/if}
 										{#if finding.still_present_after_remediation}
@@ -780,6 +804,13 @@
 												class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
 											>
 												Remediated
+											</span>
+										{/if}
+										{#if finding.ignored}
+											<span
+												class="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-800"
+											>
+												Ignored
 											</span>
 										{/if}
 										{#if finding.still_present_after_remediation}

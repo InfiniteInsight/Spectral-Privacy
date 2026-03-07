@@ -188,23 +188,33 @@ pub async fn insert_discovery_finding(
     })
 }
 
-/// Get all discovery findings for a vault (excluding ignored findings)
+/// Get all discovery findings for a vault
+///
+/// # Arguments
+/// * `pool` - Database connection pool
+/// * `vault_id` - Vault identifier
+/// * `include_ignored` - If true, includes ignored findings; if false, excludes them
 ///
 /// # Errors
 /// Returns `sqlx::Error` if the database query fails.
 pub async fn get_discovery_findings(
     pool: &Pool<Sqlite>,
     vault_id: &str,
+    include_ignored: bool,
 ) -> Result<Vec<DiscoveryFinding>, sqlx::Error> {
-    let rows = sqlx::query(
+    let query = if include_ignored {
+        "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at, matched_value, line_number
+         FROM discovery_findings
+         WHERE vault_id = ?
+         ORDER BY found_at DESC"
+    } else {
         "SELECT id, vault_id, source, source_detail, finding_type, risk_level, description, recommended_action, pii_type, remediated, ignored, still_present_after_remediation, found_at, matched_value, line_number
          FROM discovery_findings
          WHERE vault_id = ? AND ignored = 0
-         ORDER BY found_at DESC",
-    )
-    .bind(vault_id)
-    .fetch_all(pool)
-    .await?;
+         ORDER BY found_at DESC"
+    };
+
+    let rows = sqlx::query(query).bind(vault_id).fetch_all(pool).await?;
 
     let findings = rows
         .into_iter()

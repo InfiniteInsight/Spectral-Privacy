@@ -37,9 +37,13 @@ export async function startDiscoveryScan(
 
 /**
  * Get all discovery findings for a vault
+ * @param includeIgnored - If true, includes ignored findings; if false, excludes them
  */
-export async function getDiscoveryFindings(vaultId: string): Promise<DiscoveryFinding[]> {
-	return invoke('get_discovery_findings', { vaultId });
+export async function getDiscoveryFindings(
+	vaultId: string,
+	includeIgnored?: boolean
+): Promise<DiscoveryFinding[]> {
+	return invoke('get_discovery_findings', { vaultId, includeIgnored });
 }
 
 /**
