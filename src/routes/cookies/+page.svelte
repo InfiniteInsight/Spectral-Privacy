@@ -21,6 +21,7 @@
 	let expandedDomain = $state<string | null>(null);
 	let domainCookies = $state<Map<string, ScannedCookie[]>>(new Map());
 	let removingDomain = $state<string | null>(null);
+	let scanning = $state(false);
 
 	// Load data on mount
 	$effect(() => {
@@ -316,6 +317,34 @@
 		}
 	}
 
+	async function handleRunNewScan() {
+		if (!vaultStore.currentVaultId) return;
+
+		scanning = true;
+		error = null;
+
+		try {
+			await cookiesAPI.scanCookies(vaultStore.currentVaultId);
+
+			// Reload scans and unmatched cookies
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
+			const unmatched = await cookiesAPI.getUnmatchedCookies(vaultStore.currentVaultId);
+			unmatchedCookies = unmatched;
+
+			// Clear expanded states
+			expandedBroker = null;
+			expandedDomain = null;
+			brokerCookies.clear();
+			domainCookies.clear();
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+			console.error('Failed to run scan:', err);
+		} finally {
+			scanning = false;
+		}
+	}
+
 	function formatDate(timestamp: string): string {
 		return new Date(timestamp).toLocaleString();
 	}
@@ -351,10 +380,11 @@
 							</button>
 						{/if}
 						<button
-							onclick={() => goto('/scan')}
-							class="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
+							onclick={handleRunNewScan}
+							disabled={scanning}
+							class="cursor-pointer rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
 						>
-							Run New Scan
+							{scanning ? 'Scanning...' : 'Run New Scan'}
 						</button>
 						<button
 							onclick={() => goto('/')}
