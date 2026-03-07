@@ -2,6 +2,7 @@
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { profileStore } from '$lib/stores/profile.svelte';
 	import { scanAPI, type ScanHistoryEntry } from '$lib/api/scan';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let history = $state<ScanHistoryEntry[]>([]);
 	let loading = $state(true);
@@ -110,9 +111,7 @@
 		</div>
 	{:else if loading}
 		<div class="flex justify-center py-12">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600"
-			></div>
+			<Spinner color="indigo" />
 		</div>
 	{:else if history.length === 0}
 		<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">

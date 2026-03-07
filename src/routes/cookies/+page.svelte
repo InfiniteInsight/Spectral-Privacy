@@ -3,6 +3,7 @@
 	import { cookiesAPI, type CookieScanResponse, type ScannedCookie } from '$lib/api/cookies';
 	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
 	import { goto } from '$app/navigation';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let recentScans = $state<CookieScanResponse[]>([]);
 	let unmatchedCookies = $state<ScannedCookie[]>([]);
@@ -293,9 +294,7 @@
 
 			{#if loading}
 				<div class="rounded-lg border border-gray-200 bg-white p-8 text-center">
-					<div
-						class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-purple-600"
-					></div>
+					<Spinner color="purple" />
 					<p class="mt-2 text-sm text-gray-500">Loading cookie scan results...</p>
 				</div>
 			{:else if error}
@@ -425,9 +424,7 @@
 												<td colspan="4" class="bg-gray-50 px-6 py-4">
 													{#if loadingBrokerCookies}
 														<div class="flex items-center justify-center py-4">
-															<div
-																class="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-purple-600"
-															></div>
+															<Spinner size="sm" color="purple" inline />
 															<span class="ml-2 text-sm text-gray-600">Loading cookies...</span>
 														</div>
 													{:else if brokerCookies.has(brokerId)}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { getPrivacyScore, type PrivacyScoreResult } from '$lib/api/score';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let result = $state<PrivacyScoreResult | null>(null);
 	let loading = $state(true);
@@ -47,7 +48,7 @@
 
 	{#if loading}
 		<div class="flex justify-center py-12">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+			<Spinner />
 		</div>
 	{:else if error}
 		<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</div>

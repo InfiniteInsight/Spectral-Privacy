@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { getDashboardSummary, type DashboardSummary } from '$lib/api/dashboard';
 	import { startScan } from '$lib/api/scan';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	// Reactive effect: Load profiles when vault is unlocked
 	$effect(() => {
@@ -83,7 +84,7 @@
 
 			{#if profileStore.loading}
 				<div class="flex items-center justify-center py-8">
-					<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+					<Spinner />
 				</div>
 			{:else if currentProfile}
 				<!-- Profile Info -->
