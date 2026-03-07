@@ -1170,8 +1170,18 @@ pub async fn open_cookie_location(
         profile.cookie_db_path.display()
     );
 
-    let db_dir = profile
+    // Canonicalize the path to resolve symlinks and relative paths
+    let canonical_db_path = profile
         .cookie_db_path
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize cookie database path: {}", e))?;
+
+    tracing::info!(
+        "Canonical cookie database path: {}",
+        canonical_db_path.display()
+    );
+
+    let db_dir = canonical_db_path
         .parent()
         .ok_or_else(|| "Could not determine cookie database directory".to_string())?;
 
@@ -1197,9 +1207,27 @@ pub async fn open_cookie_location(
     #[cfg(target_os = "linux")]
     {
         if is_wsl() {
-            // In WSL, use Windows explorer.exe with the Windows path
-            std::process::Command::new("explorer.exe")
+            // In WSL, convert Linux path to Windows path using wslpath
+            let output = std::process::Command::new("wslpath")
+                .arg("-w")
                 .arg(db_dir)
+                .output()
+                .map_err(|e| format!("Failed to convert WSL path: {}", e))?;
+
+            if !output.status.success() {
+                return Err(format!(
+                    "wslpath command failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+
+            let windows_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+            tracing::info!("Converted WSL path to Windows path: {}", windows_path);
+
+            // Use Windows explorer.exe with the Windows path
+            std::process::Command::new("explorer.exe")
+                .arg(&windows_path)
                 .spawn()
                 .map_err(|e| format!("Failed to open Windows Explorer from WSL: {}", e))?;
         } else {

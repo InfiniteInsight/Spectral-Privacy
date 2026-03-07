@@ -651,14 +651,46 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
 
     #[cfg(target_os = "linux")]
     {
-        // Linux: Open the parent directory with xdg-open
-        let dir = canonical_path
-            .parent()
-            .ok_or_else(|| "Could not determine parent directory".to_string())?;
-        Command::new("xdg-open")
-            .arg(dir)
-            .spawn()
-            .map_err(|e| format!("Failed to open file location: {}", e))?;
+        // Check if we're running in WSL
+        let is_wsl = std::path::Path::new("/proc/version").exists()
+            && std::fs::read_to_string("/proc/version")
+                .map(|s| s.to_lowercase().contains("microsoft"))
+                .unwrap_or(false);
+
+        if is_wsl {
+            // WSL: Convert Linux path to Windows path and use explorer.exe
+            let output = Command::new("wslpath")
+                .arg("-w")
+                .arg(&canonical_path)
+                .output()
+                .map_err(|e| format!("Failed to convert WSL path: {}", e))?;
+
+            if !output.status.success() {
+                return Err(format!(
+                    "wslpath command failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+
+            let windows_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+            info!("Converted WSL path to Windows path: {}", windows_path);
+
+            // Use Windows explorer.exe with /select to highlight the file
+            Command::new("explorer.exe")
+                .args(["/select,", &windows_path])
+                .spawn()
+                .map_err(|e| format!("Failed to open Windows Explorer from WSL: {}", e))?;
+        } else {
+            // Native Linux: Open the parent directory with xdg-open
+            let dir = canonical_path
+                .parent()
+                .ok_or_else(|| "Could not determine parent directory".to_string())?;
+            Command::new("xdg-open")
+                .arg(dir)
+                .spawn()
+                .map_err(|e| format!("Failed to open file location: {}", e))?;
+        }
     }
 
     Ok(())
