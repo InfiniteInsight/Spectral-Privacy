@@ -492,9 +492,9 @@
 																									cookie.profileName
 																								)}
 																							class="cursor-pointer text-blue-600 hover:text-blue-900"
-																							title="Open cookie location in file browser"
+																							title="Open browser profile folder (cookies are stored in the '{cookie.cookieDbFilename}' database file)"
 																						>
-																							📁
+																							📁 Profile
 																						</button>
 																						{#if cookie.id}
 																							<button
