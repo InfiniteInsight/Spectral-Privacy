@@ -123,11 +123,23 @@
 		removingBroker = brokerId;
 		try {
 			await cookiesAPI.removeCookiesForBroker(vaultStore.currentVaultId, brokerId);
-			// Reload scans and clear expanded state
-			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
-			recentScans = scans;
+
+			// Immediately update local state for instant feedback
+			if (recentScans.length > 0) {
+				const updatedScans = [...recentScans];
+				const latestScan = { ...updatedScans[0] };
+				const updatedCookiesByBroker = { ...latestScan.cookiesByBroker };
+				delete updatedCookiesByBroker[brokerId];
+				latestScan.cookiesByBroker = updatedCookiesByBroker;
+				updatedScans[0] = latestScan;
+				recentScans = updatedScans;
+			}
 			expandedBroker = null;
 			brokerCookies.delete(brokerId);
+
+			// Reload scans to ensure data is accurate
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
 		} catch (err) {
 			error = err instanceof Error ? err.message : String(err);
 			console.error('Failed to remove cookies:', err);
