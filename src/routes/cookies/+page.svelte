@@ -253,13 +253,15 @@
 		removingDomain = domain;
 		try {
 			await cookiesAPI.removeCookiesForDomain(vaultStore.currentVaultId, domain);
-			// Reload scans and unmatched cookies
-			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
-			recentScans = scans;
-			const unmatched = await cookiesAPI.getUnmatchedCookies(vaultStore.currentVaultId);
-			unmatchedCookies = unmatched;
+
+			// Immediately remove from local state for instant feedback
+			unmatchedCookies = unmatchedCookies.filter((c) => c.cookieDomain !== domain);
 			expandedDomain = null;
 			domainCookies.delete(domain);
+
+			// Reload scans to update counts
+			const scans = await cookiesAPI.getRecentCookieScans(vaultStore.currentVaultId, 10);
+			recentScans = scans;
 		} catch (err) {
 			error = err instanceof Error ? err.message : String(err);
 			console.error('Failed to remove domain cookies:', err);
