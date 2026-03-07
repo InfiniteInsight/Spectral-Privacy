@@ -615,11 +615,24 @@ pub fn stop_discovery_scan() -> Result<(), String> {
 pub fn open_file_location(file_path: String) -> Result<(), String> {
     use std::process::Command;
 
+    // Log the file path being opened for debugging
+    info!("Opening file location for: {}", file_path);
+
+    // Canonicalize the path to resolve any symlinks or relative paths
+    let canonical_path = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize path '{}': {}", file_path, e))?;
+
+    info!("Canonical path: {:?}", canonical_path);
+
     #[cfg(target_os = "windows")]
     {
         // Windows: Use explorer /select to highlight the file
+        let path_str = canonical_path
+            .to_str()
+            .ok_or_else(|| "Path contains invalid UTF-8".to_string())?;
         Command::new("explorer")
-            .args(["/select,", &file_path])
+            .args(["/select,", path_str])
             .spawn()
             .map_err(|e| format!("Failed to open file location: {}", e))?;
     }
@@ -627,8 +640,11 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         // macOS: Use open -R to reveal the file in Finder
+        let path_str = canonical_path
+            .to_str()
+            .ok_or_else(|| "Path contains invalid UTF-8".to_string())?;
         Command::new("open")
-            .args(["-R", &file_path])
+            .args(["-R", path_str])
             .spawn()
             .map_err(|e| format!("Failed to open file location: {}", e))?;
     }
@@ -636,8 +652,7 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         // Linux: Open the parent directory with xdg-open
-        let path = std::path::Path::new(&file_path);
-        let dir = path
+        let dir = canonical_path
             .parent()
             .ok_or_else(|| "Could not determine parent directory".to_string())?;
         Command::new("xdg-open")
