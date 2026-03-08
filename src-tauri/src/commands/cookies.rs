@@ -271,7 +271,26 @@ pub async fn scan_cookies(
         );
 
         match scanner.scan_profile(profile) {
-            Ok(cookies) => all_cookies.extend(cookies),
+            Ok(cookies) => {
+                let cookie_count = cookies.len();
+                all_cookies.extend(cookies);
+
+                // Emit completion event with cookie count
+                let _ = app.emit(
+                    "cookie-scan:progress",
+                    serde_json::json!({
+                        "browser": profile.browser_type.as_str(),
+                        "profile": &profile.profile_name,
+                        "current": current,
+                        "total": total_browsers,
+                        "cookieCount": cookie_count,
+                        "message": format!("Scanned {} - {} ({} cookies found)",
+                            profile.browser_type.as_str(),
+                            profile.profile_name,
+                            cookie_count)
+                    }),
+                );
+            }
             Err(e) => {
                 tracing::warn!(
                     "Failed to scan {}/{}: {}",

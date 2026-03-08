@@ -26,6 +26,7 @@
 	let scanProgress = $state<string>('');
 	let scanProgressCurrent = $state(0);
 	let scanProgressTotal = $state(0);
+	let scanProgressCookieCount = $state<number | null>(null);
 
 	// Load data on mount
 	$effect(() => {
@@ -343,6 +344,7 @@
 		scanProgress = 'Preparing scan...';
 		scanProgressCurrent = 0;
 		scanProgressTotal = 0;
+		scanProgressCookieCount = null;
 
 		// Set up progress listener
 		const unlisten = await listen<{
@@ -351,10 +353,12 @@
 			current: number;
 			total: number;
 			message: string;
+			cookieCount?: number;
 		}>('cookie-scan:progress', (event) => {
 			scanProgress = event.payload.message;
 			scanProgressCurrent = event.payload.current;
 			scanProgressTotal = event.payload.total;
+			scanProgressCookieCount = event.payload.cookieCount ?? null;
 		});
 
 		try {
@@ -378,6 +382,7 @@
 			unlisten();
 			scanning = false;
 			scanProgress = '';
+			scanProgressCookieCount = null;
 		}
 	}
 
@@ -439,6 +444,13 @@
 						<div class="flex items-center gap-2">
 							<Spinner size="sm" color="purple" inline />
 							<span class="font-medium text-purple-900">{scanProgress}</span>
+							{#if scanProgressCookieCount !== null}
+								<span
+									class="rounded-full bg-purple-600 px-2 py-0.5 text-xs font-semibold text-white"
+								>
+									{scanProgressCookieCount} cookies
+								</span>
+							{/if}
 						</div>
 						{#if scanProgressTotal > 0}
 							<span class="text-sm text-purple-700"
