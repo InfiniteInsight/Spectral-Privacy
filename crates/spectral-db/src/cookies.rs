@@ -138,7 +138,7 @@ pub async fn create_cookie_scan(
     Ok(id)
 }
 
-/// Get all scanned cookies for a vault.
+/// Get all scanned cookies for a vault (excluding removed cookies).
 pub async fn get_scanned_cookies(
     pool: &Pool<Sqlite>,
     vault_id: &str,
@@ -149,7 +149,7 @@ pub async fn get_scanned_cookies(
                 is_secure, is_httponly, same_site, matched_broker_id,
                 scan_timestamp, removal_status, removed_at, cookie_db_filename
          FROM browser_cookies
-         WHERE vault_id = ?
+         WHERE vault_id = ? AND removal_status = 'Pending'
          ORDER BY scan_timestamp DESC",
     )
     .bind(vault_id)
