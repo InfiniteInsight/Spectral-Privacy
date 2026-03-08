@@ -20,6 +20,7 @@
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
 	let scannedPaths = $state<Array<{ path: string; name: string; id: string }>>([]);
+	let allScannedPaths = $state<Array<{ path: string; name: string }>>([]);
 	let totalFilesScanned = $state(0); // Actual count from backend
 	let scanCounter = 0; // Unique counter for each scanned file
 
@@ -117,7 +118,8 @@
 		try {
 			scanning = true;
 			error = null;
-			scannedPaths = []; // Clear previous scan paths
+			scannedPaths = []; // Clear previous scan paths (UI display)
+			allScannedPaths = []; // Clear complete file list
 			totalFilesScanned = 0; // Reset total count
 			scanCounter = 0; // Reset counter for new scan
 
@@ -191,6 +193,31 @@
 		}
 	}
 
+	// Download complete list of scanned files
+	function downloadScannedFilesList() {
+		const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+		const filename = `scanned-files-${timestamp}.txt`;
+
+		// Create text content
+		const content = `PII Discovery Scan - Complete File List
+Scan Date: ${new Date().toLocaleString()}
+Total Files Scanned: ${allScannedPaths.length}
+
+${allScannedPaths.map((file) => file.path).join('\n')}
+`;
+
+		// Create blob and download
+		const blob = new Blob([content], { type: 'text/plain' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
 	// Pause scan
 	async function pauseScan() {
 		try {
@@ -247,14 +274,28 @@
 						name: file.name,
 						id: `${++scanCounter}-${Date.now()}`
 					}));
-					// Keep last 1000 files for performance while showing complete recent history
+
+					// Keep ALL files for export (memory permitting)
+					const filesForExport = event.payload.batch.map((file: any) => ({
+						path: file.path,
+						name: file.name
+					}));
+					allScannedPaths = [...allScannedPaths, ...filesForExport];
+
+					// Keep last 1000 files for UI performance
 					scannedPaths = [...newFiles, ...scannedPaths.slice(0, 1000 - newFiles.length)];
 				} else if (event.payload.path || event.payload.directory) {
 					// Fallback: single file update (for final progress event)
 					scanCounter++;
+					const filePath = event.payload.path || event.payload.directory;
+
+					// Add to complete list
+					allScannedPaths = [...allScannedPaths, { path: filePath, name: event.payload.directory }];
+
+					// Add to UI list (limited)
 					scannedPaths = [
 						{
-							path: event.payload.path || event.payload.directory,
+							path: filePath,
 							name: event.payload.directory,
 							id: `${scanCounter}-${Date.now()}`
 						},
@@ -554,7 +595,28 @@
 			</div>
 
 			<!-- Recent Files Scrolling List -->
-			<div class="text-xs text-gray-600 mb-2 font-medium">Recent files:</div>
+			<div class="flex items-center justify-between mb-2">
+				<div class="text-xs text-gray-600 font-medium">
+					Recent files (showing last 20 of {allScannedPaths.length.toLocaleString()}):
+				</div>
+				{#if allScannedPaths.length > 0}
+					<button
+						onclick={downloadScannedFilesList}
+						class="flex items-center gap-1.5 rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200 transition-colors"
+						title="Download complete list of all {allScannedPaths.length.toLocaleString()} scanned files"
+					>
+						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
+						</svg>
+						Download Complete List
+					</button>
+				{/if}
+			</div>
 			<div class="max-h-48 overflow-y-auto rounded border border-indigo-200 bg-white">
 				<div class="divide-y divide-gray-100">
 					{#each scannedPaths.slice(0, 20) as item (item.id)}
