@@ -4,6 +4,7 @@
 	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
 	import { goto } from '$app/navigation';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { listen } from '@tauri-apps/api/event';
 
 	let recentScans = $state<CookieScanResponse[]>([]);
 	let unmatchedCookies = $state<ScannedCookie[]>([]);
@@ -22,6 +23,9 @@
 	let domainCookies = $state<Map<string, ScannedCookie[]>>(new Map());
 	let removingDomain = $state<string | null>(null);
 	let scanning = $state(false);
+	let scanProgress = $state<string>('');
+	let scanProgressCurrent = $state(0);
+	let scanProgressTotal = $state(0);
 
 	// Load data on mount
 	$effect(() => {
@@ -336,6 +340,22 @@
 
 		scanning = true;
 		error = null;
+		scanProgress = 'Preparing scan...';
+		scanProgressCurrent = 0;
+		scanProgressTotal = 0;
+
+		// Set up progress listener
+		const unlisten = await listen<{
+			browser: string;
+			profile: string;
+			current: number;
+			total: number;
+			message: string;
+		}>('cookie-scan:progress', (event) => {
+			scanProgress = event.payload.message;
+			scanProgressCurrent = event.payload.current;
+			scanProgressTotal = event.payload.total;
+		});
 
 		try {
 			await cookiesAPI.scanCookies(vaultStore.currentVaultId);
@@ -355,7 +375,9 @@
 			error = err instanceof Error ? err.message : String(err);
 			console.error('Failed to run scan:', err);
 		} finally {
+			unlisten();
 			scanning = false;
+			scanProgress = '';
 		}
 	}
 
@@ -409,6 +431,31 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Scanning Progress -->
+			{#if scanning && scanProgress}
+				<div class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4">
+					<div class="mb-2 flex items-center justify-between">
+						<div class="flex items-center gap-2">
+							<Spinner size="sm" color="purple" inline />
+							<span class="font-medium text-purple-900">{scanProgress}</span>
+						</div>
+						{#if scanProgressTotal > 0}
+							<span class="text-sm text-purple-700"
+								>{scanProgressCurrent}/{scanProgressTotal} browsers</span
+							>
+						{/if}
+					</div>
+					{#if scanProgressTotal > 0}
+						<div class="h-2 w-full overflow-hidden rounded-full bg-purple-200">
+							<div
+								class="h-full bg-purple-600 transition-all duration-300"
+								style="width: {(scanProgressCurrent / scanProgressTotal) * 100}%"
+							></div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if loading}
 				<div class="rounded-lg border border-gray-200 bg-white p-8 text-center">

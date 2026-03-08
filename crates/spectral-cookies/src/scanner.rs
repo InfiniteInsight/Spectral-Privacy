@@ -257,7 +257,7 @@ impl CookieScanner {
     }
 
     /// Build scan result from scanned cookies.
-    fn build_scan_result(&self, scanned_cookies: Vec<ScannedCookie>) -> CookieScanResult {
+    pub fn build_scan_result(&self, scanned_cookies: Vec<ScannedCookie>) -> CookieScanResult {
         let total_cookies = scanned_cookies.len();
         let matched_cookies = scanned_cookies
             .iter()

@@ -7,7 +7,7 @@ use spectral_cookies::{
     CookieScanner,
 };
 use std::collections::HashMap;
-use tauri::State;
+use tauri::{Emitter, State};
 
 // External dependencies for diagnostics
 use dirs;
@@ -220,6 +220,7 @@ async fn create_scan_session_record(
 /// Scan all browsers for tracking cookies.
 #[tauri::command]
 pub async fn scan_cookies(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     vault_id: String,
 ) -> Result<CookieScanResponse, String> {
@@ -239,12 +240,50 @@ pub async fn scan_cookies(
 
     log_detected_browsers();
 
-    // Scan cookies
+    // Detect browsers
+    let profiles = Browser::detect_installed().map_err(|e| e.to_string())?;
+    let total_browsers = profiles.len();
+
+    tracing::info!(
+        "Starting cookie scan for vault: {} ({} browsers)",
+        vault_id,
+        total_browsers
+    );
+
+    // Scan each browser with progress updates
     let scanner = CookieScanner::with_matcher(matcher);
-    tracing::info!("Starting cookie scan for vault: {}", vault_id);
-    let scan_result = scanner
-        .scan_all_browsers()
-        .map_err(|e| format!("Cookie scan failed: {}", e))?;
+    let mut all_cookies = Vec::new();
+    let mut current = 0;
+
+    for profile in &profiles {
+        current += 1;
+
+        // Emit progress event
+        let _ = app.emit(
+            "cookie-scan:progress",
+            serde_json::json!({
+                "browser": profile.browser_type.as_str(),
+                "profile": &profile.profile_name,
+                "current": current,
+                "total": total_browsers,
+                "message": format!("Scanning {} - {}", profile.browser_type.as_str(), profile.profile_name)
+            }),
+        );
+
+        match scanner.scan_profile(profile) {
+            Ok(cookies) => all_cookies.extend(cookies),
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to scan {}/{}: {}",
+                    profile.browser_type,
+                    profile.profile_name,
+                    e
+                );
+            }
+        }
+    }
+
+    let scan_result = scanner.build_scan_result(all_cookies);
 
     tracing::info!(
         "Cookie scan complete: {} total cookies, {} matched, {} browsers scanned",
