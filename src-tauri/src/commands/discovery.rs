@@ -2,11 +2,11 @@
 
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_discovery::{FileScanResult, PiiMatch, PiiPatterns};
+use spectral_discovery::{FileScanResult, PiiMatch, PiiPatterns, UserPii};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, State};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Scan control state for pause/resume/stop
 #[derive(Debug, Clone)]
@@ -331,6 +331,75 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         .database()
         .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
+    // Load user profiles to extract their specific PII
+    let profile_ids = vault
+        .list_profiles()
+        .await
+        .map_err(|e| format!("Failed to list profiles: {e}"))?;
+
+    if profile_ids.is_empty() {
+        return Err("No user profiles found. Create a profile first.".to_string());
+    }
+
+    // Load the first profile (primary profile)
+    let profile = vault
+        .load_profile(&profile_ids[0])
+        .await
+        .map_err(|e| format!("Failed to load profile: {e}"))?;
+
+    // Extract user-specific PII from the profile
+    let mut user_pii = UserPii::empty();
+
+    // Get the vault key for decryption
+    let vault_key = vault
+        .encryption_key()
+        .map_err(|e| format!("Failed to get vault key: {e}"))?;
+
+    // Extract email addresses (from both old and new fields)
+    #[allow(deprecated)]
+    if let Some(email_field) = &profile.email {
+        if let Ok(email) = email_field.decrypt(vault_key) {
+            user_pii.emails.push(email);
+        }
+    }
+    for email_entry in &profile.email_addresses {
+        if let Ok(email) = email_entry.email.decrypt(vault_key) {
+            user_pii.emails.push(email);
+        }
+    }
+
+    // Extract phone numbers (from both old and new fields)
+    #[allow(deprecated)]
+    if let Some(phone_field) = &profile.phone {
+        if let Ok(phone) = phone_field.decrypt(vault_key) {
+            user_pii.phones.push(phone);
+        }
+    }
+    for phone_entry in &profile.phone_numbers {
+        if let Ok(phone) = phone_entry.number.decrypt(vault_key) {
+            user_pii.phones.push(phone);
+        }
+    }
+
+    // Extract SSN
+    if let Some(ssn_field) = &profile.ssn {
+        if let Ok(ssn) = ssn_field.decrypt(vault_key) {
+            user_pii.ssn = Some(ssn);
+        }
+    }
+
+    info!(
+        "Loaded user PII - {} emails, {} phones, SSN: {}",
+        user_pii.emails.len(),
+        user_pii.phones.len(),
+        user_pii.ssn.is_some()
+    );
+
+    // Warn if no PII is configured
+    if user_pii.emails.is_empty() && user_pii.phones.is_empty() && user_pii.ssn.is_none() {
+        warn!("No PII configured in user profile. Scanner will find nothing.");
+    }
+
     // Clone the pool for background task
     let pool = db.pool().clone();
     let vault_id_clone = vault_id.clone();
@@ -347,7 +416,8 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             *control = ScanControl::Running;
         }
 
-        let patterns = PiiPatterns::new();
+        // Create user-specific PII patterns
+        let patterns = PiiPatterns::from_user_pii(user_pii);
 
         // Get user home directory
         let home_dir = match directories::UserDirs::new() {

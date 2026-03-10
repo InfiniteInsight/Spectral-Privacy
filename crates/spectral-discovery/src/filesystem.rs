@@ -1,10 +1,12 @@
 //! Filesystem PII discovery scanner
 //!
 //! Scans local files for personally identifiable information (PII)
-//! including email addresses, phone numbers, and SSNs.
+//! by searching for the user's specific email addresses, phone numbers, and SSN.
+//!
+//! This scanner is designed to find the user's OWN information in files,
+//! not generic PII from random people.
 
-use once_cell::sync::Lazy;
-use regex::Regex;
+use regex::RegexBuilder;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -16,54 +18,89 @@ const MAX_FILE_SIZE: u64 = 100 * 1024 * 1024;
 /// Maximum directory depth to scan
 const MAX_SCAN_DEPTH: usize = 10;
 
-/// Compiled regex patterns (initialized once at startup)
-static EMAIL_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
-        .expect("Email regex is hardcoded and valid")
-});
+/// User-specific PII to search for
+#[derive(Debug, Clone)]
+pub struct UserPii {
+    /// User's email addresses
+    pub emails: Vec<String>,
+    /// User's phone numbers (normalized to digits only)
+    pub phones: Vec<String>,
+    /// User's Social Security Number (if provided)
+    pub ssn: Option<String>,
+}
 
-static PHONE_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}")
-        .expect("Phone regex is hardcoded and valid")
-});
+impl UserPii {
+    /// Create a new UserPii with no data
+    pub fn empty() -> Self {
+        Self {
+            emails: Vec::new(),
+            phones: Vec::new(),
+            ssn: None,
+        }
+    }
+}
 
-static SSN_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").expect("SSN regex is hardcoded and valid"));
-
-/// Pattern matchers for different types of PII
+/// Pattern matchers for user-specific PII
 #[derive(Debug)]
 pub struct PiiPatterns {
-    email: Regex,
-    phone: Regex,
-    ssn: Regex,
+    /// User's email addresses (lowercase)
+    user_emails: Vec<String>,
+    /// User's phone numbers (normalized to digits only, e.g., "5551234567")
+    user_phones: Vec<String>,
+    /// User's SSN (if provided)
+    user_ssn: Option<String>,
 }
 
 impl PiiPatterns {
-    /// Create a new set of PII pattern matchers
-    pub fn new() -> Self {
+    /// Create PII patterns from user-specific information
+    pub fn from_user_pii(user_pii: UserPii) -> Self {
         Self {
-            email: EMAIL_PATTERN.clone(),
-            phone: PHONE_PATTERN.clone(),
-            ssn: SSN_PATTERN.clone(),
+            user_emails: user_pii
+                .emails
+                .into_iter()
+                .map(|e| e.to_lowercase())
+                .collect(),
+            user_phones: user_pii
+                .phones
+                .into_iter()
+                .map(|p| normalize_phone(&p))
+                .collect(),
+            user_ssn: user_pii.ssn,
         }
     }
 
-    /// Check if text contains an email address
+    /// Check if text contains user's email address (case-insensitive)
     #[must_use]
     pub fn has_email(&self, text: &str) -> bool {
-        self.email.is_match(text)
+        if self.user_emails.is_empty() {
+            return false;
+        }
+        let text_lower = text.to_lowercase();
+        self.user_emails
+            .iter()
+            .any(|email| text_lower.contains(email))
     }
 
-    /// Check if text contains a phone number
+    /// Check if text contains user's phone number (any format)
     #[must_use]
     pub fn has_phone(&self, text: &str) -> bool {
-        self.phone.is_match(text)
+        if self.user_phones.is_empty() {
+            return false;
+        }
+        let normalized_text = normalize_phone(text);
+        self.user_phones
+            .iter()
+            .any(|phone| normalized_text.contains(phone))
     }
 
-    /// Check if text contains an SSN
+    /// Check if text contains user's SSN
     #[must_use]
     pub fn has_ssn(&self, text: &str) -> bool {
-        self.ssn.is_match(text)
+        if let Some(ssn) = &self.user_ssn {
+            text.contains(ssn)
+        } else {
+            false
+        }
     }
 
     /// Find all PII matches in text with line numbers
@@ -72,31 +109,51 @@ impl PiiPatterns {
         let mut matches = Vec::new();
 
         for (line_num, line) in text.lines().enumerate() {
-            // Find emails
-            for email_match in self.email.find_iter(line) {
-                matches.push(PiiMatch {
-                    pii_type: PiiType::Email,
-                    matched_value: email_match.as_str().to_string(),
-                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
-                });
+            let line_lower = line.to_lowercase();
+            let line_normalized = normalize_phone(line);
+
+            // Find user's email addresses
+            for email in &self.user_emails {
+                if line_lower.contains(email) {
+                    // Find all occurrences of this email in the line
+                    let regex = RegexBuilder::new(&regex::escape(email))
+                        .case_insensitive(true)
+                        .build()
+                        .expect("regex::escape produces valid regex patterns");
+
+                    for email_match in regex.find_iter(line) {
+                        matches.push(PiiMatch {
+                            pii_type: PiiType::Email,
+                            matched_value: email_match.as_str().to_string(),
+                            line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                        });
+                    }
+                }
             }
 
-            // Find phone numbers
-            for phone_match in self.phone.find_iter(line) {
-                matches.push(PiiMatch {
-                    pii_type: PiiType::Phone,
-                    matched_value: phone_match.as_str().to_string(),
-                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
-                });
+            // Find user's phone numbers
+            for phone in &self.user_phones {
+                if line_normalized.contains(phone) {
+                    // Try to find the phone number in various formats in the original line
+                    if let Some(matched_phone) = find_phone_in_line(line, phone) {
+                        matches.push(PiiMatch {
+                            pii_type: PiiType::Phone,
+                            matched_value: matched_phone,
+                            line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                        });
+                    }
+                }
             }
 
-            // Find SSNs
-            for ssn_match in self.ssn.find_iter(line) {
-                matches.push(PiiMatch {
-                    pii_type: PiiType::Ssn,
-                    matched_value: ssn_match.as_str().to_string(),
-                    line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
-                });
+            // Find user's SSN
+            if let Some(ssn) = &self.user_ssn {
+                if line.contains(ssn) {
+                    matches.push(PiiMatch {
+                        pii_type: PiiType::Ssn,
+                        matched_value: ssn.clone(),
+                        line_number: line_num + 1, // nosemgrep: llm-prompt-injection-risk
+                    });
+                }
             }
         }
 
@@ -104,10 +161,49 @@ impl PiiPatterns {
     }
 }
 
-impl Default for PiiPatterns {
-    fn default() -> Self {
-        Self::new()
+/// Normalize phone number to digits only
+fn normalize_phone(text: &str) -> String {
+    text.chars().filter(|c| c.is_ascii_digit()).collect()
+}
+
+/// Find a phone number in a line given its normalized form
+fn find_phone_in_line(line: &str, normalized_phone: &str) -> Option<String> {
+    // Common phone number patterns to try matching
+    let patterns = [
+        // (555) 123-4567
+        format!(
+            r"\({}\)\s*{}-{}",
+            &normalized_phone[0..3],
+            &normalized_phone[3..6],
+            &normalized_phone[6..10]
+        ),
+        // 555-123-4567
+        format!(
+            r"{}-{}-{}",
+            &normalized_phone[0..3],
+            &normalized_phone[3..6],
+            &normalized_phone[6..10]
+        ),
+        // 555.123.4567
+        format!(
+            r"{}\.{}\.{}",
+            &normalized_phone[0..3],
+            &normalized_phone[3..6],
+            &normalized_phone[6..10]
+        ),
+        // 5551234567 (no formatting)
+        normalized_phone.to_string(),
+    ];
+
+    for pattern in &patterns {
+        if let Ok(regex) = regex::Regex::new(pattern) {
+            if let Some(m) = regex.find(line) {
+                return Some(m.as_str().to_string());
+            }
+        }
     }
+
+    None
 }
 
 /// Type of PII found with details
@@ -311,43 +407,74 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_email_pattern() {
-        let patterns = PiiPatterns::new();
+    fn test_user_email_detection() {
+        let user_pii = UserPii {
+            emails: vec!["john@example.com".to_string()],
+            phones: vec![],
+            ssn: None,
+        };
+        let patterns = PiiPatterns::from_user_pii(user_pii);
 
+        // Should find user's email
         assert!(patterns.has_email("contact me at john@example.com"));
-        assert!(patterns.has_email("Email: alice.smith@company.co.uk"));
+        assert!(patterns.has_email("Email: JOHN@EXAMPLE.COM")); // Case insensitive
+
+        // Should NOT find other emails
+        assert!(!patterns.has_email("Email: alice@company.com"));
         assert!(!patterns.has_email("not an email"));
-        assert!(!patterns.has_email("@invalid"));
     }
 
     #[test]
-    fn test_phone_pattern() {
-        let patterns = PiiPatterns::new();
+    fn test_user_phone_detection() {
+        let user_pii = UserPii {
+            emails: vec![],
+            phones: vec!["5551234567".to_string()],
+            ssn: None,
+        };
+        let patterns = PiiPatterns::from_user_pii(user_pii);
 
+        // Should find user's phone in various formats
         assert!(patterns.has_phone("Call (555) 123-4567"));
         assert!(patterns.has_phone("Phone: 555-123-4567"));
         assert!(patterns.has_phone("Contact: 555.123.4567"));
         assert!(patterns.has_phone("Number: 5551234567"));
-        assert!(!patterns.has_phone("not a phone"));
+
+        // Should NOT find other phone numbers
+        assert!(!patterns.has_phone("Call (999) 888-7777"));
     }
 
     #[test]
-    fn test_ssn_pattern() {
-        let patterns = PiiPatterns::new();
+    fn test_user_ssn_detection() {
+        let user_pii = UserPii {
+            emails: vec![],
+            phones: vec![],
+            ssn: Some("123-45-6789".to_string()),
+        };
+        let patterns = PiiPatterns::from_user_pii(user_pii);
 
+        // Should find user's SSN
         assert!(patterns.has_ssn("SSN: 123-45-6789"));
-        assert!(patterns.has_ssn("Social Security Number 987-65-4321"));
+        assert!(patterns.has_ssn("Social Security Number 123-45-6789"));
+
+        // Should NOT find other SSNs
+        assert!(!patterns.has_ssn("SSN: 987-65-4321"));
         assert!(!patterns.has_ssn("not an ssn"));
-        assert!(!patterns.has_ssn("12345678")); // No dashes
     }
 
     #[test]
-    fn test_find_all() {
-        let patterns = PiiPatterns::new();
+    fn test_find_all_user_specific() {
+        let user_pii = UserPii {
+            emails: vec!["john@example.com".to_string()],
+            phones: vec!["5551234567".to_string()],
+            ssn: Some("123-45-6789".to_string()),
+        };
+        let patterns = PiiPatterns::from_user_pii(user_pii);
 
-        let text = "Contact: john@example.com, Phone: 555-123-4567, SSN: 123-45-6789";
+        let text = "Contact: john@example.com, Phone: 555-123-4567, SSN: 123-45-6789\n\
+                    Other person: alice@company.com, Phone: (999) 888-7777";
         let matches = patterns.find_all(text);
 
+        // Should only find user's PII, not the other person's
         assert_eq!(matches.len(), 3);
         assert_eq!(matches[0].pii_type, PiiType::Email);
         assert_eq!(matches[0].matched_value, "john@example.com");
