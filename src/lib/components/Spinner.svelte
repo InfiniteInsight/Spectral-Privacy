@@ -33,13 +33,16 @@
 		white: 'border-t-white'
 	};
 
-	// Track color (background circle)
-	const trackColor = color === 'white' ? 'border-transparent' : 'border-gray-200';
+	// Track color (background circle) - reactive
+	const trackColor = $derived(color === 'white' ? 'border-transparent' : 'border-gray-200');
 
-	// Margin class
-	const marginClass = inline ? '' : 'mx-auto';
+	// Margin class - reactive
+	const marginClass = $derived(inline ? '' : 'mx-auto');
 
-	const classes = `${sizeClasses[size]} ${trackColor} ${colorClasses[color]} ${marginClass} animate-spin rounded-full`;
+	// Combined classes - reactive
+	const classes = $derived(
+		`${sizeClasses[size]} ${trackColor} ${colorClasses[color]} ${marginClass} animate-spin rounded-full`
+	);
 </script>
 
 <div class={classes}></div>
