@@ -19,10 +19,8 @@
 	let paused = $state(false);
 	let error = $state<string | null>(null);
 	let successMessage = $state<string | null>(null);
-	let scannedPaths = $state<Array<{ path: string; name: string; id: string }>>([]);
 	let allScannedPaths = $state<Array<{ path: string; name: string }>>([]);
 	let totalFilesScanned = $state(0); // Actual count from backend
-	let scanCounter = 0; // Unique counter for each scanned file
 
 	// Custom directory scanning
 	let customDirectories = $state<string[]>([]);
@@ -118,10 +116,8 @@
 		try {
 			scanning = true;
 			error = null;
-			scannedPaths = []; // Clear previous scan paths (UI display)
 			allScannedPaths = []; // Clear complete file list
 			totalFilesScanned = 0; // Reset total count
-			scanCounter = 0; // Reset counter for new scan
 
 			// Pass custom directories if in custom mode
 			const dirsToScan = scanMode === 'custom' ? customDirectories : undefined;
@@ -261,46 +257,21 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 
 		// Listen for scan progress
 		listen('discovery:progress', (event: any) => {
-			// Only update UI if not paused
+			// Only update if not paused
 			if (!paused) {
 				// Update actual count from backend
 				totalFilesScanned = event.payload.files_scanned || 0;
 
-				// Handle batch of files if present
+				// Track all scanned files for download (but don't update UI with individual files)
 				if (event.payload.batch && Array.isArray(event.payload.batch)) {
-					// Add all files from the batch
-					const newFiles = event.payload.batch.map((file: any) => ({
-						path: file.path,
-						name: file.name,
-						id: `${++scanCounter}-${Date.now()}`
-					}));
-
-					// Keep ALL files for export (memory permitting)
 					const filesForExport = event.payload.batch.map((file: any) => ({
 						path: file.path,
 						name: file.name
 					}));
 					allScannedPaths = [...allScannedPaths, ...filesForExport];
-
-					// Keep last 1000 files for UI performance
-					scannedPaths = [...newFiles, ...scannedPaths.slice(0, 1000 - newFiles.length)];
 				} else if (event.payload.path || event.payload.directory) {
-					// Fallback: single file update (for final progress event)
-					scanCounter++;
 					const filePath = event.payload.path || event.payload.directory;
-
-					// Add to complete list
 					allScannedPaths = [...allScannedPaths, { path: filePath, name: event.payload.directory }];
-
-					// Add to UI list (limited)
-					scannedPaths = [
-						{
-							path: filePath,
-							name: event.payload.directory,
-							id: `${scanCounter}-${Date.now()}`
-						},
-						...scannedPaths.slice(0, 999)
-					];
 				}
 			}
 		}).then((unlisten) => {
@@ -553,78 +524,48 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 
 	{#if scanning}
 		<div class="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-			<div class="mb-3 flex items-center gap-2">
-				{#if paused}
-					<div class="rounded-full h-5 w-5 bg-yellow-600"></div>
-					<h3 class="text-sm font-semibold text-yellow-900">
-						Scan Paused
-						{#if totalFilesScanned > 0}
-							({totalFilesScanned.toLocaleString()} files scanned so far)
-						{/if}
-					</h3>
-				{:else}
-					<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-					<h3 class="text-sm font-semibold text-indigo-900">
-						Scanning for PII...
-						{#if totalFilesScanned > 0}
-							({totalFilesScanned.toLocaleString()} files scanned)
-						{/if}
-					</h3>
-				{/if}
-			</div>
-
-			<!-- Current File Being Scanned -->
-			<div class="mb-3 rounded-lg border border-indigo-300 bg-white p-3">
-				<div class="text-xs font-medium text-indigo-700 mb-1">
-					{paused ? 'Last file scanned:' : 'Currently scanning:'}
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					{#if paused}
+						<div class="rounded-full h-5 w-5 bg-yellow-600"></div>
+						<h3 class="text-sm font-semibold text-yellow-900">
+							Scan Paused
+							{#if totalFilesScanned > 0}
+								({totalFilesScanned.toLocaleString()} files scanned so far)
+							{/if}
+						</h3>
+					{:else}
+						<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+						<h3 class="text-sm font-semibold text-indigo-900">
+							Scanning for PII...
+							{#if totalFilesScanned > 0}
+								({totalFilesScanned.toLocaleString()} files scanned)
+							{/if}
+						</h3>
+					{/if}
 				</div>
-				{#if paused}
-					<div class="text-sm text-yellow-800 italic font-medium">
-						Paused - Click Resume to continue
-					</div>
-				{:else if scannedPaths.length > 0}
-					<div class="font-mono text-sm font-semibold text-gray-900 break-all">
-						{scannedPaths[0].name}
-					</div>
-					<div class="font-mono text-xs text-gray-500 break-all mt-1">
-						{scannedPaths[0].path}
-					</div>
-				{:else}
-					<div class="text-sm text-gray-600 italic">Initializing scan...</div>
-				{/if}
-			</div>
-
-			<!-- Recent Files Scrolling List -->
-			<div class="flex items-center justify-between mb-2">
-				<div class="text-xs text-gray-600 font-medium">
-					Recent files (showing last 20 of {allScannedPaths.length.toLocaleString()}):
-				</div>
-				{#if allScannedPaths.length > 0}
+				<div class="flex gap-2">
+					{#if paused}
+						<button
+							onclick={resumeScan}
+							class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700"
+						>
+							Resume
+						</button>
+					{:else}
+						<button
+							onclick={pauseScan}
+							class="px-3 py-1 bg-yellow-600 text-white text-xs font-medium rounded hover:bg-yellow-700"
+						>
+							Pause
+						</button>
+					{/if}
 					<button
-						onclick={downloadScannedFilesList}
-						class="flex items-center gap-1.5 rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-200 transition-colors"
-						title="Download complete list of all {allScannedPaths.length.toLocaleString()} scanned files"
+						onclick={stopScan}
+						class="px-3 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700"
 					>
-						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-							/>
-						</svg>
-						Download Complete List
+						Cancel
 					</button>
-				{/if}
-			</div>
-			<div class="max-h-48 overflow-y-auto rounded border border-indigo-200 bg-white">
-				<div class="divide-y divide-gray-100">
-					{#each scannedPaths.slice(0, 20) as item (item.id)}
-						<div class="px-3 py-2 text-xs">
-							<div class="font-mono text-gray-900">{item.name}</div>
-							<div class="text-gray-500 truncate">{item.path}</div>
-						</div>
-					{/each}
 				</div>
 			</div>
 		</div>
@@ -636,6 +577,35 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 
 	{#if successMessage}
 		<div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-700">{successMessage}</div>
+	{/if}
+
+	<!-- Scanned Files Download (shown after scan completes) -->
+	{#if !scanning && !loading && allScannedPaths.length > 0}
+		<div class="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+			<div class="flex items-center justify-between">
+				<div>
+					<h3 class="text-sm font-semibold text-indigo-900">Scan Complete</h3>
+					<p class="text-xs text-indigo-700 mt-1">
+						{allScannedPaths.length.toLocaleString()} files scanned
+					</p>
+				</div>
+				<button
+					onclick={downloadScannedFilesList}
+					class="flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+					title="Download complete list of all {allScannedPaths.length.toLocaleString()} scanned files"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+						/>
+					</svg>
+					Download File List
+				</button>
+			</div>
+		</div>
 	{/if}
 
 	{#if !loading && findings.length > 0}
