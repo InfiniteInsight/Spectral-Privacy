@@ -145,6 +145,14 @@
 						</div>
 						<div class="flex gap-2">
 							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
+								<a
+									href="/settings?tab=profile"
+									onclick={async () => {
+										await vaultStore.setCurrentVault(vault.vault_id);
+									}}
+									class="rounded-md border border-primary-200 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50"
+									>Edit Profile</a
+								>
 								<button
 									onclick={() => handleLock(vault.vault_id)}
 									disabled={actionLoading}
