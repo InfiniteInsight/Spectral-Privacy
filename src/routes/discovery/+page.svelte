@@ -12,6 +12,7 @@
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
 	import { listen } from '@tauri-apps/api/event';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let findings = $state<DiscoveryFinding[]>([]);
 	let loading = $state(true);
@@ -535,7 +536,7 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 							{/if}
 						</h3>
 					{:else}
-						<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+						<Spinner size="sm" color="indigo" inline />
 						<h3 class="text-sm font-semibold text-indigo-900">
 							Scanning for PII...
 							{#if totalFilesScanned > 0}
@@ -676,7 +677,7 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 
 	{#if loading}
 		<div class="flex flex-col items-center justify-center py-12">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+			<Spinner color="indigo" />
 			<p class="mt-4 text-sm text-gray-600">Loading previous findings from database...</p>
 		</div>
 	{:else if findings.length === 0}
