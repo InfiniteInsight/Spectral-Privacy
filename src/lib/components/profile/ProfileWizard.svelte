@@ -341,5 +341,17 @@
 				<p class="text-sm text-red-800">{profileStore.error}</p>
 			</div>
 		{/if}
+
+		<!-- Cancel button (edit mode only) -->
+		{#if mode === 'edit'}
+			<div class="mt-4 text-center">
+				<button
+					onclick={() => goto('/people')}
+					class="text-sm text-gray-600 hover:text-gray-800 underline"
+				>
+					Cancel and return to People
+				</button>
+			</div>
+		{/if}
 	</div>
 </div>

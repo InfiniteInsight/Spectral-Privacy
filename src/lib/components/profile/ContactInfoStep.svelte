@@ -9,19 +9,16 @@
 
 	let { profile, onUpdate }: Props = $props();
 
-	let emailAddresses = $state<EmailAddress[]>(profile.email_addresses || []);
+	let emailAddresses = $state<EmailAddress[]>([]);
 	let emailErrors = $state<(string | null)[]>([]);
-	let phoneNumbers = $state<PhoneNumber[]>(profile.phone_numbers || []);
+	let phoneNumbers = $state<PhoneNumber[]>([]);
 	let phoneErrors = $state<(string | null)[]>([]);
 
 	// Update state when profile prop changes (for edit mode initialization)
 	$effect(() => {
-		if (profile.email_addresses && profile.email_addresses.length > 0) {
-			emailAddresses = [...profile.email_addresses];
-		}
-		if (profile.phone_numbers && profile.phone_numbers.length > 0) {
-			phoneNumbers = [...profile.phone_numbers];
-		}
+		// React to profile changes - update arrays from profile
+		emailAddresses = profile.email_addresses ? [...profile.email_addresses] : [];
+		phoneNumbers = profile.phone_numbers ? [...profile.phone_numbers] : [];
 	});
 
 	function addEmailAddress() {

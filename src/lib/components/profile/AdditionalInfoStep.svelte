@@ -12,8 +12,8 @@
 	let { profile, onUpdate }: Props = $props();
 	/* eslint-enable no-unused-vars */
 
-	let aliases = $state<Alias[]>(profile.aliases || []);
-	let relatives = $state<Relative[]>(profile.relatives || []);
+	let aliases = $state<Alias[]>([]);
+	let relatives = $state<Relative[]>([]);
 	let showAliasModal = $state(false);
 	let showRelativeModal = $state(false);
 	let editingAliasIndex = $state<number | null>(null);
@@ -21,12 +21,8 @@
 
 	// Update state when profile prop changes (for edit mode initialization)
 	$effect(() => {
-		if (profile.aliases && profile.aliases.length > 0) {
-			aliases = [...profile.aliases];
-		}
-		if (profile.relatives && profile.relatives.length > 0) {
-			relatives = [...profile.relatives];
-		}
+		aliases = profile.aliases ? [...profile.aliases] : [];
+		relatives = profile.relatives ? [...profile.relatives] : [];
 	});
 
 	function openAliasModal(index?: number) {

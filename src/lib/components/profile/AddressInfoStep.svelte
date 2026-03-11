@@ -11,15 +11,13 @@
 	let { profile, onUpdate }: Props = $props();
 	/* eslint-enable no-unused-vars */
 
-	let previousAddresses = $state<PreviousAddress[]>(profile.previous_addresses || []);
+	let previousAddresses = $state<PreviousAddress[]>([]);
 	let showAddressModal = $state(false);
 	let editingAddressIndex = $state<number | null>(null);
 
 	// Update state when profile prop changes (for edit mode initialization)
 	$effect(() => {
-		if (profile.previous_addresses && profile.previous_addresses.length > 0) {
-			previousAddresses = [...profile.previous_addresses];
-		}
+		previousAddresses = profile.previous_addresses ? [...profile.previous_addresses] : [];
 	});
 
 	function openAddressModal(index?: number) {
