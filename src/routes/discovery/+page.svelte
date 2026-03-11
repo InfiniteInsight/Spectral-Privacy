@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import {
 		getDiscoveryFindings,
@@ -11,7 +12,7 @@
 		openFileLocation,
 		type DiscoveryFinding
 	} from '$lib/api/discovery';
-	import { listen } from '@tauri-apps/api/event';
+	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import Spinner from '$lib/components/Spinner.svelte';
 
 	let findings = $state<DiscoveryFinding[]>([]);
@@ -117,7 +118,7 @@
 		try {
 			scanning = true;
 			error = null;
-			allScannedPaths = []; // Clear complete file list
+			allScannedPaths.splice(0, allScannedPaths.length); // Clear in-place to preserve reference for listeners
 			totalFilesScanned = 0; // Reset total count
 
 			// Pass custom directories if in custom mode
@@ -249,12 +250,19 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 		}
 	}
 
-	// Set up event listeners and load findings
+	// Load findings when vault changes (runs on mount and when vault ID changes)
 	$effect(() => {
-		loadFindings();
+		// Track vault ID to reload findings when it changes
+		const vid = vaultStore.currentVaultId;
+		if (vid) {
+			loadFindings();
+		}
+	});
 
-		let cleanupProgress: (() => void) | null = null;
-		let cleanupComplete: (() => void) | null = null;
+	// Set up event listeners once on mount (not in $effect to avoid listener leaks)
+	onMount(() => {
+		// Store unlisten functions for cleanup
+		const unlistenFns: UnlistenFn[] = [];
 
 		// Listen for scan progress
 		listen('discovery:progress', (event: any) => {
@@ -263,20 +271,18 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 				// Update actual count from backend
 				totalFilesScanned = event.payload.files_scanned || 0;
 
-				// Track all scanned files for download (but don't update UI with individual files)
+				// Track all scanned files for download using push (avoids O(n²) array copies)
 				if (event.payload.batch && Array.isArray(event.payload.batch)) {
-					const filesForExport = event.payload.batch.map((file: any) => ({
-						path: file.path,
-						name: file.name
-					}));
-					allScannedPaths = [...allScannedPaths, ...filesForExport];
+					for (const file of event.payload.batch) {
+						allScannedPaths.push({ path: file.path, name: file.name });
+					}
 				} else if (event.payload.path || event.payload.directory) {
 					const filePath = event.payload.path || event.payload.directory;
-					allScannedPaths = [...allScannedPaths, { path: filePath, name: event.payload.directory }];
+					allScannedPaths.push({ path: filePath, name: event.payload.directory });
 				}
 			}
 		}).then((unlisten) => {
-			cleanupProgress = unlisten;
+			unlistenFns.push(unlisten);
 		});
 
 		// Listen for scan completion
@@ -285,24 +291,23 @@ ${allScannedPaths.map((file) => file.path).join('\n')}
 			paused = false;
 			loadFindings();
 		}).then((unlisten) => {
-			cleanupComplete = unlisten;
+			unlistenFns.push(unlisten);
 		});
 
 		// Listen for scan stopped
-		let cleanupStopped: (() => void) | null = null;
 		listen('discovery:stopped', () => {
 			scanning = false;
 			paused = false;
 			loadFindings();
 		}).then((unlisten) => {
-			cleanupStopped = unlisten;
+			unlistenFns.push(unlisten);
 		});
 
-		// Clean up listeners on unmount
+		// Clean up all listeners on unmount
 		return () => {
-			if (cleanupProgress) cleanupProgress();
-			if (cleanupComplete) cleanupComplete();
-			if (cleanupStopped) cleanupStopped();
+			for (const unlisten of unlistenFns) {
+				unlisten();
+			}
 		};
 	});
 
