@@ -14,6 +14,16 @@
 	let phoneNumbers = $state<PhoneNumber[]>(profile.phone_numbers || []);
 	let phoneErrors = $state<(string | null)[]>([]);
 
+	// Update state when profile prop changes (for edit mode initialization)
+	$effect(() => {
+		if (profile.email_addresses && profile.email_addresses.length > 0) {
+			emailAddresses = [...profile.email_addresses];
+		}
+		if (profile.phone_numbers && profile.phone_numbers.length > 0) {
+			phoneNumbers = [...profile.phone_numbers];
+		}
+	});
+
 	function addEmailAddress() {
 		emailAddresses = [...emailAddresses, { email: '', email_type: 'Personal' }];
 		emailErrors = [...emailErrors, null];

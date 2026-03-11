@@ -15,6 +15,13 @@
 	let showAddressModal = $state(false);
 	let editingAddressIndex = $state<number | null>(null);
 
+	// Update state when profile prop changes (for edit mode initialization)
+	$effect(() => {
+		if (profile.previous_addresses && profile.previous_addresses.length > 0) {
+			previousAddresses = [...profile.previous_addresses];
+		}
+	});
+
 	function openAddressModal(index?: number) {
 		editingAddressIndex = index ?? null;
 		showAddressModal = true;

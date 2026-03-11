@@ -19,6 +19,16 @@
 	let editingAliasIndex = $state<number | null>(null);
 	let editingRelativeIndex = $state<number | null>(null);
 
+	// Update state when profile prop changes (for edit mode initialization)
+	$effect(() => {
+		if (profile.aliases && profile.aliases.length > 0) {
+			aliases = [...profile.aliases];
+		}
+		if (profile.relatives && profile.relatives.length > 0) {
+			relatives = [...profile.relatives];
+		}
+	});
+
 	function openAliasModal(index?: number) {
 		editingAliasIndex = index ?? null;
 		showAliasModal = true;
