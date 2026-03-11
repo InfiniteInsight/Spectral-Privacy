@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { vaultStore } from '$lib/stores/vault.svelte';
+	import { profileStore } from '$lib/stores';
 	import { renameVault, deleteVault } from '$lib/api/vault';
+	import type { ProfileOutput } from '$lib/api/profile';
 
 	// Vault management state
 	let renameTarget = $state<string | null>(null);
@@ -17,6 +19,11 @@
 	let newVaultPassword = $state('');
 	let confirmPassword = $state('');
 	let showPassword = $state(false);
+
+	// Expanded vault state
+	let expandedVault = $state<string | null>(null);
+	let vaultProfiles = $state<Record<string, ProfileOutput | null>>({});
+	let loadingVaultData = $state<Record<string, boolean>>({});
 
 	async function handleRename(vaultId: string) {
 		actionError = null;
@@ -97,6 +104,42 @@
 			actionLoading = false;
 		}
 	}
+
+	async function toggleVaultExpansion(vaultId: string) {
+		// If clicking the already expanded vault, collapse it
+		if (expandedVault === vaultId) {
+			expandedVault = null;
+			return;
+		}
+
+		// Only allow expansion if vault is unlocked
+		if (!vaultStore.unlockedVaultIds.has(vaultId)) {
+			return;
+		}
+
+		// Expand the vault
+		expandedVault = vaultId;
+
+		// Load vault data if not already loaded
+		if (!vaultProfiles[vaultId]) {
+			loadingVaultData[vaultId] = true;
+			try {
+				await profileStore.loadProfiles(vaultId);
+				if (profileStore.profiles.length > 0) {
+					const profileId = profileStore.profiles[0].id;
+					await profileStore.loadProfile(vaultId, profileId);
+					vaultProfiles[vaultId] = profileStore.currentProfile;
+				} else {
+					vaultProfiles[vaultId] = null;
+				}
+			} catch (err) {
+				console.error('Failed to load vault data:', err);
+				vaultProfiles[vaultId] = null;
+			} finally {
+				loadingVaultData[vaultId] = false;
+			}
+		}
+	}
 </script>
 
 <div class="mx-auto max-w-3xl px-4 py-8">
@@ -111,9 +154,9 @@
 	<!-- Vault List -->
 	<div class="space-y-3">
 		{#each vaultStore.availableVaults as vault (vault.vault_id)}
-			<div class="rounded-lg border border-gray-200 bg-white p-4">
+			<div class="rounded-lg border border-gray-200 bg-white overflow-hidden">
 				{#if renameTarget === vault.vault_id}
-					<div class="flex items-center gap-3">
+					<div class="flex items-center gap-3 p-4">
 						<input
 							bind:value={renameValue}
 							class="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -136,14 +179,55 @@
 						>
 					</div>
 				{:else}
-					<div class="flex items-center justify-between">
-						<div>
-							<p class="font-medium text-gray-900">{vault.display_name}</p>
-							<p class="text-xs text-gray-400">
-								Last accessed: {new Date(vault.last_accessed).toLocaleDateString()}
-							</p>
+					<!-- Vault header (clickable) -->
+					<div
+						class="flex items-center justify-between p-4 {vaultStore.unlockedVaultIds.has(
+							vault.vault_id
+						)
+							? 'cursor-pointer hover:bg-gray-50'
+							: ''}"
+						onclick={(e) => {
+							// Don't expand if clicking on buttons
+							if ((e.target as HTMLElement).closest('button, a')) return;
+							toggleVaultExpansion(vault.vault_id);
+						}}
+						role="button"
+						tabindex="0"
+						onkeydown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								toggleVaultExpansion(vault.vault_id);
+							}
+						}}
+					>
+						<div class="flex items-center gap-3">
+							<!-- Expand/collapse chevron (only for unlocked vaults) -->
+							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
+								<svg
+									class="h-5 w-5 text-gray-400 transition-transform {expandedVault ===
+									vault.vault_id
+										? 'rotate-90'
+										: ''}"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+							{/if}
+							<div>
+								<p class="font-medium text-gray-900">{vault.display_name}</p>
+								<p class="text-xs text-gray-400">
+									Last accessed: {new Date(vault.last_accessed).toLocaleDateString()}
+								</p>
+							</div>
 						</div>
-						<div class="flex gap-2">
+						<div class="flex gap-2" onclick={(e) => e.stopPropagation()}>
 							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
 								<a
 									href="/settings?tab=profile"
@@ -187,6 +271,125 @@
 							>
 						</div>
 					</div>
+
+					<!-- Expanded content -->
+					{#if expandedVault === vault.vault_id}
+						<div class="border-t border-gray-200 bg-gray-50 p-4">
+							{#if loadingVaultData[vault.vault_id]}
+								<div class="flex items-center justify-center py-8">
+									<div
+										class="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-primary-600"
+									></div>
+								</div>
+							{:else if vaultProfiles[vault.vault_id]}
+								{@const profile = vaultProfiles[vault.vault_id]!}
+								<div class="space-y-4">
+									<div>
+										<h3 class="text-sm font-semibold text-gray-700 mb-3">Profile Information</h3>
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<span class="text-gray-500">Name:</span>
+												<span class="ml-2 text-gray-900"
+													>{profile.first_name}
+													{profile.middle_name || ''}
+													{profile.last_name}</span
+												>
+											</div>
+											{#if profile.date_of_birth}
+												<div>
+													<span class="text-gray-500">Date of Birth:</span>
+													<span class="ml-2 text-gray-900"
+														>{new Date(profile.date_of_birth).toLocaleDateString()}</span
+													>
+												</div>
+											{/if}
+											{#if profile.email}
+												<div>
+													<span class="text-gray-500">Email:</span>
+													<span class="ml-2 text-gray-900">{profile.email}</span>
+												</div>
+											{/if}
+											{#if profile.address_line1}
+												<div>
+													<span class="text-gray-500">Address:</span>
+													<span class="ml-2 text-gray-900"
+														>{profile.address_line1}, {profile.city}, {profile.state}</span
+													>
+												</div>
+											{/if}
+										</div>
+									</div>
+
+									{#if profile.email_addresses && profile.email_addresses.length > 0}
+										<div>
+											<h3 class="text-sm font-semibold text-gray-700 mb-2">Email Addresses</h3>
+											<div class="space-y-1">
+												{#each profile.email_addresses as emailAddr}
+													<div class="text-sm text-gray-600">
+														{emailAddr.email}
+														<span class="text-xs text-gray-400">({emailAddr.email_type})</span>
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+
+									{#if profile.phone_numbers && profile.phone_numbers.length > 0}
+										<div>
+											<h3 class="text-sm font-semibold text-gray-700 mb-2">Phone Numbers</h3>
+											<div class="space-y-1">
+												{#each profile.phone_numbers as phone}
+													<div class="text-sm text-gray-600">
+														{phone.number}
+														<span class="text-xs text-gray-400">({phone.phone_type})</span>
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+
+									{#if profile.aliases && profile.aliases.length > 0}
+										<div>
+											<h3 class="text-sm font-semibold text-gray-700 mb-2">Aliases</h3>
+											<div class="space-y-1">
+												{#each profile.aliases as alias}
+													<div class="text-sm text-gray-600">
+														{alias.first_name || ''}
+														{alias.middle_name || ''}
+														{alias.last_name || ''}
+														{alias.nickname ? `"${alias.nickname}"` : ''}
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+
+									{#if profile.relatives && profile.relatives.length > 0}
+										<div>
+											<h3 class="text-sm font-semibold text-gray-700 mb-2">Relatives</h3>
+											<div class="space-y-1">
+												{#each profile.relatives as relative}
+													<div class="text-sm text-gray-600">
+														{relative.first_name || ''}
+														{relative.middle_name || ''}
+														{relative.last_name || ''}
+														<span class="text-xs text-gray-400">({relative.relationship})</span>
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class="py-8 text-center text-sm text-gray-500">
+									No profile data found for this vault.
+									<a href="/profile/setup" class="ml-1 text-primary-600 hover:text-primary-700"
+										>Create a profile</a
+									>
+								</div>
+							{/if}
+						</div>
+					{/if}
 				{/if}
 			</div>
 		{/each}

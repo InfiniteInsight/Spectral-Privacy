@@ -111,6 +111,13 @@ export interface ProfileOutput {
 	zip_code: string;
 	created_at: string; // RFC3339 timestamp
 	updated_at: string; // RFC3339 timestamp
+
+	// Phase 2 fields
+	phone_numbers?: PhoneNumber[];
+	email_addresses?: EmailAddress[];
+	previous_addresses?: PreviousAddress[];
+	aliases?: Alias[];
+	relatives?: Relative[];
 }
 
 /**
