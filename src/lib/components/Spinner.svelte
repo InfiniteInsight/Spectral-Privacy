@@ -2,7 +2,7 @@
 	/**
 	 * Reusable spinner component with consistent styling across the app.
 	 *
-	 * @param size - Size of the spinner: 'sm' (4x4), 'md' (8x8), 'lg' (12x12)
+	 * @param size - Size of the spinner: 'sm' (5x5), 'md' (8x8), 'lg' (12x12)
 	 * @param color - Color of the spinning part: 'primary', 'purple', 'indigo', 'orange', 'white'
 	 * @param inline - If true, displays inline without margin. If false, centers with mx-auto.
 	 */
@@ -16,33 +16,79 @@
 		color?: 'primary' | 'purple' | 'indigo' | 'orange' | 'white';
 		inline?: boolean;
 	} = $props();
-
-	// Size classes
-	const sizeClasses = {
-		sm: 'h-5 w-5 border-2',
-		md: 'h-8 w-8 border-4',
-		lg: 'h-12 w-12 border-4'
-	};
-
-	// Color classes for the spinning part
-	const colorClasses = {
-		primary: 'border-t-primary-600',
-		purple: 'border-t-purple-600',
-		indigo: 'border-t-indigo-600',
-		orange: 'border-t-orange-600',
-		white: 'border-t-white'
-	};
-
-	// Track color (background circle) - reactive
-	const trackColor = $derived(color === 'white' ? 'border-transparent' : 'border-gray-200');
-
-	// Margin class - reactive
-	const marginClass = $derived(inline ? '' : 'mx-auto');
-
-	// Combined classes - reactive
-	const classes = $derived(
-		`${sizeClasses[size]} ${trackColor} ${colorClasses[color]} ${marginClass} animate-spin rounded-full`
-	);
 </script>
 
-<div class={classes}></div>
+<!-- Use explicit class combinations for each size/color to ensure Tailwind processes them -->
+{#if size === 'sm' && color === 'primary'}
+	<div
+		class="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'sm' && color === 'purple'}
+	<div
+		class="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'sm' && color === 'indigo'}
+	<div
+		class="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'sm' && color === 'orange'}
+	<div
+		class="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'sm' && color === 'white'}
+	<div
+		class="animate-spin rounded-full h-5 w-5 border-b-2 border-white {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'md' && color === 'primary'}
+	<div
+		class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'md' && color === 'purple'}
+	<div
+		class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'md' && color === 'indigo'}
+	<div
+		class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'md' && color === 'orange'}
+	<div
+		class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'md' && color === 'white'}
+	<div
+		class="animate-spin rounded-full h-8 w-8 border-b-2 border-white {inline ? '' : 'mx-auto'}"
+	></div>
+{:else if size === 'lg' && color === 'primary'}
+	<div
+		class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'lg' && color === 'purple'}
+	<div
+		class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'lg' && color === 'indigo'}
+	<div
+		class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'lg' && color === 'orange'}
+	<div
+		class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 {inline
+			? ''
+			: 'mx-auto'}"
+	></div>
+{:else if size === 'lg' && color === 'white'}
+	<div
+		class="animate-spin rounded-full h-12 w-12 border-b-2 border-white {inline ? '' : 'mx-auto'}"
+	></div>
+{/if}
