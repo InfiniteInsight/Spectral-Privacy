@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { vaultStore } from '$lib/stores/vault.svelte';
+	import { profileStore } from '$lib/stores';
 	import {
 		testSmtpConnection,
 		testImapConnection,
@@ -28,6 +29,8 @@
 	import { auditAPI, type AuditLogEntry } from '$lib/api/audit';
 	import EmailProviderAccordion from '$lib/components/EmailProviderAccordion.svelte';
 	import EmailSettings from '$lib/components/EmailSettings.svelte';
+	import ProfileWizard from '$lib/components/profile/ProfileWizard.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	// Tab from query param: ?tab=privacy (default), email, scheduling, audit
 	let activeTab = $derived($page.url.searchParams.get('tab') ?? 'privacy');
@@ -90,6 +93,10 @@
 	let auditError = $state<string | null>(null);
 	let auditFilter = $state<string>('all'); // 'all' or specific event type
 
+	// Profile state
+	let loadingProfile = $state(false);
+	let profileError = $state<string | null>(null);
+
 	// Email setup help state
 	let showEmailHelp = $state(false);
 	let expandedProvider = $state<string | null>(null);
@@ -143,6 +150,35 @@
 			loadAuditLog();
 		}
 	});
+
+	// Load profile when profile tab becomes active
+	$effect(() => {
+		if (activeTab === 'profile' && vaultStore.currentVaultId) {
+			loadProfileData();
+		}
+	});
+
+	async function loadProfileData() {
+		if (!vaultStore.currentVaultId) return;
+
+		loadingProfile = true;
+		profileError = null;
+
+		try {
+			await profileStore.loadProfiles(vaultStore.currentVaultId);
+
+			// Load full profile data if exists
+			if (profileStore.profiles.length > 0) {
+				const profileId = profileStore.profiles[0].id;
+				await profileStore.loadProfile(vaultStore.currentVaultId, profileId);
+			}
+		} catch (err) {
+			profileError = err instanceof Error ? err.message : String(err);
+			console.error('Failed to load profile:', err);
+		} finally {
+			loadingProfile = false;
+		}
+	}
 
 	async function loadScheduledJobs() {
 		if (!vaultStore.currentVaultId) return;
@@ -353,7 +389,7 @@
 
 	<!-- Tab bar -->
 	<div class="mb-8 flex gap-1 border-b border-gray-200" role="tablist">
-		{#each [['privacy', 'Privacy Level'], ['llm', 'LLM Providers'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
+		{#each [['profile', 'Profile'], ['privacy', 'Privacy Level'], ['llm', 'LLM Providers'], ['email', 'Email'], ['scheduling', 'Scheduling'], ['audit', 'Audit Log']] as [id, label] (id)}
 			<a
 				href="/settings?tab={id}"
 				role="tab"
@@ -365,8 +401,41 @@
 		{/each}
 	</div>
 
-	<!-- Privacy Level tab -->
-	{#if activeTab === 'privacy'}
+	<!-- Profile tab -->
+	{#if activeTab === 'profile'}
+		<section>
+			<h2 class="mb-4 text-lg font-semibold text-gray-800">Your Profile</h2>
+
+			{#if profileError}
+				<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+					{profileError}
+				</div>
+			{/if}
+
+			{#if loadingProfile}
+				<div class="flex items-center justify-center py-8">
+					<Spinner />
+				</div>
+			{:else if profileStore.currentProfile}
+				<ProfileWizard
+					mode="edit"
+					profileId={profileStore.currentProfile.id}
+					initialData={profileStore.currentProfile}
+				/>
+			{:else}
+				<div class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
+					<p class="mb-4 text-gray-600">No profile found.</p>
+					<a
+						href="/profile/setup"
+						class="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
+						style="background-color: #0284c7; color: white;"
+					>
+						Create Profile
+					</a>
+				</div>
+			{/if}
+		</section>
+	{:else if activeTab === 'privacy'}
 		<section>
 			<h2 class="mb-4 text-lg font-semibold text-gray-800">Privacy Level</h2>
 			{#if privacyError}

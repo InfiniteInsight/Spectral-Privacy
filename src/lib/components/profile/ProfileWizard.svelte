@@ -11,14 +11,29 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	// Check if profile already exists on mount
+	// Props interface
+	interface Props {
+		mode?: 'create' | 'edit';
+		profileId?: string;
+		initialData?: Partial<ProfileInput>;
+	}
+
+	let { mode = 'create', profileId, initialData }: Props = $props();
+
+	// Check if profile already exists on mount (only in create mode)
 	onMount(async () => {
-		if (vaultStore.currentVaultId) {
+		// Only prevent duplicate creation in create mode
+		if (mode === 'create' && vaultStore.currentVaultId) {
 			await profileStore.loadProfiles(vaultStore.currentVaultId);
 			if (profileStore.profiles.length > 0) {
 				// Profile already exists, redirect to dashboard
 				goto('/');
 			}
+		}
+
+		// Initialize form data from initialData in edit mode
+		if (mode === 'edit' && initialData) {
+			formData = { ...initialData };
 		}
 	});
 
@@ -172,17 +187,39 @@
 			formData.email = formData.email_addresses[0].email;
 		}
 
-		const profile = await profileStore.createProfile(
-			vaultStore.currentVaultId!,
-			formData as ProfileInput
-		);
+		if (!vaultStore.currentVaultId) return;
+
+		let profile;
+
+		if (mode === 'create') {
+			profile = await profileStore.createProfile(
+				vaultStore.currentVaultId,
+				formData as ProfileInput
+			);
+		} else {
+			// Edit mode
+			if (!profileId) {
+				console.error('No profile ID provided for edit mode');
+				return;
+			}
+			profile = await profileStore.updateProfile(
+				vaultStore.currentVaultId,
+				profileId,
+				formData as ProfileInput
+			);
+		}
 
 		if (profile) {
-			// Success - redirect to dashboard
-			goto('/');
+			if (mode === 'create') {
+				// Success - redirect to dashboard
+				goto('/');
+			} else {
+				// Edit mode: stay on settings, update completeness
+				updateCompleteness();
+			}
 		} else {
 			// Error message is in profileStore.error
-			alert(`Failed to create profile: ${profileStore.error}`);
+			alert(`Failed to ${mode === 'create' ? 'create' : 'update'} profile: ${profileStore.error}`);
 		}
 	}
 </script>
@@ -191,6 +228,11 @@
 	class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4"
 >
 	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
+		<!-- Title -->
+		<h1 class="text-3xl font-bold text-gray-900 mb-4">
+			{mode === 'edit' ? 'Edit Your Profile' : 'Create Your Profile'}
+		</h1>
+
 		<!-- Completeness Indicator -->
 		{#if completeness}
 			<div class="mb-6">
@@ -288,7 +330,7 @@
 					disabled={profileStore.loading}
 					class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors ml-auto"
 				>
-					{profileStore.loading ? 'Saving...' : 'Save Profile'}
+					{profileStore.loading ? 'Saving...' : mode === 'edit' ? 'Update Profile' : 'Save Profile'}
 				</button>
 			{/if}
 		</div>
