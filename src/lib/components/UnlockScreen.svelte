@@ -92,7 +92,7 @@ Computed style test: <span class="bg-red-500 text-white px-2">Should be red</spa
 
 		{#if vaultStore.loading}
 			<div class="flex items-center justify-center py-8">
-				<Spinner />
+				<Spinner color="purple" />
 			</div>
 		{:else if vaultStore.availableVaults.length === 0}
 			{#if !showCreateForm}
