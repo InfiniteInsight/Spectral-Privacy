@@ -150,6 +150,14 @@ pub enum BrokerCategory {
     Marketing,
     /// Social media aggregators
     SocialMedia,
+    /// Automotive/vehicle data
+    Automotive,
+    /// Employment/HR data
+    Employment,
+    /// Location tracking data
+    LocationData,
+    /// Property records and real estate
+    PropertyRecords,
     /// Other/uncategorized
     Other,
 }
@@ -181,6 +189,10 @@ impl BrokerCategory {
             Self::GovernmentRecords => "Government Records",
             Self::Marketing => "Marketing",
             Self::SocialMedia => "Social Media",
+            Self::Automotive => "Automotive",
+            Self::Employment => "Employment",
+            Self::LocationData => "Location Data",
+            Self::PropertyRecords => "Property Records",
             Self::Other => "Other",
         }
     }
