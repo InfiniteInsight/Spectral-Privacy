@@ -216,7 +216,10 @@
 				} else {
 					// Edit mode: update completeness and show success
 					await updateCompleteness();
-					alert('Profile updated successfully!');
+					alert('Profile updated successfully! Redirecting to People page...');
+					setTimeout(() => {
+						goto('/people');
+					}, 2000);
 				}
 			} else {
 				// Error message is in profileStore.error
