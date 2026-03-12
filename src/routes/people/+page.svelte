@@ -299,7 +299,14 @@
 												<div>
 													<span class="text-gray-500">Date of Birth:</span>
 													<span class="ml-2 text-gray-900"
-														>{new Date(profile.date_of_birth).toLocaleDateString()}</span
+														>{(() => {
+															const [year, month, day] = profile.date_of_birth!.split('-');
+															return new Date(
+																parseInt(year),
+																parseInt(month) - 1,
+																parseInt(day)
+															).toLocaleDateString();
+														})()}</span
 													>
 												</div>
 											{/if}

@@ -312,6 +312,14 @@ pub async fn profile_get(
         .transpose()?
         .unwrap_or_default();
 
+    // Debug: Log old field presence
+    info!(
+        "Profile {}: phone_numbers.len={}, phone field present={}",
+        profile_id,
+        profile.phone_numbers.len(),
+        profile.phone.is_some()
+    );
+
     // Decrypt Phase 2 fields with migration from old fields
     let phone_numbers = if !profile.phone_numbers.is_empty() {
         let mut phones = Vec::new();
