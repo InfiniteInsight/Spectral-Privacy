@@ -34,7 +34,9 @@
 		} else {
 			previousAddresses = [...previousAddresses, address];
 		}
+		console.log('AddressInfoStep - saveAddress - previousAddresses:', previousAddresses);
 		onUpdate({ previous_addresses: previousAddresses });
+		console.log('AddressInfoStep - called onUpdate with previous_addresses:', previousAddresses);
 		showAddressModal = false;
 	}
 

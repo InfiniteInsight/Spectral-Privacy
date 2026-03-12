@@ -151,6 +151,12 @@
 
 	// Save profile
 	async function handleSave() {
+		// Debug: Log what we're about to save
+		console.log('ProfileWizard - saving formData:', formData);
+		console.log('ProfileWizard - previous_addresses:', formData.previous_addresses);
+		console.log('ProfileWizard - aliases:', formData.aliases);
+		console.log('ProfileWizard - relatives:', formData.relatives);
+
 		// Final validation - check all required fields
 		const missingFields: string[] = [];
 
