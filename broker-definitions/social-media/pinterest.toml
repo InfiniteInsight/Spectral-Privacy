@@ -15,12 +15,12 @@ scan_priority = "AutoScanTier2"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.pinterest.com"
 instructions = "Pinterest profiles are semi-public. Data collected: pins, boards, searches, clicks, shopping behavior, interests, demographics. Used for product recommendations and advertising."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://www.pinterest.com/settings/privacy"
 confirmation = "automatic"
 notes = """

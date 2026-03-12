@@ -25,7 +25,7 @@ result_item = "[data-testid='tweet']"
 no_results_indicator = "[data-testid='emptyState']"
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://twitter.com/settings/privacy"
 confirmation = "automatic"
 notes = """

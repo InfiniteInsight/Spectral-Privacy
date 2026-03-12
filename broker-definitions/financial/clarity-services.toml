@@ -15,9 +15,9 @@ scan_priority = "OnRequest"
 region_relevance = ["US"]
 
 [search]
-method = "phone"
-phone = "1-800-772-7633"
-instructions = "Clarity Services is specialty consumer reporting agency for alternative financial services (payday loans, check cashing, rent-to-own). Call to request report or visit website."
+method = "manual"
+url = "https://www.clarityservices.com/consumers/request-your-file"
+instructions = "Clarity Services is specialty consumer reporting agency for alternative financial services (payday loans, check cashing, rent-to-own). Call 1-800-772-7633 to request report or visit website."
 
 [removal]
 method = "phone"

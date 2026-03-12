@@ -25,7 +25,7 @@ result_item = "[data-testid='post-container']"
 no_results_indicator = ".no-results"
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://www.reddit.com/settings/privacy"
 confirmation = "automatic"
 notes = """

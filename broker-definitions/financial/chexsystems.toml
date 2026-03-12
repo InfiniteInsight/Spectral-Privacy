@@ -20,8 +20,8 @@ url = "https://www.chexsystems.com/web/chexsystems/consumerdebit/page/requestrep
 instructions = "ChexSystems tracks checking account history: closures, overdrafts, fraud, bounced checks. Banks check ChexSystems when you apply for new accounts. Bad ChexSystems report can block you from opening accounts."
 
 [removal]
-method = "mail"
-address = "Chex Systems, Inc., Attn: Consumer Relations, 7805 Hudson Road, Suite 100, Woodbury, MN 55125"
+method = "manual"
+instructions = "Mail dispute letter to: Chex Systems, Inc., Attn: Consumer Relations, 7805 Hudson Road, Suite 100, Woodbury, MN 55125"
 notes = """
 ChexSystems consumer rights:
 
