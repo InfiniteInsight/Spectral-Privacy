@@ -17,7 +17,6 @@
 
 	// Sync with profile prop changes
 	$effect(() => {
-		console.log('AddressInfoStep effect - profile.previous_addresses:', profile.previous_addresses);
 		previousAddresses = profile.previous_addresses ? [...profile.previous_addresses] : [];
 	});
 
@@ -34,9 +33,7 @@
 		} else {
 			previousAddresses = [...previousAddresses, address];
 		}
-		console.log('AddressInfoStep - saveAddress - previousAddresses:', previousAddresses);
 		onUpdate({ previous_addresses: previousAddresses });
-		console.log('AddressInfoStep - called onUpdate with previous_addresses:', previousAddresses);
 		showAddressModal = false;
 	}
 

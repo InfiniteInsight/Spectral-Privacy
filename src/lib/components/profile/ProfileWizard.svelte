@@ -25,13 +25,6 @@
 		mode === 'edit' && initialData ? { ...initialData } : {}
 	);
 
-	// Debug logging
-	console.log('ProfileWizard - mode:', mode);
-	console.log('ProfileWizard - initialData:', initialData);
-	console.log('ProfileWizard - formData after init:', formData);
-	console.log('ProfileWizard - formData.email_addresses:', formData.email_addresses);
-	console.log('ProfileWizard - formData.phone_numbers:', formData.phone_numbers);
-
 	// Check if profile already exists on mount (only in create mode)
 	onMount(async () => {
 		// Only prevent duplicate creation in create mode
@@ -92,8 +85,10 @@
 
 	// Update completeness
 	async function updateCompleteness() {
+		if (!vaultStore.currentVaultId) return;
+
 		try {
-			completeness = await getProfileCompleteness();
+			completeness = await getProfileCompleteness(vaultStore.currentVaultId);
 		} catch (error) {
 			console.error('Failed to get completeness:', error);
 		}
@@ -151,12 +146,6 @@
 
 	// Save profile
 	async function handleSave() {
-		// Debug: Log what we're about to save
-		console.log('ProfileWizard - saving formData:', formData);
-		console.log('ProfileWizard - previous_addresses:', formData.previous_addresses);
-		console.log('ProfileWizard - aliases:', formData.aliases);
-		console.log('ProfileWizard - relatives:', formData.relatives);
-
 		// Final validation - check all required fields
 		const missingFields: string[] = [];
 
@@ -199,37 +188,47 @@
 
 		if (!vaultStore.currentVaultId) return;
 
-		let profile;
+		try {
+			let profile;
 
-		if (mode === 'create') {
-			profile = await profileStore.createProfile(
-				vaultStore.currentVaultId,
-				formData as ProfileInput
-			);
-		} else {
-			// Edit mode
-			if (!profileId) {
-				console.error('No profile ID provided for edit mode');
-				return;
-			}
-			profile = await profileStore.updateProfile(
-				vaultStore.currentVaultId,
-				profileId,
-				formData as ProfileInput
-			);
-		}
-
-		if (profile) {
 			if (mode === 'create') {
-				// Success - redirect to dashboard
-				goto('/');
+				profile = await profileStore.createProfile(
+					vaultStore.currentVaultId,
+					formData as ProfileInput
+				);
 			} else {
-				// Edit mode: stay on settings, update completeness
-				updateCompleteness();
+				// Edit mode
+				if (!profileId) {
+					console.error('No profile ID provided for edit mode');
+					return;
+				}
+				profile = await profileStore.updateProfile(
+					vaultStore.currentVaultId,
+					profileId,
+					formData as ProfileInput
+				);
 			}
-		} else {
-			// Error message is in profileStore.error
-			alert(`Failed to ${mode === 'create' ? 'create' : 'update'} profile: ${profileStore.error}`);
+
+			if (profile) {
+				if (mode === 'create') {
+					// Success - redirect to dashboard
+					goto('/');
+				} else {
+					// Edit mode: update completeness and show success
+					await updateCompleteness();
+					alert('Profile updated successfully!');
+				}
+			} else {
+				// Error message is in profileStore.error
+				alert(
+					`Failed to ${mode === 'create' ? 'create' : 'update'} profile: ${profileStore.error}`
+				);
+			}
+		} catch (error) {
+			console.error('Error saving profile:', error);
+			alert(
+				`An error occurred while ${mode === 'create' ? 'creating' : 'updating'} your profile. Please try again.`
+			);
 		}
 	}
 </script>
@@ -255,16 +254,21 @@
 			<div class="flex justify-between items-center">
 				{#each steps as step, index}
 					<div class="flex flex-col items-center flex-1">
-						<div
-							class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-2 transition-colors"
+						<button
+							type="button"
+							onclick={() => {
+								currentStep = index;
+							}}
+							class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-2 transition-colors cursor-pointer hover:opacity-80"
 							class:bg-primary-600={index <= currentStep}
 							class:text-white={index <= currentStep}
 							class:bg-gray-200={index > currentStep}
 							class:text-gray-600={index > currentStep}
 							style={index <= currentStep ? 'background-color: #0284c7; color: white;' : ''}
+							aria-label={`Go to step ${index + 1}: ${step.title}`}
 						>
 							{index + 1}
-						</div>
+						</button>
 						<div
 							class="text-xs font-medium text-center"
 							class:text-primary-600={index <= currentStep}
