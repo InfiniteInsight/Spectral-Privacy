@@ -25,6 +25,20 @@
 	let vaultProfiles = $state<Record<string, ProfileOutput | null>>({});
 	let loadingVaultData = $state<Record<string, boolean>>({});
 
+	// Helper to extract error message from various error types
+	function getErrorMessage(err: unknown): string {
+		// Tauri errors are objects with a message property but not Error instances
+		if (typeof err === 'object' && err !== null && 'message' in err) {
+			return (err as { message: string }).message;
+		}
+		// Standard Error instances
+		if (err instanceof Error) {
+			return err.message;
+		}
+		// Fallback for other types
+		return String(err);
+	}
+
 	async function handleRename(vaultId: string) {
 		actionError = null;
 		actionLoading = true;
@@ -34,7 +48,7 @@
 			renameTarget = null;
 			renameValue = '';
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
+			actionError = getErrorMessage(err);
 		} finally {
 			actionLoading = false;
 		}
@@ -49,7 +63,7 @@
 			deleteTarget = null;
 			deletePassword = '';
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
+			actionError = getErrorMessage(err);
 		} finally {
 			actionLoading = false;
 		}
@@ -61,7 +75,7 @@
 		try {
 			await vaultStore.lock(vaultId);
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
+			actionError = getErrorMessage(err);
 		} finally {
 			actionLoading = false;
 		}
@@ -75,7 +89,7 @@
 			unlockTarget = null;
 			unlockPassword = '';
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
+			actionError = getErrorMessage(err);
 		} finally {
 			actionLoading = false;
 		}
@@ -99,7 +113,7 @@
 			showCreateForm = false;
 			await vaultStore.loadVaults();
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : String(err);
+			actionError = getErrorMessage(err);
 		} finally {
 			actionLoading = false;
 		}
