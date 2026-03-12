@@ -19,8 +19,10 @@
 	let editingAliasIndex = $state<number | null>(null);
 	let editingRelativeIndex = $state<number | null>(null);
 
-	// Update state when profile prop changes (for edit mode initialization)
+	// Sync with profile prop changes
 	$effect(() => {
+		console.log('AdditionalInfoStep effect - profile.aliases:', profile.aliases);
+		console.log('AdditionalInfoStep effect - profile.relatives:', profile.relatives);
 		aliases = profile.aliases ? [...profile.aliases] : [];
 		relatives = profile.relatives ? [...profile.relatives] : [];
 	});

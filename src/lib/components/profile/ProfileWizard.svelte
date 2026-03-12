@@ -20,6 +20,11 @@
 
 	let { mode = 'create', profileId, initialData }: Props = $props();
 
+	// Form data - initialize with initialData in edit mode
+	let formData = $state<Partial<ProfileInput>>(
+		mode === 'edit' && initialData ? { ...initialData } : {}
+	);
+
 	// Check if profile already exists on mount (only in create mode)
 	onMount(async () => {
 		// Only prevent duplicate creation in create mode
@@ -30,18 +35,10 @@
 				goto('/');
 			}
 		}
-
-		// Initialize form data from initialData in edit mode
-		if (mode === 'edit' && initialData) {
-			formData = { ...initialData };
-		}
 	});
 
 	// Current step (0-4)
 	let currentStep = $state(0);
-
-	// Form data
-	let formData = $state<Partial<ProfileInput>>({});
 
 	// Completeness
 	let completeness = $state<ProfileCompleteness | null>(null);

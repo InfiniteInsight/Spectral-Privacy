@@ -14,9 +14,10 @@
 	let phoneNumbers = $state<PhoneNumber[]>([]);
 	let phoneErrors = $state<(string | null)[]>([]);
 
-	// Update state when profile prop changes (for edit mode initialization)
+	// Sync with profile prop changes
 	$effect(() => {
-		// React to profile changes - update arrays from profile
+		console.log('ContactInfoStep effect - profile.email_addresses:', profile.email_addresses);
+		console.log('ContactInfoStep effect - profile.phone_numbers:', profile.phone_numbers);
 		emailAddresses = profile.email_addresses ? [...profile.email_addresses] : [];
 		phoneNumbers = profile.phone_numbers ? [...profile.phone_numbers] : [];
 	});

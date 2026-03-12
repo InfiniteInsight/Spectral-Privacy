@@ -15,8 +15,9 @@
 	let showAddressModal = $state(false);
 	let editingAddressIndex = $state<number | null>(null);
 
-	// Update state when profile prop changes (for edit mode initialization)
+	// Sync with profile prop changes
 	$effect(() => {
+		console.log('AddressInfoStep effect - profile.previous_addresses:', profile.previous_addresses);
 		previousAddresses = profile.previous_addresses ? [...profile.previous_addresses] : [];
 	});
 
