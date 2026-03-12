@@ -3,6 +3,78 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use spectral_core::error::SpectralError;
 
+/// Email type for input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EmailTypeInput {
+    Personal,
+    Work,
+    Other,
+}
+
+/// Phone type for input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PhoneTypeInput {
+    Mobile,
+    Home,
+    Work,
+}
+
+/// Relationship type for input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RelationshipTypeInput {
+    Spouse,
+    Partner,
+    Parent,
+    Child,
+    Sibling,
+    Other,
+}
+
+/// Email address input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailAddressInput {
+    pub email: String,
+    pub email_type: EmailTypeInput,
+}
+
+/// Phone number input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhoneNumberInput {
+    pub number: String,
+    pub phone_type: PhoneTypeInput,
+}
+
+/// Previous address input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviousAddressInput {
+    pub address_line1: String,
+    pub address_line2: Option<String>,
+    pub city: String,
+    pub state: String,
+    pub zip_code: String,
+    pub lived_from: Option<String>,
+    pub lived_to: Option<String>,
+}
+
+/// Alias input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AliasInput {
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub nickname: Option<String>,
+}
+
+/// Relative input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelativeInput {
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub maiden_name: Option<String>,
+    pub relationship: RelationshipTypeInput,
+}
+
 /// Input type for creating/updating a profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileInput {
@@ -16,6 +88,17 @@ pub struct ProfileInput {
     pub city: String,
     pub state: String, // US state code (e.g., "CA")
     pub zip_code: String,
+    // Phase 2 fields
+    #[serde(default)]
+    pub phone_numbers: Option<Vec<PhoneNumberInput>>,
+    #[serde(default)]
+    pub email_addresses: Option<Vec<EmailAddressInput>>,
+    #[serde(default)]
+    pub previous_addresses: Option<Vec<PreviousAddressInput>>,
+    #[serde(default)]
+    pub aliases: Option<Vec<AliasInput>>,
+    #[serde(default)]
+    pub relatives: Option<Vec<RelativeInput>>,
 }
 
 impl ProfileInput {
@@ -54,6 +137,62 @@ pub struct ProfileOutput {
     pub zip_code: String,
     pub created_at: String,
     pub updated_at: String,
+    // Phase 2 fields
+    #[serde(default)]
+    pub phone_numbers: Option<Vec<PhoneNumberOutput>>,
+    #[serde(default)]
+    pub email_addresses: Option<Vec<EmailAddressOutput>>,
+    #[serde(default)]
+    pub previous_addresses: Option<Vec<PreviousAddressOutput>>,
+    #[serde(default)]
+    pub aliases: Option<Vec<AliasOutput>>,
+    #[serde(default)]
+    pub relatives: Option<Vec<RelativeOutput>>,
+}
+
+/// Email address with type classification (output)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailAddressOutput {
+    pub email: String,
+    pub email_type: String, // "Personal", "Work", "Other"
+}
+
+/// Phone number with type classification (output)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhoneNumberOutput {
+    pub number: String,
+    pub phone_type: String, // "Mobile", "Home", "Work"
+}
+
+/// Previous address (output)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviousAddressOutput {
+    pub address_line1: String,
+    pub address_line2: Option<String>,
+    pub city: String,
+    pub state: String,
+    pub zip_code: String,
+    pub lived_from: Option<String>,
+    pub lived_to: Option<String>,
+}
+
+/// Alias or alternative name (output)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AliasOutput {
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub nickname: Option<String>,
+}
+
+/// Relative information (output)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelativeOutput {
+    pub first_name: Option<String>,
+    pub middle_name: Option<String>,
+    pub last_name: Option<String>,
+    pub maiden_name: Option<String>,
+    pub relationship: String, // "Spouse", "Partner", "Parent", "Child", "Sibling", "Other"
 }
 
 /// Summary type for profile listings
@@ -227,6 +366,11 @@ mod tests {
             city: "San Francisco".to_string(),
             state: "CA".to_string(),
             zip_code: "94102".to_string(),
+            phone_numbers: None,
+            email_addresses: None,
+            previous_addresses: None,
+            aliases: None,
+            relatives: None,
         };
         assert!(valid_input.validate().is_ok());
 

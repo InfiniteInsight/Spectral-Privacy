@@ -171,6 +171,15 @@
 			if (profileStore.profiles.length > 0) {
 				const profileId = profileStore.profiles[0].id;
 				await profileStore.loadProfile(vaultStore.currentVaultId, profileId);
+				console.log('Settings - loaded profile:', profileStore.currentProfile);
+				console.log(
+					'Settings - profile.email_addresses:',
+					profileStore.currentProfile?.email_addresses
+				);
+				console.log(
+					'Settings - profile.phone_numbers:',
+					profileStore.currentProfile?.phone_numbers
+				);
 			}
 		} catch (err) {
 			profileError = err instanceof Error ? err.message : String(err);

@@ -25,6 +25,13 @@
 		mode === 'edit' && initialData ? { ...initialData } : {}
 	);
 
+	// Debug logging
+	console.log('ProfileWizard - mode:', mode);
+	console.log('ProfileWizard - initialData:', initialData);
+	console.log('ProfileWizard - formData after init:', formData);
+	console.log('ProfileWizard - formData.email_addresses:', formData.email_addresses);
+	console.log('ProfileWizard - formData.phone_numbers:', formData.phone_numbers);
+
 	// Check if profile already exists on mount (only in create mode)
 	onMount(async () => {
 		// Only prevent duplicate creation in create mode
