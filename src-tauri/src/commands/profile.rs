@@ -312,10 +312,8 @@ pub async fn profile_get(
         .transpose()?
         .unwrap_or_default();
 
-    // Decrypt Phase 2 fields
-    let phone_numbers = if profile.phone_numbers.is_empty() {
-        None
-    } else {
+    // Decrypt Phase 2 fields with migration from old fields
+    let phone_numbers = if !profile.phone_numbers.is_empty() {
         let mut phones = Vec::new();
         for phone in &profile.phone_numbers {
             let number = phone.number.decrypt(key)?;
@@ -330,11 +328,22 @@ pub async fn profile_get(
             });
         }
         Some(phones)
+    } else if let Some(ref old_phone) = profile.phone {
+        // Migration: convert old phone field to new format
+        let number = old_phone.decrypt(key)?;
+        if !number.is_empty() {
+            Some(vec![crate::types::profile::PhoneNumberOutput {
+                number,
+                phone_type: "Mobile".to_string(), // Default to Mobile for migrated data
+            }])
+        } else {
+            None
+        }
+    } else {
+        None
     };
 
-    let email_addresses = if profile.email_addresses.is_empty() {
-        None
-    } else {
+    let email_addresses = if !profile.email_addresses.is_empty() {
         let mut emails = Vec::new();
         for email_addr in &profile.email_addresses {
             let email = email_addr.email.decrypt(key)?;
@@ -349,6 +358,17 @@ pub async fn profile_get(
             });
         }
         Some(emails)
+    } else {
+        // Migration: The old 'email' field is always populated from Phase 1 data above
+        // We already have it in the 'email' variable, so create an email_addresses array from it
+        if !email.is_empty() {
+            Some(vec![crate::types::profile::EmailAddressOutput {
+                email: email.clone(),
+                email_type: "Personal".to_string(), // Default to Personal for migrated data
+            }])
+        } else {
+            None
+        }
     };
 
     let previous_addresses = if profile.previous_addresses_v2.is_empty() {
