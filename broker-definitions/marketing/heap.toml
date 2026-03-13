@@ -1,0 +1,254 @@
+# Heap - Auto-Capture Product Analytics Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "heap"
+name = "Heap"
+url = "https://heap.io"
+domain = "heap.io"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://heap.io"
+instructions = "Heap automatically captures all user interactions (clicks, form submissions, pageviews) without requiring manual event tracking. Cannot search directly - data is owned by companies using Heap analytics."
+
+[removal]
+method = "email"
+email = "privacy@heap.io"
+subject = "CCPA/GDPR Data Deletion Request - Heap Analytics Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all auto-captured behavioral data, user properties, and event data collected through Heap
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Heap Identity: (if known)
+- IP Address: {ip_address}
+- Websites/apps visited: (list any known)
+
+Please:
+1. Delete all my data from Heap's systems
+2. Remove all auto-captured events, user properties, and behavioral data
+3. Notify client companies to delete my data from their Heap accounts
+4. Stop processing any data associated with my identity or devices
+5. Confirm complete deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Heap tracking and removal (MODERATE COMPLEXITY):
+
+WHAT HEAP IS:
+- Auto-capture product analytics platform
+- Automatically tracks ALL user interactions without manual setup
+- Captures every click, form submission, pageview, input change
+- Retroactive analysis: define events after data is collected
+- Used by 8,000+ companies for product analytics
+- Key differentiator: no manual event tracking required
+
+HOW IT WORKS:
+1. Company adds Heap JavaScript snippet to their website/app
+2. Heap automatically captures EVERY interaction:
+   - Every click on every element
+   - Every form submission
+   - Every pageview
+   - Every input field change
+   - Every button press
+3. Data sent to Heap's servers
+4. Companies can later define "events" from captured interactions
+5. Retroactive analysis: analyze past behavior without prior planning
+
+WHAT THEY TRACK (COMPREHENSIVE AUTO-CAPTURE):
+- All click events: every clickable element tracked automatically
+- Form interactions: submissions, field changes, focus events
+- Pageviews: every page visited with full URL
+- Element interactions: hovers, scrolls, taps (mobile)
+- Session data: duration, page flow, visit frequency
+- User properties: email, name, signup date, custom attributes
+- Device info: browser, OS, screen size, device type
+- Location data: IP address, country, city, region
+- Referrer data: traffic source, UTM parameters
+- DOM hierarchy: CSS selectors for every interaction
+- Text content: button text, link text, labels
+
+AUTO-CAPTURE PRIVACY CONCERNS:
+- Captures EVERYTHING by default (not just specific events)
+- Retrospective analysis means data collected "just in case"
+- No opt-out for specific interactions (all-or-nothing)
+- Form inputs captured (should be filtered but often aren't)
+- URL parameters captured (may contain sensitive IDs, tokens)
+- Element text captured (may contain PII displayed on page)
+- More data collected than traditional analytics (by design)
+
+REMOVAL CHALLENGES:
+- Heap is data processor (companies are data controllers)
+- Auto-captured data owned by individual companies
+- No end-user search capability
+- Data volume high due to auto-capture
+- Must contact each company using Heap
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Heap (see detection below)
+   - Email company's privacy contact (privacy@company.com)
+   - Request deletion of all Heap analytics data
+   - Cite GDPR Article 17 / CCPA deletion rights
+   - Companies can delete users from Heap account
+   - Request deletion of all auto-captured events and properties
+
+2. EMAIL HEAP PRIVACY TEAM:
+   - Address: privacy@heap.io
+   - Include email, name, any known user IDs
+   - List websites where you encountered Heap
+   - Request facilitation with client companies
+   - Limited direct control (data processor role)
+
+3. DETECT HEAP TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to: heapanalytics.com, cdn.heapanalytics.com
+   - Cookies: _hp2_id.*, _hp2_ses_props.*, _hp2_props.*
+   - LocalStorage: _hp2_ entries
+   - If present, ALL your interactions are being captured
+
+4. BLOCK HEAP TRACKING (STRONGLY RECOMMENDED):
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filters: ||heapanalytics.com^, ||heap.io^
+   - Blocks auto-capture across all Heap-enabled sites
+   - Critical due to comprehensive tracking nature
+
+5. USE PRIVACY-FOCUSED BROWSERS:
+   - Brave Browser blocks Heap by default
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - These prevent most auto-capture tracking
+
+6. CLEAR HEAP COOKIES:
+   - Delete all _hp2_* cookies
+   - Clear LocalStorage _hp2_* entries
+   - Heap assigns new user identity on next visit
+   - Regular clearing prevents cross-session tracking
+
+7. DISABLE JAVASCRIPT:
+   - Heap requires JavaScript for auto-capture
+   - Use NoScript for selective JS blocking
+   - Not practical for all sites but effective when needed
+
+8. USE DO NOT TRACK (LIMITED):
+   - Some Heap implementations respect DNT header
+   - Enable in browser privacy settings
+   - Not consistently honored
+
+REALITY CHECK:
+- Heap's auto-capture is extremely comprehensive
+- Used by major companies (Microsoft, Twilio, Freshworks, Trello)
+- Most users unaware of extent of tracking
+- Auto-capture means more data than necessary often collected
+- Blocking is essential for meaningful privacy
+- Best approach: aggressive blocking + deletion requests
+
+TECHNICAL DETAILS:
+- Tracking domains: heapanalytics.com, cdn.heapanalytics.com, heap.io
+- Cookies: _hp2_id.{env_id} (user ID), _hp2_ses_props.{env_id} (session)
+- LocalStorage: _hp2_id, _hp2_props, _hp2_hld*
+- SessionStorage: used for session-specific data
+- Auto-capture frequency: interactions sent in batches every few seconds
+
+COMPANIES KNOWN TO USE HEAP:
+- Microsoft, Twilio, Freshworks, Trello, SurveyMonkey, Zendesk
+- Thousands of SaaS, e-commerce, B2B companies
+- Popular with product teams and growth-focused companies
+- Check BuiltWith.com or network requests to identify
+
+HEAP'S GDPR COMPLIANCE:
+- GDPR-compliant Data Processing Addendum with customers
+- Customers are data controllers (legally responsible)
+- Heap is data processor
+- Supports GDPR deletion via customer account features
+- Provides tools to suppress PII capture (implementation varies)
+
+DATA RETENTION:
+- Event data: retained indefinitely by default (configurable)
+- User properties: retained while customer maintains account
+- After deletion request: removed within 30 days
+- Backups may retain data for up to 90 additional days
+- Request confirmation of deletion including backups
+
+SENSITIVE DATA AUTO-CAPTURE:
+- Heap attempts to filter sensitive form fields
+- Password fields: auto-excluded
+- Credit card inputs: auto-excluded
+- Social Security Numbers: auto-excluded (regex-based)
+- URL parameters: captured by default (may contain sensitive IDs)
+- Element text: captured (may contain displayed PII)
+- Custom data filtering required by companies (often misconfigured)
+
+AUTO-CAPTURE VOLUME:
+- Typical user: hundreds of events captured per session
+- High interaction sites: thousands of events per user
+- Data volume much higher than manual event tracking
+- Makes comprehensive deletion more complex
+
+RETROACTIVE ANALYSIS CONCERNS:
+- Companies can define new events retroactively
+- Data collected "just in case" (may never be used)
+- No way to know which data companies will eventually analyze
+- Violates data minimization principle (GDPR)
+
+HEAP'S DATA ENRICHMENT:
+- User properties can be enriched from external sources
+- Email → additional attributes (from CRM, marketing automation)
+- Creates more comprehensive user profiles
+- Deletion should cover enriched data too
+
+LEGAL CONSIDERATIONS:
+- GDPR: auto-capture of all interactions likely requires explicit consent
+- Many sites fail to adequately disclose Heap usage
+- Auto-capture may violate data minimization (GDPR Article 5)
+- CCPA: requires disclosure and deletion rights
+- Consider filing complaints if disclosure is inadequate
+
+EFFECTIVENESS:
+- Medium difficulty: companies usually comply with deletion requests
+- Blocking is highly effective and strongly recommended
+- Heap provides good deletion tools to customers
+- Auto-capture means high data volume to delete
+- Requires ongoing vigilance (sites add Heap over time)
+
+COMPARISON TO OTHER ANALYTICS:
+- More comprehensive than Google Analytics (auto-capture)
+- Similar privacy concerns to FullStory/LogRocket
+- Higher data volume than Mixpanel/Amplitude (manual events)
+- Retroactive analysis unique privacy concern
+
+ADDITIONAL PROTECTIONS:
+- Use email aliases to hide real email
+- Avoid sensitive operations on sites using Heap
+- Regular cookie/storage clearing (weekly or daily)
+- Privacy-focused browser extensions
+- VPN to mask IP and location
+- Consider this high-priority for blocking due to auto-capture
+
+HEAP SESSION REPLAY (ADDITIONAL FEATURE):
+- Some Heap customers enable session replay
+- Combines auto-capture analytics + session recordings
+- If enabled, refer to FullStory/Hotjar removal guidance
+- Session replay requires separate deletion request
+- Ask companies if they use Heap's session replay feature
+"""
+
+[removal.cookies]
+patterns = ["_hp2_*", "heap_*"]
+domains = [".heap.io", ".heapanalytics.com"]

@@ -1,0 +1,303 @@
+# Attentive - SMS Marketing Platform for E-commerce
+# Last verified: 2026-02-27
+
+[broker]
+id = "attentive"
+name = "Attentive"
+url = "https://www.attentivemobile.com"
+domain = "attentive.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["North America"]
+
+[search]
+method = "manual"
+url = "https://www.attentivemobile.com"
+instructions = "Attentive is an SMS marketing platform focused on e-commerce. Tracks: mobile phone numbers, SMS engagement, purchase history, website behavior, text message clicks. Data owned by stores using Attentive."
+
+[removal]
+method = "email"
+email = "privacy@attentive.com"
+subject = "CCPA/GDPR Data Deletion Request - Attentive"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data held by Attentive
+
+Personal Information:
+- Phone: {phone_number}
+- Email: {user_email}
+- Name: {full_name}
+
+Please delete from:
+- Attentive platform databases
+- All customer store/brand SMS lists
+- Text message engagement history
+- Purchase tracking data
+- Website browsing data linked to my phone
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Attentive tracking and removal:
+
+WHAT ATTENTIVE IS:
+- SMS marketing platform for e-commerce brands
+- Used by 6,000+ online retailers
+- Powers text message marketing campaigns
+- Customers include: CB2, Urban Outfitters, Coach, PacSun
+- Focus: converting mobile numbers into sales
+- Publicly traded (NASDAQ: ATTN)
+
+HOW ATTENTIVE WORKS:
+
+1. PHONE NUMBER COLLECTION:
+   - Pop-up forms on e-commerce sites ("Get 15% off via text!")
+   - Checkout page opt-ins
+   - Email-to-SMS conversion campaigns
+   - QR codes in stores, on receipts
+   - Contests, giveaways requiring phone number
+   - Integration with Shopify, BigCommerce checkout
+
+2. SMS TRACKING:
+   - Tracks every text message sent to you
+   - Records deliveries, bounces, opt-outs
+   - Click tracking via short URLs
+   - Conversion attribution (text → purchase)
+   - A/B testing different message variants
+   - Optimal send time algorithms
+
+3. BEHAVIORAL TRIGGERING:
+   - Welcome series (opted in, get 3 texts)
+   - Abandoned cart reminders via SMS
+   - Browse abandonment ("Still interested in those shoes?")
+   - Back-in-stock alerts
+   - Price drop notifications
+   - VIP/loyalty program messages
+
+4. WEBSITE BEHAVIOR TRACKING:
+   - JavaScript SDK tracks browsing on e-commerce sites
+   - Products viewed, categories browsed
+   - Cart additions, removals
+   - Time on site, pages per session
+   - Links phone number to browsing behavior
+
+5. PURCHASE HISTORY:
+   - Order values, products purchased
+   - Purchase frequency, recency
+   - Average order value
+   - Product preferences, categories
+   - Used for personalized recommendations via SMS
+
+6. SUBSCRIBER SEGMENTATION:
+   - VIP customers (high spend)
+   - Engaged subscribers (click often)
+   - At-risk (haven't purchased recently)
+   - Interest-based (browsed men's vs women's)
+   - Custom segments per brand
+
+WHAT DATA ATTENTIVE COLLECTS:
+
+IDENTITY DATA:
+- Mobile phone number (primary identifier)
+- First and last name
+- Email address (if collected)
+- ZIP code (from checkout or forms)
+
+CONSENT DATA:
+- Opt-in timestamp, method (popup, checkout)
+- Opt-out date (if you text STOP)
+- Consent language shown
+- IP address at opt-in
+
+ENGAGEMENT DATA:
+- SMS delivery status
+- Link clicks in text messages
+- Response keywords ("YES", "STOP", "HELP")
+- Message frequency
+- Time of day you typically click
+
+BEHAVIORAL DATA:
+- Website browsing history (while signed in)
+- Products viewed, searched
+- Cart additions, abandonments
+- Pages visited, session duration
+- Conversion events (purchase)
+
+PURCHASE DATA:
+- Order history, product details
+- Transaction amounts, frequency
+- Customer lifetime value
+- Product preferences
+- Discount code usage
+
+DEVICE DATA:
+- Carrier (AT&T, Verizon, T-Mobile)
+- Phone type (iOS vs Android, rough indicator)
+- Location (city/state from area code)
+
+HOW TO REMOVE YOUR DATA:
+
+1. TEXT "STOP" TO OPT OUT:
+   - Reply "STOP" to any Attentive SMS
+   - Immediately halts messages from that brand
+   - Required by TCPA (Telephone Consumer Protection Act)
+   - Records opt-out but doesn't delete historical data
+   - Can also try: "UNSUBSCRIBE", "END", "CANCEL", "QUIT"
+
+2. CLICK UNSUBSCRIBE LINK:
+   - Many Attentive texts have "Text STOP to opt out" link
+   - Opens mobile web page to confirm
+   - Hosted on attn.tv or attentive.com domains
+   - Same effect as texting STOP
+
+3. REQUEST FROM STORE DIRECTLY:
+   - Email the retailer's privacy contact
+   - Request CCPA/GDPR deletion
+   - Store should delete from Attentive + their database
+   - Most effective method
+   - Legally required within 30-45 days
+
+4. EMAIL ATTENTIVE PRIVACY:
+   - Address: privacy@attentive.com
+   - Include phone number, email, name
+   - Attentive will facilitate deletion from customer stores
+   - May require store cooperation
+   - Privacy policy: https://www.attentivemobile.com/privacy-policy
+
+5. ATTENTIVE PRIVACY REQUEST FORM:
+   - Visit: https://www.attentivemobile.com/privacy-request
+   - Submit CCPA/GDPR request
+   - Select "Delete my data"
+   - Provide phone number, email
+   - Response within 30-45 days
+
+6. REVOKE CONSENT VIA WEBSITE:
+   - Some stores have SMS preference centers
+   - Usually linked in account settings
+   - Can adjust frequency or topics
+   - Full opt-out available
+
+7. DETECT ATTENTIVE TRACKING:
+   - Look for Attentive pop-ups on e-commerce sites
+   - Check browser DevTools → Network tab
+   - Requests to: *.attn.tv, *.attentivemobile.com
+   - Cookies: attentive_*, _attentive_id
+   - JavaScript: attentive.js loaded on site
+
+8. BLOCK ATTENTIVE TRACKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block domains: *.attentive.com, *.attn.tv
+   - Prevents website behavior tracking
+   - Won't stop SMS if already opted in
+
+REALITY CHECK:
+- Attentive used by most major US e-commerce brands
+- Your phone number likely in multiple Attentive databases
+- Each store is separate - no unified opt-out
+- Texting STOP is easy but doesn't delete data
+- Must request deletion separately from each brand
+- Best approach: Don't give phone number to retailers
+
+ATTENTIVE'S TRACKING POWER:
+- Links phone number to complete shopping behavior
+- Knows what you browse, cart, buy on every site
+- Tracks SMS engagement patterns (when you click)
+- Predicts when you'll buy again
+- Monitors price sensitivity (do discounts work?)
+- Cross-site tracking if same phone used on multiple stores
+- Powers aggressive abandoned cart recovery
+
+TECHNICAL DETAILS:
+
+TRACKING DOMAINS:
+- attn.tv (click tracking short URLs)
+- dtxmktg.com (delivery tracking)
+- attentivemobile.com (main platform)
+- cdn.attn.tv (JavaScript SDK)
+
+COOKIES:
+- attentive_* (various tracking cookies)
+- _attentive_id (subscriber identifier)
+- attn_* (session cookies)
+
+JAVASCRIPT SDK:
+- attentive.js embedded on e-commerce sites
+- Tracks page views, product views, cart events
+- Triggers pop-ups based on behavior
+- Real-time event streaming to Attentive servers
+
+SMS LINK TRACKING:
+- Short URLs (attn.tv/xxxxx)
+- Redirects through Attentive servers
+- Records click timestamp, device
+- Attributes conversions to SMS campaign
+
+INTEGRATION POINTS:
+- Shopify (native app)
+- BigCommerce, WooCommerce, Magento
+- Klaviyo (sync lists)
+- Facebook Custom Audiences
+- Google Customer Match
+- Email platforms (cross-channel campaigns)
+
+OPT-IN METHODS:
+- Website pop-ups (most common)
+- Checkout page checkboxes
+- QR codes (in-store, print ads)
+- Email campaigns ("Text YES to...")
+- Social media ads with phone capture
+
+MESSAGE TYPES:
+- Welcome series (3-5 messages)
+- Promotional blasts (sales, new arrivals)
+- Abandoned cart recovery
+- Back-in-stock alerts
+- Shipping notifications
+- VIP early access
+
+PRIVACY IMPLICATIONS:
+- Phone number = permanent identifier
+- Harder to change than email
+- SMS feels more invasive than email
+- No spam folder - delivered to main inbox
+- Click tracking reveals interest level
+- Purchase data tied to mobile number
+- Cross-store tracking potential
+- Most users don't realize extent of tracking
+
+TCPA COMPLIANCE:
+- Must obtain "prior express written consent"
+- Must provide opt-out mechanism (STOP)
+- Must honor opt-outs within 10 days
+- Cannot charge for opt-out
+- Attentive handles compliance for brands
+- Violations = $500-$1,500 per text (FCC fines)
+
+WHO USES ATTENTIVE:
+- Fashion retailers (apparel, shoes, accessories)
+- Beauty/cosmetics brands
+- Home goods, furniture
+- Outdoor/sporting goods
+- Direct-to-consumer brands
+- Check for "Powered by Attentive" in SMS footer
+
+ATTENTIVE VS COMPETITORS:
+- More e-commerce focused than Braze (mobile apps)
+- SMS-only vs Klaviyo (email + SMS)
+- Competes with Postscript (Shopify SMS)
+- Alternative to Yotpo SMSBump
+- More specialized than Twilio (raw SMS API)
+- Industry leader for retail SMS marketing
+"""
+
+[removal.cookies]
+patterns = ["attentive_*", "_attentive_id", "attn_*"]
+domains = [".attentive.com", ".attn.tv", ".attentivemobile.com"]

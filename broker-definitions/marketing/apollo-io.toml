@@ -1,0 +1,92 @@
+# Apollo.io - B2B Sales Intelligence and Contact Database
+# Last verified: 2026-02-27
+
+[broker]
+id = "apollo-io"
+name = "Apollo.io"
+url = "https://www.apollo.io"
+domain = "apollo.io"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 14
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.apollo.io/sign-up"
+instructions = "Apollo.io aggregates professional contact information from public sources (LinkedIn, company websites, etc.). Search requires creating a free account. Enter your name and company to see if you're in their database."
+
+[removal]
+method = "email"
+email = "privacy@apollo.io"
+subject = "CCPA/GDPR Data Deletion Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Remove my personal information from Apollo.io database
+
+Personal Information:
+- Full Name: {full_name}
+- Email: {user_email}
+- Company: {employer}
+- Title: {job_title}
+- Phone: {phone}
+- LinkedIn: {linkedin_url}
+
+Please:
+1. Delete all my personal data from Apollo.io
+2. Do not re-scrape my information from public sources
+3. Confirm deletion in writing
+
+I expect completion within the legally required timeframe (30-45 days).
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Apollo.io removal process:
+
+1. SEARCH FOR YOUR PROFILE:
+   - Create free Apollo.io account
+   - Search for your name + company
+   - Note the URL of your profile if found
+
+2. EMAIL REMOVAL REQUEST:
+   - Send email to privacy@apollo.io
+   - Include: name, email, company, title
+   - Reference CCPA or GDPR rights
+
+3. ALTERNATIVE REMOVAL FORM:
+   - Visit https://www.apollo.io/privacy
+   - May have opt-out form available
+   - Fill out with your details
+
+4. PREVENT RE-SCRAPING:
+   - Remove public info from LinkedIn
+   - Set LinkedIn profile to private or connections-only
+   - Contact your employer to remove you from team pages
+
+5. FOLLOW UP:
+   - Apollo should respond within 30 days
+   - If no response, file CCPA complaint with California AG
+   - Or GDPR complaint with EU data protection authority
+
+WHAT APOLLO COLLECTS:
+- Name, title, company from LinkedIn
+- Work email (guessed from company domain)
+- Work phone (scraped from public sources)
+- Job history and skills
+- Company information
+
+Apollo re-scrapes data periodically, so you may need to:
+- Request removal again if data reappears
+- Keep professional profiles more private
+- Use privacy settings on LinkedIn and company websites
+"""
+
+[removal.cookies]
+patterns = ["apollo_session", "_apollo_*"]
+domains = [".apollo.io"]

@@ -15,13 +15,14 @@ scan_priority = "OnRequest"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.reddit.com/settings/privacy"
 instructions = "Reddit tracks subreddit visits, upvotes, comments, and external site visits (via Reddit Pixel) to personalize ads. Privacy settings require account login."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://www.reddit.com/settings/privacy"
+instructions = "Log in to Reddit and visit privacy settings to disable personalized advertising."
 notes = """
 Reddit advertising privacy controls:
 

@@ -1,0 +1,243 @@
+# VWO (Visual Website Optimizer) - A/B Testing and Conversion Optimization
+# Last verified: 2026-02-27
+
+[broker]
+id = "vwo"
+name = "VWO (Visual Website Optimizer)"
+url = "https://vwo.com"
+domain = "vwo.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://vwo.com"
+instructions = "VWO (Visual Website Optimizer) is an A/B testing and conversion optimization platform owned by Wingify. Tracks user behavior during experiments to optimize websites. Cannot search directly - data is owned by companies using VWO for testing."
+
+[removal]
+method = "email"
+email = "privacy@wingify.com"
+subject = "CCPA/GDPR Data Deletion Request - VWO Experimentation Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data and experimentation tracking data collected through VWO (Visual Website Optimizer)
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- VWO Visitor ID: (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from VWO/Wingify systems
+2. Notify client companies to delete my data from their VWO projects
+3. Stop processing my behavioral data in active experiments
+4. Remove all visitor data, experiment variations, and heatmap recordings
+5. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+VWO tracking and removal (MODERATE COMPLEXITY):
+
+WHAT VWO IS:
+- Visual Website Optimizer (VWO) by Wingify
+- All-in-one conversion optimization platform
+- A/B testing, multivariate testing, split URL testing
+- Heatmaps, session recordings, and user surveys
+- Used by 4,500+ companies across 90+ countries
+- Major competitor to Optimizely and Google Optimize
+
+HOW IT WORKS:
+1. Company creates experiment in VWO (e.g., test headline variations)
+2. VWO SmartCode (JavaScript) loads on website
+3. User assigned to variation via cookie
+4. VWO tracks user actions and conversion goals
+5. Heatmaps and session recordings capture detailed behavior
+6. Company analyzes results to optimize conversions
+
+WHAT THEY TRACK:
+- Visitor ID: persistent identifier across sessions
+- Experiment variations: which versions you saw
+- Conversion goals: button clicks, form submissions, purchases
+- Page views: navigation patterns during experiments
+- Mouse movements and clicks: heatmap data
+- Session recordings: full video replays of sessions (if enabled)
+- Form analytics: field interactions and abandonment
+- Device data: browser, OS, screen resolution, viewport
+- Geographic data: country, region, city from IP address
+- Custom attributes: passed by website (user segment, plan type, etc.)
+
+WHY IT'S PRIVACY-INVASIVE:
+- Session recordings capture everything you do on page
+- Heatmaps track precise mouse movements and clicks
+- Form analytics track every keystroke (can capture PII)
+- Persistent cross-session tracking
+- Behavioral segmentation for targeted experiments
+- Often runs continuously, not just during active tests
+
+REMOVAL CHALLENGES:
+- VWO is a data processor (not data controller)
+- Data legally owned by companies running experiments
+- No direct search capability for end users
+- Must request deletion from individual companies
+- VWO provides deletion capabilities but companies must initiate
+- Session recordings especially concerning (full behavioral capture)
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using VWO (check network requests)
+   - Look for: dev.visualwebsiteoptimizer.com, vwo.com
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of all experimentation and recording data
+   - Specifically mention: experiments, heatmaps, session recordings
+   - Companies should use VWO's data deletion features
+   - This deletes visitor data, recordings, and experiment history
+
+2. EMAIL VWO PRIVACY TEAM:
+   - Parent company: Wingify
+   - Address: privacy@wingify.com
+   - Include email, name, any known visitor IDs
+   - VWO may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+
+3. DETECT VWO TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * dev.visualwebsiteoptimizer.com (SmartCode SDK)
+     * dacdn.visualwebsiteoptimizer.com (data collection)
+     * vwo.com (API endpoints)
+   - Cookies: _vis_*, _vwo_*, v_*
+   - LocalStorage: _vwo_* entries
+   - These indicate active VWO tracking
+
+4. BLOCK VWO TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||visualwebsiteoptimizer.com^
+     * ||vwo.com^
+   - Blocks tracking across all VWO-enabled sites
+   - May impact site functionality (experiments may not render correctly)
+   - Prevents session recording and heatmap tracking
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks VWO automatically)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - Chrome with third-party cookie blocking
+   - All reduce VWO tracking effectiveness
+
+6. CLEAR TRACKING DATA:
+   - Delete all VWO cookies:
+     * _vis_opt_* (visitor optimization cookies)
+     * _vwo_* (main tracking cookies)
+     * _vis_* (visitor session cookies)
+     * v_* (various VWO cookies)
+   - Clear LocalStorage _vwo_ entries
+   - VWO assigns new visitor ID on next visit
+   - Breaks cross-session experiment consistency
+
+7. DISABLE SESSION RECORDINGS:
+   - VWO session recording respects "Do Not Track" header
+   - Enable DNT in browser settings
+   - Not all implementations honor this
+   - Blocking VWO domains is more reliable
+
+8. OPT-OUT MECHANISM:
+   - VWO provides opt-out at: https://vwo.com/opt-out/
+   - Sets opt-out cookie to prevent tracking
+   - Must be done per browser/device
+   - Cookie-based, so clears if you clear cookies
+   - Better to use browser-level blocking
+
+REALITY CHECK:
+- VWO widely used by e-commerce, SaaS, lead-gen companies
+- Session recordings are extremely privacy-invasive
+- Captures everything: mouse movements, clicks, scrolls, form inputs
+- Can inadvertently record sensitive data (passwords, credit cards)
+- Best strategy: block VWO entirely + deletion requests
+- Companies legally obligated to honor GDPR/CCPA requests
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * dev.visualwebsiteoptimizer.com (SmartCode)
+  * dacdn.visualwebsiteoptimizer.com (data collection)
+  * vwo.com (API and opt-out)
+- Cookies:
+  * _vis_opt_exp_{id}_combi (experiment variation assignment)
+  * _vis_opt_s (session count)
+  * _vis_opt_test_cookie (cookie support test)
+  * _vwo_uuid (visitor unique ID)
+  * _vwo_ds (data store)
+  * _vwo_sn (session number)
+- LocalStorage: _vwo_*, _vis_opt_* (client-side buffering)
+- Session recordings: video-like replays stored on VWO servers
+
+COMPANIES KNOWN TO USE VWO:
+- E-commerce: eBay, Ubisoft, Target
+- B2B SaaS: Adobe, Ricoh, Vodafone
+- Media: Wired, Popular Mechanics
+- Thousands of growth-focused companies
+- Check BuiltWith.com to identify usage
+
+VWO'S GDPR COMPLIANCE:
+- Claims full GDPR/CCPA compliance as data processor
+- Provides data deletion and export tools
+- DPA (Data Processing Agreement) with customers
+- ISO 27001 certified for security
+- Privacy Shield certified (US-EU data transfers)
+- Recommends customers anonymize recordings
+
+DATA RETENTION:
+- VWO retains data as long as customer maintains account
+- Session recordings stored for 35 days by default (configurable)
+- Experiment results stored indefinitely
+- After deletion request, visitor data removed within 30 days
+- Request confirmation of deletion including recordings
+
+SESSION RECORDING CONCERNS:
+- Captures full user sessions as video-like replays
+- Can inadvertently record PII: names, emails, passwords
+- VWO recommends masking sensitive fields (often not done)
+- Recordings stored on VWO servers (AWS)
+- Major privacy risk if not properly configured
+- Always request deletion of recordings specifically
+
+HEATMAP TRACKING:
+- Aggregates user clicks, scrolls, mouse movements
+- Creates visual maps of user attention
+- Less privacy-invasive than session recordings (aggregated)
+- Still tracks individual behavior before aggregation
+- Included in deletion requests
+
+MOBILE APP TRACKING:
+- VWO SDKs for iOS and Android
+- Tracks in-app experiments and behavior
+- Uses device IDs for persistent tracking
+- Request deletion from app developer
+- Include device ID (IDFA/AAID) in request
+
+EFFECTIVENESS:
+- Medium difficulty: companies generally comply with requests
+- VWO provides deletion tools but requires company action
+- Browser blocking highly effective (prevents all tracking)
+- Cookie deletion breaks visitor tracking
+- Session recordings are persistent until deleted or expired
+- Ongoing monitoring needed for new tracking
+"""
+
+[removal.cookies]
+patterns = ["_vis_*", "_vwo_*", "v_*"]
+domains = [".vwo.com", ".visualwebsiteoptimizer.com"]

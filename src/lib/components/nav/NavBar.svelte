@@ -13,7 +13,9 @@
 			<a href="/maps" class="text-sm text-gray-600 hover:text-gray-900">Maps</a>
 			<a href="/score" class="text-sm text-gray-600 hover:text-gray-900">Score</a>
 			<a href="/brokers" class="text-sm text-gray-600 hover:text-gray-900">Brokers</a>
-			<a href="/discovery" class="text-sm text-gray-600 hover:text-gray-900">Discovery</a>
+			<a href="/adtech" class="text-sm text-gray-600 hover:text-gray-900">AdTech</a>
+			<a href="/discovery" class="text-sm text-gray-600 hover:text-gray-900">PII Discovery</a>
+			<a href="/cookies" class="text-sm text-gray-600 hover:text-gray-900">Cookies</a>
 		</div>
 		<div class="flex items-center gap-3">
 			<VaultSwitcher />

@@ -15,14 +15,15 @@ scan_priority = "AutoScanTier2"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://account.microsoft.com/privacy/ad-settings"
 instructions = "Microsoft tracks search queries (Bing), browsing (Edge), app usage (Windows), location, Cortana interactions, Office documents, Xbox activity. Data used for personalized ads across Microsoft properties and partner sites."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://account.microsoft.com/privacy/ad-settings"
 confirmation = "automatic"
+instructions = "Visit Microsoft privacy settings while logged in and disable ad personalization."
 notes = """
 Microsoft advertising privacy controls:
 

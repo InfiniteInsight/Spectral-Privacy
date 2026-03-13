@@ -15,14 +15,13 @@ scan_priority = "AutoScanTier1"
 region_relevance = ["US", "Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.amazon.com/adprefs"
-instructions = "Amazon tracks purchase history, browsing, search queries, Alexa interactions, Prime Video viewing, Kindle reading, and device usage. Data used for personalized product recommendations and advertising."
+instructions = "Amazon tracks purchase history, browsing, search queries, Alexa interactions, Prime Video viewing, Kindle reading, and device usage. Data used for personalized product recommendations and advertising. Log into your Amazon account to view your data."
 
 [removal]
-method = "account-required"
-url = "https://www.amazon.com/adprefs"
-confirmation = "automatic"
+method = "manual"
+instructions = "Log into your Amazon account at https://www.amazon.com/adprefs to manage advertising preferences and opt out of personalized ads."
 notes = """
 Amazon advertising and privacy controls:
 

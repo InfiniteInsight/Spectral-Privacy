@@ -1,0 +1,278 @@
+# Hunter.io - Email Finder and Verifier
+# Last verified: 2026-02-27
+
+[broker]
+id = "hunter-io"
+name = "Hunter.io"
+url = "https://hunter.io"
+domain = "hunter.io"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "web-form"
+url = "https://hunter.io/opt-out"
+instructions = "Hunter.io is an email finder focused on discovering email addresses associated with companies. Provides opt-out form for easy removal. Search by email at opt-out page."
+
+[removal]
+method = "web-form"
+url = "https://hunter.io/opt-out"
+instructions = "Visit https://hunter.io/opt-out and enter your email address. Hunter.io will remove it from their database and add you to opt-out list to prevent future scraping."
+response_days = 30
+notes = """
+Hunter.io removal and opt-out (EASY - HAS OPT-OUT FORM):
+
+WHAT HUNTER.IO IS:
+- Email finder and verifier with 100M+ email addresses
+- Focuses on finding email addresses associated with companies
+- Browser extension for instant email lookup
+- Email verification API (check if email exists)
+- Used by 3M+ users (sales, marketing, recruiting)
+- More privacy-friendly than competitors (provides easy opt-out)
+
+HOW HUNTER.IO GETS YOUR DATA:
+1. WEBSITE SCRAPING (PRIMARY SOURCE):
+   - Crawls company websites for published emails
+   - Extracts from "Contact", "About", "Team" pages
+   - Harvests from blog author bios
+   - Scrapes news articles, press releases
+
+2. PUBLIC WEB CONTENT:
+   - Social media profiles with public emails
+   - GitHub profiles (public email addresses)
+   - Blog comments and author profiles
+   - Forum signatures and profiles
+   - Academic publications (researcher emails)
+
+3. EMAIL PATTERN DETECTION:
+   - Analyzes known emails at a company
+   - Detects pattern: firstname.lastname@company.com
+   - Predicts emails for other employees
+   - Verification: checks if predicted email exists
+
+4. EMAIL VERIFICATION:
+   - SMTP validation (checks mailbox exists)
+   - Catch-all detection (server accepts all emails)
+   - Disposable email detection
+   - Role-based email detection (info@, support@)
+
+5. CROWDSOURCED DATA:
+   - Users searching for emails (discovers new ones)
+   - Browser extension capturing email signatures
+   - Less aggressive than competitors
+
+WHAT THEY STORE:
+- Email addresses (primary data)
+- Associated company/domain
+- First name, last name (if available)
+- Job title (if found on website)
+- Email pattern (company's email format)
+- Verification status (valid, invalid, catch-all)
+- Confidence score (data accuracy)
+- Sources (where email was found)
+
+WHY IT'S PRIVACY-INVASIVE:
+- Makes email addresses easily searchable
+- Used for cold email outreach (spam)
+- Email verification can trigger server logs
+- Aggregates data from across the web
+- No consent required (public data argument)
+- Creates detailed company email maps
+
+REMOVAL CHALLENGES:
+- RE-SCRAPING: Hunter.io re-crawls websites periodically
+- Data can return if email still public on websites
+- Deletion temporary without source removal
+- BUT: Hunter.io provides opt-out list (better than competitors)
+- Opt-out should prevent re-adding (if honored)
+
+HOW TO REMOVE YOUR DATA:
+
+1. USE OFFICIAL OPT-OUT FORM (EASIEST METHOD):
+   - Visit: https://hunter.io/opt-out
+   - Enter your email address
+   - Hunter.io will:
+     * Remove email from database
+     * Add to permanent opt-out list
+     * Prevent future scraping of that email
+   - Process typically completes within 48 hours
+   - No account creation required
+   - No complex forms or identity verification
+
+2. VERIFY REMOVAL:
+   - After 48 hours, check if email still appears
+   - Visit: https://hunter.io
+   - Search for your email or company domain
+   - If still present, contact privacy team
+
+3. EMAIL PRIVACY TEAM (IF OPT-OUT FORM FAILS):
+   - Address: privacy@hunter.io
+   - Use subject: "CCPA/GDPR Data Deletion Request"
+   - Include all email addresses to remove
+   - Request confirmation and opt-out list addition
+   - Response typically within 7-14 days
+
+4. PREVENT RE-SCRAPING:
+   - Remove email from company websites
+   - Use contact forms instead of published emails
+   - Obfuscate emails: "firstname [at] company [dot] com"
+   - Remove from blog author bios
+   - Set GitHub email to private
+   - Remove from social media profiles
+
+5. COMPANY WEBSITE PROTECTION:
+   - Request webmaster to remove your email
+   - Use contact forms instead of email links
+   - JavaScript email obfuscation (defeats scrapers)
+   - Image-based email (not text)
+   - Remove from "Team" and "About" pages
+
+6. ONGOING MONITORING:
+   - Check every 90 days if email reappears
+   - Hunter.io's opt-out should be permanent
+   - If email returns, re-submit opt-out form
+   - Document if opt-out not honored (regulatory complaint)
+
+REALITY CHECK:
+- Hunter.io is MORE privacy-friendly than competitors
+- Provides easy opt-out (rare among B2B data brokers)
+- Opt-out should be permanent (not just deletion)
+- Still requires source removal for best results
+- Much easier than Lusha, ZoomInfo, etc.
+
+TECHNICAL DETAILS:
+- Browser extension: Chrome, Firefox, Edge
+- Shows emails when visiting company websites
+- API: api.hunter.io for programmatic access
+- No tracking cookies (you don't visit Hunter.io)
+- Data accessed by sales/marketing professionals
+
+WHO USES HUNTER.IO:
+- Sales teams: lead generation, cold email
+- Marketers: building email lists
+- Recruiters: finding candidate emails
+- Journalists: contacting sources
+- Anyone needing to find business emails
+
+HUNTER.IO'S GDPR COMPLIANCE:
+- Claims full GDPR/CCPA compliance
+- Provides easy opt-out form (GDPR requirement)
+- Processes deletions within 48 hours
+- Based in France (subject to strict GDPR enforcement)
+- Privacy Policy: https://hunter.io/privacy-policy
+- DPA available for business customers
+
+DATA RETENTION:
+- Hunter.io retains data indefinitely
+- Refreshed from public sources periodically
+- After opt-out, email removed and blocked permanently
+- Opt-out list maintained to prevent re-adding
+- More reliable than deletion-only approaches
+
+OPT-OUT EFFECTIVENESS:
+- HIGH effectiveness: easy form + permanent opt-out
+- Opt-out list prevents re-scraping
+- Much better than competitors (Lusha, ZoomInfo)
+- Best-in-class for B2B data broker opt-out
+- Still recommend source removal for defense-in-depth
+
+EMAIL VERIFICATION CONCERNS:
+- Hunter.io verifies if emails exist (SMTP check)
+- Verification attempts may appear in your email logs
+- Not invasive (standard SMTP validation)
+- Can be blocked by strict email security
+
+DOMAIN SEARCH CONCERNS:
+- Hunter.io allows search by company domain
+- Shows all found emails at a company
+- Reveals company email patterns
+- Individual opt-out removes your email from domain results
+
+COMPARISON TO COMPETITORS:
+Hunter.io vs. Others:
+- Lusha: No easy opt-out, requires email request
+- ZoomInfo: Complex opt-out, often ignored
+- Apollo.io: Difficult opt-out process
+- RocketReach: Email-based opt-out, less reliable
+- Hunter.io: BEST opt-out (easy form, permanent)
+
+OPT OUT FROM ALL EMAIL FINDERS:
+- Hunter.io: https://hunter.io/opt-out (EASY)
+- Lusha: privacy@lusha.com (email)
+- RocketReach: privacy@rocketreach.co (email)
+- Apollo.io: privacy@apollo.io (email)
+- Snov.io: privacy@snov.io (email)
+- Voila Norbert: privacy@voilanorbert.com (email)
+
+SOURCES HUNTER.IO USES:
+- Company websites (80% of data)
+- GitHub (public profiles)
+- Twitter/X (bio emails)
+- Blog author pages
+- Press releases
+- Academic papers (for researchers)
+- Public business directories
+
+EMAIL PATTERN DETECTION:
+- Hunter.io excels at detecting company patterns
+- Examples:
+  * {first}.{last}@company.com
+  * {first}{last}@company.com
+  * {f}{last}@company.com
+  * {first}@company.com
+- 90%+ accuracy for common patterns
+- Verification ensures predicted emails exist
+
+BULK OPERATIONS:
+- Hunter.io API allows bulk email finding
+- Companies can find thousands of emails quickly
+- Your email may be in bulk exports
+- Opt-out removes from future bulk searches
+
+EMAIL DELIVERABILITY CHECKING:
+- Hunter.io checks if emails are deliverable
+- Categorizes: valid, invalid, risky, catch-all
+- Used to clean email lists before sending
+- Your email's deliverability status is tracked
+
+CHROME EXTENSION CONCERNS:
+- Hunter.io extension shows emails on any company website
+- Instant email lookup while browsing
+- Used by millions of sales/marketing professionals
+- Opt-out prevents your email from appearing
+
+B2B PROFESSIONAL CONSIDERATIONS:
+- Having email in Hunter.io can be beneficial:
+  * Clients/partners can find you
+  * Recruiters can reach you
+  * Industry visibility
+- Or detrimental:
+  * Cold email spam
+  * Sales outreach
+  * Phishing targeting
+- Weigh discoverability vs. privacy
+
+ALTERNATIVE: KEEP WORK EMAIL, REMOVE PERSONAL:
+- Opt out personal emails from Hunter.io
+- Keep work email for professional findability
+- Reduces spam to personal inbox
+- Maintains professional accessibility
+
+EFFECTIVENESS:
+- EASY difficulty: best opt-out among B2B data brokers
+- Opt-out form is simple and fast (48 hours)
+- Permanent opt-out list prevents re-adding
+- High success rate compared to competitors
+- Source removal still recommended (defense-in-depth)
+- Minimal ongoing monitoring required
+- Hunter.io sets the standard for GDPR-compliant opt-out
+"""
+
+[removal.cookies]
+patterns = []
+domains = []

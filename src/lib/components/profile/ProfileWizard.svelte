@@ -11,9 +11,24 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	// Check if profile already exists on mount
+	// Props interface
+	interface Props {
+		mode?: 'create' | 'edit';
+		profileId?: string;
+		initialData?: Partial<ProfileInput>;
+	}
+
+	let { mode = 'create', profileId, initialData }: Props = $props();
+
+	// Form data - initialize with initialData in edit mode
+	let formData = $state<Partial<ProfileInput>>(
+		mode === 'edit' && initialData ? { ...initialData } : {}
+	);
+
+	// Check if profile already exists on mount (only in create mode)
 	onMount(async () => {
-		if (vaultStore.currentVaultId) {
+		// Only prevent duplicate creation in create mode
+		if (mode === 'create' && vaultStore.currentVaultId) {
 			await profileStore.loadProfiles(vaultStore.currentVaultId);
 			if (profileStore.profiles.length > 0) {
 				// Profile already exists, redirect to dashboard
@@ -24,9 +39,6 @@
 
 	// Current step (0-4)
 	let currentStep = $state(0);
-
-	// Form data
-	let formData = $state<Partial<ProfileInput>>({});
 
 	// Completeness
 	let completeness = $state<ProfileCompleteness | null>(null);
@@ -73,8 +85,10 @@
 
 	// Update completeness
 	async function updateCompleteness() {
+		if (!vaultStore.currentVaultId) return;
+
 		try {
-			completeness = await getProfileCompleteness();
+			completeness = await getProfileCompleteness(vaultStore.currentVaultId);
 		} catch (error) {
 			console.error('Failed to get completeness:', error);
 		}
@@ -172,17 +186,52 @@
 			formData.email = formData.email_addresses[0].email;
 		}
 
-		const profile = await profileStore.createProfile(
-			vaultStore.currentVaultId!,
-			formData as ProfileInput
-		);
+		if (!vaultStore.currentVaultId) return;
 
-		if (profile) {
-			// Success - redirect to dashboard
-			goto('/');
-		} else {
-			// Error message is in profileStore.error
-			alert(`Failed to create profile: ${profileStore.error}`);
+		try {
+			let profile;
+
+			if (mode === 'create') {
+				profile = await profileStore.createProfile(
+					vaultStore.currentVaultId,
+					formData as ProfileInput
+				);
+			} else {
+				// Edit mode
+				if (!profileId) {
+					console.error('No profile ID provided for edit mode');
+					return;
+				}
+				profile = await profileStore.updateProfile(
+					vaultStore.currentVaultId,
+					profileId,
+					formData as ProfileInput
+				);
+			}
+
+			if (profile) {
+				if (mode === 'create') {
+					// Success - redirect to dashboard
+					goto('/');
+				} else {
+					// Edit mode: update completeness and show success
+					await updateCompleteness();
+					alert('Profile updated successfully! Redirecting to People page...');
+					setTimeout(() => {
+						goto('/people');
+					}, 2000);
+				}
+			} else {
+				// Error message is in profileStore.error
+				alert(
+					`Failed to ${mode === 'create' ? 'create' : 'update'} profile: ${profileStore.error}`
+				);
+			}
+		} catch (error) {
+			console.error('Error saving profile:', error);
+			alert(
+				`An error occurred while ${mode === 'create' ? 'creating' : 'updating'} your profile. Please try again.`
+			);
 		}
 	}
 </script>
@@ -191,6 +240,11 @@
 	class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4"
 >
 	<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
+		<!-- Title -->
+		<h1 class="text-3xl font-bold text-gray-900 mb-4">
+			{mode === 'edit' ? 'Edit Your Profile' : 'Create Your Profile'}
+		</h1>
+
 		<!-- Completeness Indicator -->
 		{#if completeness}
 			<div class="mb-6">
@@ -203,16 +257,21 @@
 			<div class="flex justify-between items-center">
 				{#each steps as step, index}
 					<div class="flex flex-col items-center flex-1">
-						<div
-							class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-2 transition-colors"
+						<button
+							type="button"
+							onclick={() => {
+								currentStep = index;
+							}}
+							class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-2 transition-colors cursor-pointer hover:opacity-80"
 							class:bg-primary-600={index <= currentStep}
 							class:text-white={index <= currentStep}
 							class:bg-gray-200={index > currentStep}
 							class:text-gray-600={index > currentStep}
 							style={index <= currentStep ? 'background-color: #0284c7; color: white;' : ''}
+							aria-label={`Go to step ${index + 1}: ${step.title}`}
 						>
 							{index + 1}
-						</div>
+						</button>
 						<div
 							class="text-xs font-medium text-center"
 							class:text-primary-600={index <= currentStep}
@@ -288,7 +347,7 @@
 					disabled={profileStore.loading}
 					class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors ml-auto"
 				>
-					{profileStore.loading ? 'Saving...' : 'Save Profile'}
+					{profileStore.loading ? 'Saving...' : mode === 'edit' ? 'Update Profile' : 'Save Profile'}
 				</button>
 			{/if}
 		</div>
@@ -297,6 +356,18 @@
 		{#if profileStore.error}
 			<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
 				<p class="text-sm text-red-800">{profileStore.error}</p>
+			</div>
+		{/if}
+
+		<!-- Cancel button (edit mode only) -->
+		{#if mode === 'edit'}
+			<div class="mt-4 text-center">
+				<button
+					onclick={() => goto('/people')}
+					class="text-sm text-gray-600 hover:text-gray-800 underline"
+				>
+					Cancel and return to People
+				</button>
 			</div>
 		{/if}
 	</div>

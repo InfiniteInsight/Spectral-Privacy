@@ -23,6 +23,7 @@ instructions = "Taboola powers 'recommended content' widgets on news sites. Trac
 method = "web-form"
 url = "https://www.taboola.com/policies/privacy-policy#user-choices-and-optout"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Taboola opt-out:
 

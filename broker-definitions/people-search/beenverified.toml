@@ -45,7 +45,7 @@ notes = "Requires finding your listing URL first, then email verification. May t
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@beenverified.com"
 first_name = "{first_name}"
 last_name = "{last_name}"
 
@@ -57,3 +57,13 @@ last_name_input = "#lastName"
 submit_button = "button.submit-btn"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success-message"
+
+[removal.email_fallback]
+enabled = true
+email = "ccpa@beenverified.com"
+phone = "1-844-823-2869"
+subject = "CCPA Data Deletion Request"
+required_fields = ["full_name", "date_of_birth", "address", "profile_url"]
+processing_days = 45
+notes = "Dedicated CCPA email address. Alternative: privacy@beenverified.com. May take up to 45 days under CCPA compliance requirements."
+ccpa_compliant = true

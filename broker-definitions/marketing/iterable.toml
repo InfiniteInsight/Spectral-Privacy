@@ -1,0 +1,273 @@
+# Iterable - Cross-Channel Marketing Automation Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "iterable"
+name = "Iterable"
+url = "https://www.iterable.com"
+domain = "iterable.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.iterable.com"
+instructions = "Iterable is a cross-channel marketing platform used by consumer brands. Tracks: email engagement, SMS clicks, push notifications, in-app messages, web behavior. Data owned by companies using Iterable."
+
+[removal]
+method = "email"
+email = "privacy@iterable.com"
+subject = "CCPA/GDPR Data Deletion Request - Iterable"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through Iterable
+
+Personal Information:
+- Email: {user_email}
+- Phone: {phone_number}
+- Name: {full_name}
+- User ID: (if known)
+
+Please delete from:
+- Iterable platform databases
+- All customer brand profiles
+- Email and SMS engagement history
+- Push notification data
+- Workflow tracking data
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Iterable tracking and removal:
+
+WHAT ITERABLE IS:
+- Cross-channel marketing automation platform
+- Used by consumer brands (B2C focus)
+- Powers email, SMS, push, in-app, web messaging
+- Customers include: Zillow, DoorDash, Calm, SeatGeek
+- Focus: personalized messaging at scale
+
+HOW ITERABLE WORKS:
+
+1. MULTI-CHANNEL MESSAGING:
+   - Orchestrates email, SMS, push, in-app messages
+   - Coordinates timing across channels
+   - "Send email, if not opened in 24hrs, send SMS"
+   - Unified customer journey across touchpoints
+   - Tracks which channel works best for each user
+
+2. EMAIL TRACKING:
+   - Opens tracked via invisible pixel
+   - Link clicks via redirect URLs
+   - Bounce, spam complaint monitoring
+   - Device, location, email client detection
+   - A/B test subject lines, content, send times
+
+3. SMS ENGAGEMENT:
+   - Delivery status, click tracking
+   - Opt-in/opt-out timestamps
+   - Keyword response monitoring
+   - Link shortening for tracking
+   - Carrier, country code collection
+
+4. PUSH NOTIFICATIONS:
+   - Mobile and web push tracking
+   - Opens, dismissals, actions
+   - Device token management
+   - Timezone-optimized sending
+   - Rich media engagement
+
+5. BEHAVIORAL TRIGGERING:
+   - Event-based campaigns (abandoned cart, welcome)
+   - Workflow automation (multi-step journeys)
+   - User action triggers (purchased, browsed, searched)
+   - Time-based delays and conditions
+   - Real-time event processing
+
+6. PERSONALIZATION ENGINE:
+   - Dynamic content based on user data
+   - Product recommendations
+   - Localization (language, currency)
+   - Custom user attributes
+   - AI-powered send time optimization
+
+WHAT DATA ITERABLE COLLECTS:
+
+IDENTITY DATA:
+- Email address, phone number, name
+- User ID from client's system
+- Device identifiers
+- IP address, user agent
+
+BEHAVIORAL DATA:
+- Email opens, clicks, unsubscribes
+- SMS clicks, opt-outs
+- Push notification engagement
+- In-app message interactions
+- Custom events (client-defined)
+
+ENGAGEMENT HISTORY:
+- Campaign receipt timestamps
+- Channel preferences
+- Frequency of engagement
+- Response times
+- Unsubscribe reasons
+
+DEVICE DATA:
+- Email client (Gmail, Outlook, Apple Mail)
+- Operating system, browser
+- Device type (mobile, desktop, tablet)
+- Push tokens for targeting
+
+PREFERENCE DATA:
+- Subscription status per channel
+- Message frequency preferences
+- Content topic preferences
+- Language, timezone
+
+HOW TO REMOVE YOUR DATA:
+
+1. UNSUBSCRIBE FROM EMAILS:
+   - Click "Unsubscribe" link in email footer
+   - Required by CAN-SPAM Act
+   - Removes from that brand's email list
+   - Doesn't delete historical data
+   - May redirect to Iterable-hosted preference center
+
+2. OPT OUT OF SMS:
+   - Reply "STOP" to any SMS message
+   - Immediately halts messages from that brand
+   - Required by TCPA regulations
+   - Opt-out stored but data retained
+
+3. DISABLE PUSH NOTIFICATIONS:
+   - In-app settings (disable notifications)
+   - Or phone Settings → Notifications → [App]
+   - Stops messages but doesn't delete data
+   - Push token may remain in system
+
+4. REQUEST FROM BRAND DIRECTLY:
+   - Email the brand's privacy/support contact
+   - Request CCPA/GDPR deletion
+   - Brand should delete from Iterable + their systems
+   - Most effective method
+   - Legally required within 30-45 days
+
+5. EMAIL ITERABLE PRIVACY:
+   - Address: privacy@iterable.com
+   - Include email, phone, name
+   - Iterable will facilitate deletion from customer databases
+   - May require brand cooperation
+   - Visit: https://iterable.com/trust/privacy-policy
+
+6. ITERABLE PRIVACY PORTAL:
+   - Some brands use Iterable-hosted preference centers
+   - Look for links.iterable.com in unsubscribe URLs
+   - May have "Delete My Data" option
+   - Effectiveness varies by brand
+
+7. DETECT ITERABLE TRACKING:
+   - Check email headers for "iterable.com" references
+   - Look for links.iterable.com in URLs
+   - Network traffic: api.iterable.com
+   - Cookies: iterableEmailCampaignId, itbl_*
+
+8. BLOCK ITERABLE TRACKING:
+   - Use email client that blocks tracking pixels
+   - Privacy Badger/uBlock Origin for web tracking
+   - Block domains: *.iterable.com
+   - Prevents open/click tracking
+
+REALITY CHECK:
+- Iterable used by many consumer apps and brands
+- No centralized database to search
+- Each brand maintains separate Iterable workspace
+- Must request deletion from each brand individually
+- Best approach: Unsubscribe aggressively + use email aliases
+
+ITERABLE'S TRACKING POWER:
+- Knows your preferred communication channel
+- Tracks optimal send times for each user
+- Monitors engagement patterns across email/SMS/push
+- Predicts likelihood to engage with campaigns
+- Cross-channel attribution (which message led to purchase)
+- Workflow tracking (where you are in customer journey)
+
+TECHNICAL DETAILS:
+
+TRACKING DOMAINS:
+- api.iterable.com (API endpoint)
+- links.iterable.com (click tracking)
+- iterable.com (tracking pixel)
+
+COOKIES:
+- iterableEmailCampaignId (campaign tracking)
+- itbl_* (various tracking cookies)
+- Used on web-based preference centers
+
+EMAIL TRACKING:
+- Open tracking: 1x1 transparent pixel
+- Click tracking: links.iterable.com redirects
+- Unsubscribe: hosted on Iterable infrastructure
+- Headers include Iterable identifiers
+
+SMS TRACKING:
+- Short URLs for click tracking
+- Delivery receipts via SMS gateway
+- Opt-out keyword monitoring ("STOP", "UNSUBSCRIBE")
+
+MOBILE SDKs:
+- iOS SDK (IterableSDK)
+- Android SDK
+- React Native support
+- Tracks in-app events, push tokens
+
+INTEGRATION POINTS:
+- Segment, mParticle (CDPs)
+- Shopify, Magento (e-commerce)
+- Salesforce, Zendesk (CRM)
+- Facebook Custom Audiences
+- Google Customer Match
+
+WORKFLOW ENGINE:
+- Multi-step campaigns (drip sequences)
+- Branching logic based on user actions
+- Time delays, wait conditions
+- A/B testing across entire workflows
+- Exit conditions (unsubscribe, purchase)
+
+PRIVACY IMPLICATIONS:
+- Detailed cross-channel engagement profiles
+- Behavioral prediction algorithms
+- Journey tracking (visibility into customer lifecycle)
+- Data synced to advertising platforms
+- Most users unaware of Iterable's role
+- No unified opt-out across all brands
+
+WHO USES ITERABLE:
+- Consumer apps (travel, food, entertainment)
+- E-commerce (direct-to-consumer brands)
+- Subscription services
+- Media/streaming companies
+- Check company privacy policy for "Iterable" mentions
+
+ITERABLE VS COMPETITORS:
+- Similar to Braze (mobile-first engagement)
+- More consumer-focused than Marketo (B2B)
+- Easier than Salesforce Marketing Cloud
+- Competes with Customer.io (workflow automation)
+- Alternative to Klaviyo (less e-commerce specific)
+"""
+
+[removal.cookies]
+patterns = ["iterableEmailCampaignId", "itbl_*", "iterable_*"]
+domains = [".iterable.com", "links.iterable.com"]

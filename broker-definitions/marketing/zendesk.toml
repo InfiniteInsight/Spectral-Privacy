@@ -1,0 +1,280 @@
+# Zendesk - Customer Support and Ticketing Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "zendesk"
+name = "Zendesk"
+url = "https://www.zendesk.com"
+domain = "zendesk.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.zendesk.com"
+instructions = "Zendesk is a customer support and ticketing platform. Tracks support interactions, chat conversations, help center visits, and customer satisfaction data. Cannot search directly - data is owned by companies using Zendesk for customer support."
+
+[removal]
+method = "email"
+email = "privacy@zendesk.com"
+subject = "CCPA/GDPR Data Deletion Request - Zendesk Support Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data, support tickets, and interaction history collected through Zendesk
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Phone: {phone_number} (if provided)
+- Zendesk User ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Zendesk's systems
+2. Notify client companies to delete my data from their Zendesk instances
+3. Stop processing my support tickets and conversation history
+4. Remove all user profiles, tickets, chat transcripts, and satisfaction ratings
+5. Delete help center visit tracking and article views
+6. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Zendesk tracking and removal (MODERATE COMPLEXITY):
+
+WHAT ZENDESK IS:
+- Leading customer support and ticketing platform
+- Used by 100,000+ companies globally
+- Provides: ticketing, live chat, help center, phone support
+- Tracks all customer interactions and support history
+- Integrates with CRM, e-commerce, and product data
+- Major customers: Uber, Shopify, Slack, Airbnb
+
+HOW IT WORKS:
+1. Company sets up Zendesk for customer support
+2. You contact support via email, chat, phone, or help center
+3. Zendesk creates ticket and user profile
+4. Tracks all interactions: messages, attachments, satisfaction ratings
+5. Support agents see full customer history during interactions
+6. Data synced with CRM and other business systems
+7. Analytics track support metrics and customer behavior
+
+WHAT THEY TRACK:
+- User identity: email, name, phone, account ID
+- Support tickets: all tickets, messages, attachments
+- Chat conversations: live chat transcripts (Zendesk Chat)
+- Phone calls: call recordings and transcripts (if enabled)
+- Satisfaction ratings: CSAT scores and feedback comments
+- Help center activity: articles viewed, searches performed
+- User profile: custom fields (order history, subscription, etc.)
+- Tags and organization: support agent tags, categorizations
+- Session data: when you accessed support, from where
+- Device data: browser, OS (for web-based support)
+- Integration data: synced from CRM, e-commerce, product
+
+WHY IT'S PRIVACY-INVASIVE:
+- Stores complete support interaction history
+- Ticket contents may include sensitive information:
+  * Account credentials, passwords shared via support
+  * Financial information (billing issues)
+  * Personal health information (for healthcare products)
+  * Legal complaints, disputes
+  * Product usage problems (reveals usage patterns)
+- Call recordings capture voice (biometric data under GDPR)
+- Often integrated with CRM (amplifies data sharing)
+- Support agents access full customer history
+- No user-facing data deletion mechanism
+- Tickets often retained indefinitely for "quality assurance"
+
+REMOVAL CHALLENGES:
+- Zendesk is a data processor (not data controller)
+- Data legally owned by companies using Zendesk
+- Support tickets considered "business records"
+- Companies very reluctant to delete support history
+- Often synced with CRM (requires multi-system deletion)
+- No direct search capability for end users
+- Must request deletion from individual companies
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify companies using Zendesk for support
+   - Look for: Zendesk-branded help centers (company.zendesk.com)
+   - Or embedded widgets on support pages
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL Zendesk data:
+     * User profile and custom fields
+     * All support tickets and attachments
+     * Chat transcripts (Zendesk Chat)
+     * Call recordings (Zendesk Talk)
+     * Help center visit tracking
+     * Satisfaction ratings and feedback
+     * Synced CRM/integration data
+   - Companies should permanently delete user (not just anonymize)
+   - Emphasize "permanent deletion" and GDPR Article 17
+
+2. EMAIL ZENDESK PRIVACY TEAM:
+   - Address: privacy@zendesk.com
+   - Include email, name, phone, any known user IDs
+   - Zendesk may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+   - Mention specific companies if you know them
+
+3. DETECT ZENDESK TRACKING:
+   - Zendesk Help Centers: company.zendesk.com subdomains
+   - Embedded widgets: look for "Powered by Zendesk" branding
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * *.zendesk.com (help center, API)
+     * *.zdassets.com (static assets, widgets)
+     * ekr.zdassets.com (web widget SDK)
+   - Cookies: _zendesk_*, _help_center_*, __zlcmid
+   - Support pages often clearly indicate Zendesk usage
+
+4. BLOCK ZENDESK TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||zendesk.com^
+     * ||zdassets.com^
+   - Blocks help center tracking and chat widgets
+   - May prevent accessing support (help center won't load)
+   - Only use if you don't need support access
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks some Zendesk tracking)
+   - Firefox Enhanced Tracking Protection
+   - Third-party cookie blocking
+   - Limits cross-site tracking but not support functionality
+
+6. CLEAR TRACKING DATA:
+   - Delete Zendesk cookies:
+     * _zendesk_authenticated (authentication)
+     * _zendesk_session (session tracking)
+     * _zendesk_shared_session
+     * _help_center_session (help center visits)
+     * __zlcmid (chat widget ID)
+   - Clear cookies after support interactions
+   - Breaks cross-session tracking but tickets persist
+
+7. HELP CENTER PRIVACY:
+   - Zendesk Guide (help center) tracks article views
+   - Search queries logged and analyzed
+   - Can use help center without creating account
+   - Use private browsing for help center searches
+   - Prevents persistent tracking of help-seeking behavior
+
+REALITY CHECK:
+- Zendesk extremely common (100,000+ companies)
+- Support tickets contain sensitive information
+- Companies treat tickets as "business records"
+- Very reluctant to delete (compliance, quality, liability)
+- May offer anonymization instead of deletion
+- Push back: GDPR requires deletion, not just anonymization
+- Best strategy: persistent requests citing GDPR Article 17
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * *.zendesk.com (help center, subdomain per company)
+  * *.zdassets.com (static assets, widgets)
+  * ekr.zdassets.com (web widget SDK)
+  * api.zopim.com (legacy Zopim chat, acquired by Zendesk)
+- Cookies:
+  * _zendesk_cookie (tracking, 1-year)
+  * _zendesk_authenticated (auth state)
+  * _zendesk_session (session, browser close)
+  * _help_center_session (help center tracking)
+  * __zlcmid (chat widget ID, 1-year)
+  * ZD-* (various session cookies)
+- Help Centers: custom domains or company.zendesk.com
+
+COMPANIES KNOWN TO USE ZENDESK:
+- Technology: Uber, Slack, Mailchimp, Shopify
+- E-commerce: Countless online retailers
+- SaaS: Majority of B2B and B2C SaaS products
+- Very widespread across all industries
+- Check help center URL or widget branding
+
+ZENDESK'S GDPR COMPLIANCE:
+- Claims full GDPR/CCPA compliance as data processor
+- Provides permanent user deletion for customers
+- Deletion includes: user, tickets, chats, attachments
+- Offers "redaction" (anonymization) as alternative
+- DPA (Data Processing Agreement) with customers
+- ISO 27001, SOC 2 Type II certified
+- Privacy Shield certified (US-EU data transfers)
+
+DATA RETENTION:
+- Zendesk retains data as long as customer maintains account
+- Tickets often stored indefinitely by customers
+- After deletion request, data removed within 30 days
+- Backups retained for 90 days (request backup deletion)
+- Attachments (files) may be stored separately
+- Request written confirmation of complete deletion
+
+TICKET CONTENT CONCERNS:
+- Tickets may contain extremely sensitive information:
+  * Passwords shared via support (security risk)
+  * Credit card numbers (PCI compliance issue)
+  * Medical information (HIPAA protected)
+  * Account disputes, legal threats
+  * Product defects, complaints
+- All personal data subject to deletion under GDPR
+- Companies cannot refuse deletion due to "business need"
+- GDPR Article 17 provides right to erasure
+
+CALL RECORDING CONCERNS:
+- Zendesk Talk records phone support calls
+- Voice recordings are biometric data under GDPR
+- Transcriptions may contain sensitive information
+- Explicitly request deletion of call recordings
+- Companies must comply (no business justification exception)
+
+CHAT TRANSCRIPT CONCERNS:
+- Zendesk Chat (formerly Zopim) records live chat
+- Transcripts stored with ticket history
+- May contain sensitive information shared in real-time
+- Request deletion of all chat transcripts
+- Included in standard user deletion
+
+CRM INTEGRATION CONCERNS:
+- Zendesk syncs with Salesforce, HubSpot, etc.
+- User data and tickets often synced to CRM
+- Deletion from Zendesk doesn't delete from CRM
+- Must request separate deletion from CRM
+- Companies should delete from all integrated systems
+
+ZENDESK EXPLORE (ANALYTICS):
+- Zendesk Explore analyzes support metrics
+- Aggregates ticket data, CSAT scores, agent performance
+- Personal data anonymized in reports (after deletion)
+- Deletion request should include analytics data
+
+ZENDESK SUNSHINE (CUSTOM OBJECTS):
+- Zendesk Sunshine stores custom data objects
+- Companies may store additional customer data
+- Not automatically deleted with user deletion
+- Request deletion of all custom objects and relationships
+
+EFFECTIVENESS:
+- Medium difficulty: companies generally respond to requests
+- Zendesk provides permanent deletion tools
+- Companies often resist (tickets = business records)
+- Emphasize GDPR Article 17 (no business justification exception)
+- May require multiple requests or escalation
+- Browser blocking effective for prevention (but limits support access)
+- Ticket deletion often requires persistence
+"""
+
+[removal.cookies]
+patterns = ["_zendesk_*", "_help_center_*", "__zlcmid", "ZD-*"]
+domains = [".zendesk.com", ".zdassets.com", ".zopim.com"]

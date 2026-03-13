@@ -49,3 +49,14 @@ last_name_input = "#lastName"
 submit_button = "button.submit-btn"
 captcha_frame = "iframe[src*='recaptcha']"
 success_indicator = ".success-message"
+
+[removal.email_fallback]
+enabled = true
+email = "support@fastpeoplesearch.zendesk.com"
+phone = "1-866-679-8725"
+subject = "Request for Deletion of Personal Data"
+subject_required = true
+required_fields = ["full_name", "profile_url", "user_email"]
+processing_days = 3
+notes = "IMPORTANT: Subject line must be exactly 'Request for Deletion of Personal Data' for request to be processed. Alternative phone: 617-229-7889. Email verification required. Response within 72 hours. Can submit up to 5 opt-out requests from same email address."
+ccpa_compliant = true

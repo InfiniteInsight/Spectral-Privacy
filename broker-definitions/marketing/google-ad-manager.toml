@@ -1,0 +1,268 @@
+# Google Ad Manager - Ad Server Platform (formerly DoubleClick for Publishers)
+# Last verified: 2026-02-27
+
+[broker]
+id = "google-ad-manager"
+name = "Google Ad Manager"
+url = "https://admanager.google.com"
+domain = "googlesyndication.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 0
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://admanager.google.com"
+instructions = "Google Ad Manager (formerly DoubleClick for Publishers) is Google's ad server platform used by millions of websites to manage and serve display ads. Tracks ad impressions, clicks, and user behavior for targeting. Part of Google's advertising ecosystem."
+
+[removal]
+method = "manual"
+url = "https://myadcenter.google.com"
+instructions = "Visit Google's My Ad Center at https://myadcenter.google.com to control ad personalization. Turn off ad personalization to reduce tracking. Also visit https://optout.networkadvertising.org and https://optout.aboutads.info for broader ad network opt-outs."
+response_days = 0
+notes = """
+Google Ad Manager tracking and opt-out (EASY - MULTIPLE OPT-OUT OPTIONS):
+
+WHAT GOOGLE AD MANAGER IS:
+- Google's ad server platform (formerly DoubleClick for Publishers)
+- Used by millions of websites to manage display advertising
+- Serves ads from Google Ads, AdSense, and programmatic exchanges
+- Tracks ad impressions, clicks, and user behavior
+- Part of Google's massive advertising ecosystem
+- Extremely common (most websites with display ads)
+
+HOW IT WORKS:
+1. Publishers (websites) integrate Google Ad Manager
+2. Ad Manager serves ads from multiple sources:
+   - Google Ads (advertiser campaigns)
+   - Google AdSense (contextual ads)
+   - Ad Exchange (programmatic real-time bidding)
+   - Third-party ad networks
+3. Tracks ad impressions and clicks
+4. Tracks user behavior for ad targeting
+5. Shares data across Google's advertising ecosystem
+6. Enables frequency capping and sequential messaging
+
+WHAT THEY TRACK:
+- Ad impressions: which ads you saw, when, where
+- Ad clicks: which ads you clicked
+- Page context: content of page where ad appeared
+- Device data: browser, OS, screen size
+- Geographic data: country, region, city from IP
+- Cross-site tracking: behavior across multiple websites
+- Google account data: if logged into Google account
+- Search history: from Google Search (for ad targeting)
+- YouTube history: video viewing for ad targeting
+- Gmail data: email content for ad targeting (if enabled)
+- Cookie ID: persistent identifier for cross-site tracking
+
+WHY IT'S PRIVACY-INVASIVE:
+- UBIQUITOUS: on millions of websites globally
+- Cross-site tracking: follows you across the web
+- Integrates with Google ecosystem: Search, YouTube, Gmail, Maps
+- Detailed behavioral profiles for ad targeting
+- Shares data across Google's advertising platform
+- Persistent tracking via cookies and logged-in accounts
+- No easy way to completely avoid (extremely common)
+
+REMOVAL CHALLENGES:
+- You cannot "delete" from Google Ad Manager
+- Google retains advertising data for business purposes
+- But: can OPT OUT of ad personalization
+- Opt-out prevents behavioral targeting (still see ads, just generic)
+- Must opt out from multiple places (Google, NAI, DAA)
+
+HOW TO OPT OUT AND REDUCE TRACKING:
+
+1. GOOGLE MY AD CENTER (PRIMARY METHOD):
+   - Visit: https://myadcenter.google.com
+   - Turn OFF "Ad Personalization"
+   - This disables behavioral ad targeting across Google
+   - Affects: Google Ads, AdSense, Ad Manager, YouTube, Gmail
+   - Still see ads, but not behaviorally targeted
+   - Must be logged into Google account
+   - Apply to all Google accounts you use
+
+2. GOOGLE ADS SETTINGS (ALTERNATIVE):
+   - Visit: https://adssettings.google.com
+   - Turn off "Ad Personalization"
+   - Same effect as My Ad Center
+   - Review and delete ad topics/interests
+   - See what Google infers about you
+
+3. NAI OPT-OUT (NETWORK ADVERTISING INITIATIVE):
+   - Visit: https://optout.networkadvertising.org
+   - Opt out of Google and 100+ other ad networks
+   - Industry self-regulatory opt-out
+   - Sets opt-out cookies for participating networks
+   - Must re-do if you clear cookies
+   - Works for logged-out users
+
+4. DAA OPT-OUT (DIGITAL ADVERTISING ALLIANCE):
+   - Visit: https://optout.aboutads.info
+   - Opt out of Google and other ad networks
+   - Similar to NAI (different industry group)
+   - Sets opt-out cookies
+   - Must re-do if cookies cleared
+
+5. GOOGLE ACCOUNT PRIVACY SETTINGS:
+   - Visit: https://myactivity.google.com
+   - Review and delete activity history:
+     * Web & App Activity (turn OFF)
+     * Location History (turn OFF)
+     * YouTube History (turn OFF)
+   - This reduces data for ad targeting
+   - Deleting history removes past tracking data
+
+6. BROWSER-LEVEL BLOCKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add filter rules:
+     * ||googlesyndication.com^
+     * ||doubleclick.net^
+     * ||googleadservices.com^
+   - Blocks Google ad tracking and ads entirely
+   - May break some website functionality
+   - Most effective method for prevention
+
+7. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Google ads automatically)
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - Chrome Privacy Sandbox (reduces cross-site tracking)
+   - All limit Google's tracking ability
+
+8. CLEAR GOOGLE AD COOKIES:
+   - Delete cookies from:
+     * .googlesyndication.com
+     * .doubleclick.net
+     * .google.com
+   - Cookie names: _gads, _gac_*, __gpi, IDE
+   - Breaks cross-site tracking temporarily
+   - Google re-assigns new ID on next visit
+
+9. USE GOOGLE CHROME'S PRIVACY FEATURES:
+   - Chrome Settings → Privacy and Security
+   - Enable "Do Not Track"
+   - Enable "Third-party cookie blocking"
+   - Use Chrome's "Privacy Sandbox" (experimental)
+   - Reduces tracking while keeping some ad features
+
+10. OPT OUT OF GOOGLE CHROME AD TOPICS:
+    - Chrome Settings → Privacy and Security → Ad Privacy
+    - Turn off "Ad topics", "Site-suggested ads", "Ad measurement"
+    - Chrome's Privacy Sandbox alternative to third-party cookies
+    - Reduces Google's tracking in Chrome browser
+
+REALITY CHECK:
+- Google Ad Manager is EVERYWHERE (millions of websites)
+- Complete avoidance nearly impossible
+- Opt-out reduces targeting, doesn't eliminate tracking
+- Still see ads (just not personalized)
+- Browser blocking most effective but may break sites
+- Best strategy: multi-layered (opt-out + blocking + privacy settings)
+
+TECHNICAL DETAILS:
+- Ad serving domains:
+  * googlesyndication.com (primary ad serving)
+  * doubleclick.net (legacy DoubleClick domain)
+  * googleadservices.com (ad click tracking)
+  * google.com (pixel tracking)
+- Cookies:
+  * _gads (Google Ads, 2-year expiration)
+  * _gac_* (Google Ads conversion tracking)
+  * __gpi (Google Publisher Tag interactions)
+  * IDE (DoubleClick cookie, cross-site tracking)
+  * test_cookie (cookie support test)
+- Tracking pixels: 1x1 pixel images for impression tracking
+
+PUBLISHERS USING GOOGLE AD MANAGER:
+- News sites: New York Times, Washington Post, CNN
+- Content sites: Most major blogs and content publishers
+- Small websites: via Google AdSense
+- Millions of websites globally
+- Extremely common across the web
+
+GOOGLE'S GDPR/CCPA COMPLIANCE:
+- Claims full GDPR/CCPA compliance
+- Provides opt-out mechanisms (legally required)
+- Consent banners on European websites
+- CCPA "Do Not Sell" honored
+- Privacy Policy: https://policies.google.com/privacy
+- Retains data per retention policies (varies by product)
+
+DATA RETENTION:
+- Google retains advertising data for:
+  * Log data: 9 months (anonymized after)
+  * Cookie data: up to 18 months
+  * Account-based data: until account deleted
+- After opt-out, personalization stops immediately
+- Historical data may be retained (anonymized)
+- Request Google account deletion for full removal
+
+PROGRAMMATIC ADVERTISING:
+- Google Ad Manager connects to Ad Exchange
+- Real-time bidding (hundreds of advertisers bid on you)
+- Your data shared with bidders (bid requests)
+- Opt-out reduces data shared in bid requests
+- Cannot opt out of RTB entirely (use blocking)
+
+GOOGLE'S ADVERTISING ECOSYSTEM:
+Google Ad Manager integrates with:
+- Google Ads (search and display ads)
+- Google AdSense (publisher monetization)
+- Google Ad Exchange (programmatic RTB)
+- YouTube ads (video advertising)
+- Gmail ads (email advertising)
+- Google Analytics (behavior tracking)
+- All share data for comprehensive user profiles
+
+FREQUENCY CAPPING:
+- Google Ad Manager uses cookies for frequency capping
+- Limits how often you see same ad
+- Requires cross-site tracking to work
+- Opt-out may result in more repetitive ads
+
+SEQUENTIAL MESSAGING:
+- Ad Manager enables sequential ad campaigns
+- Shows ads in specific order based on prior views
+- Requires tracking which ads you've seen
+- Opt-out disables this feature
+
+CONTEXTUAL VS. BEHAVIORAL TARGETING:
+- After opt-out, Google uses contextual targeting only
+- Contextual: ads based on page content (not your behavior)
+- Behavioral: ads based on your browsing history
+- Opt-out switches from behavioral to contextual
+- Still see ads, just less creepy/relevant
+
+LOGGED IN VS. LOGGED OUT:
+- Logged into Google account: tracking tied to account
+- Logged out: tracking via cookies only
+- Opt-out from account affects all devices when logged in
+- Logged-out opt-out via NAI/DAA cookies (per-browser)
+
+MOBILE APP TRACKING:
+- Google Ad Manager SDK in mobile apps
+- Uses advertising ID (AAID on Android, IDFA on iOS)
+- Opt out via device settings:
+  * iOS: Settings → Privacy → Tracking → Off
+  * Android: Settings → Google → Ads → Opt out of Ads Personalization
+- Applies to all apps using Google ads
+
+EFFECTIVENESS:
+- EASY difficulty: multiple opt-out options available
+- Opt-out immediate and effective (stops personalization)
+- Browser blocking very effective (stops all tracking and ads)
+- Google honors opt-outs (legally required, high compliance)
+- Requires multi-layered approach (opt-out + blocking + settings)
+- Ongoing maintenance: re-check settings periodically
+- Most comprehensive ad network opt-out available
+"""
+
+[removal.cookies]
+patterns = ["_gads", "_gac_*", "__gpi", "IDE", "test_cookie"]
+domains = [".googlesyndication.com", ".doubleclick.net", ".googleadservices.com"]

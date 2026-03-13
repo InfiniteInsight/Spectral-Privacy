@@ -23,6 +23,7 @@ instructions = "Quantcast tracks browsing behavior across millions of websites t
 method = "web-form"
 url = "https://www.quantcast.com/opt-out"
 confirmation = "automatic"
+fields = { email = "{user_email}" }
 notes = """
 Quantcast opt-out:
 

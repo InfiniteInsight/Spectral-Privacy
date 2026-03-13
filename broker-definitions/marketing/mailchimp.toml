@@ -21,7 +21,7 @@ instructions = "Mailchimp (owned by Intuit) is email marketing platform used by 
 
 [removal]
 method = "email"
-email = "privacy@mailchimp.com"
+email = "privacy@intuit.com"
 subject = "CCPA/GDPR Data Deletion Request"
 body = """
 I am exercising my privacy rights under CCPA/GDPR.

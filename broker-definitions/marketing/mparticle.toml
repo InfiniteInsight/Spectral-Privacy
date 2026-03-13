@@ -1,0 +1,329 @@
+# mParticle - Customer Data Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "mparticle"
+name = "mParticle"
+url = "https://mparticle.com"
+domain = "mparticle.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://mparticle.com"
+instructions = "mParticle is a customer data platform that companies use to collect, transform, and route user data to marketing and analytics tools. Cannot search directly - data is owned by companies using mParticle infrastructure."
+
+[removal]
+method = "email"
+email = "privacy@mparticle.com"
+subject = "CCPA/GDPR Data Deletion Request - mParticle CDP"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through mParticle's platform
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/MPID (mParticle ID): (if known)
+- Device ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from mParticle's systems
+2. Notify client companies to delete data collected via mParticle
+3. Stop processing my data through mParticle infrastructure
+4. Remove all user profiles, event data, and audience definitions
+5. Delete data from all connected downstream destinations
+6. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+mParticle tracking and removal (MODERATE COMPLEXITY):
+
+WHAT MPARTICLE IS:
+- Customer Data Platform (CDP) focused on mobile and web
+- Collects customer data from apps and websites
+- Routes data to 300+ marketing, analytics, and data tools
+- Built for app developers and product teams
+- Think of it as "data plumbing" between your data and marketing tools
+- Competes with Segment, Tealium, and RudderStack
+
+HOW IT WORKS:
+1. Company integrates mParticle SDK into app/website
+2. mParticle collects user events and attributes
+3. Data validated and transformed in mParticle's system
+4. mParticle routes data to company's chosen destinations:
+   - Google Analytics
+   - Facebook Ads
+   - Amplitude/Mixpanel
+   - Braze/Airship (mobile marketing)
+   - Data warehouses (Snowflake, BigQuery)
+   - Hundreds of others
+5. One integration = data to hundreds of tools
+
+WHAT THEY TRACK:
+- Event data: app/web interactions (screens, clicks, purchases)
+- User attributes: email, name, user ID, custom properties
+- Device data: OS, model, manufacturer, screen size
+- Location data: GPS coordinates, IP address, city, country
+- Session data: app opens, session duration, last active
+- E-commerce data: products viewed, cart actions, purchases
+- Push notification data: token, engagement
+- Attribution data: install source, campaign tracking
+- Custom events: unlimited company-defined tracking
+- Identity resolution: links user across devices/platforms
+
+KEY FEATURES:
+- Identity management: unified customer profiles (MPID)
+- Data quality: validation and filtering
+- Audience segmentation: behavioral cohorts
+- Data governance: PII filtering, consent management
+- Real-time routing: instant data forwarding
+- Server-side connections: harder to block than client-side
+
+PRIVACY IMPLICATIONS:
+- Comprehensive cross-platform tracking (web + mobile + IoT)
+- Builds unified customer identity (MPID = mParticle ID)
+- Data shared with dozens/hundreds of marketing tools
+- One data collection = many destination databases
+- Persistent cross-device tracking
+- Often invisible to users (no UI presence)
+
+MPARTICLE AS DATA PROCESSOR:
+- mParticle is data processor under GDPR
+- Data controllers: companies using mParticle
+- mParticle routes data but doesn't "own" it legally
+- Privacy requests should target both mParticle and clients
+- mParticle provides deletion tools but clients must use them
+
+REMOVAL CHALLENGES:
+- Cannot search for your data directly
+- Data owned by companies using mParticle
+- Must identify which companies use mParticle
+- Data also in hundreds of downstream destinations
+- Deletion requires multi-system coordination
+- Server-side connections harder to detect
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify apps/sites using mParticle (check network traffic)
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL data
+   - Specifically mention: "including data in mParticle and all connected tools"
+   - Companies should use mParticle's GDPR deletion API
+   - This deletes from mParticle AND forwards requests to destinations
+
+2. EMAIL MPARTICLE PRIVACY TEAM:
+   - Address: privacy@mparticle.com
+   - Include email, name, any known MPIDs or user IDs
+   - Request deletion from mParticle's systems
+   - mParticle may coordinate with client companies
+   - Limited direct effectiveness (data processor role)
+   - Still worth trying for comprehensive removal
+
+3. DETECT MPARTICLE TRACKING:
+   - WEB: Open browser DevTools → Network tab
+     * Look for requests to: mparticle.com, api.mparticle.com
+     * Cookies: mp_*, mpjs_*, mparticle_*
+     * LocalStorage: mprtcl-*, mparticle_*
+
+   - MOBILE: Use network inspection tools
+     * Look for mParticle SDK traffic
+     * iOS: Charles Proxy or Proxyman
+     * Android: HTTP Toolkit or mitmproxy
+     * Requests to *.mparticle.com endpoints
+
+4. BLOCK MPARTICLE TRACKING (WEB):
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     ||mparticle.com^
+     ||api.mparticle.com^
+   - Blocks web-based mParticle tracking
+   - Does NOT block mobile app tracking (SDK embedded)
+   - May break some web functionality
+
+5. MOBILE APP TRACKING (HARDER TO BLOCK):
+   - iOS: Use Lockdown Privacy or Guardian Firewall
+   - Android: Use NetGuard or TrackerControl
+   - Block traffic to *.mparticle.com domains
+   - May cause app crashes or failures
+   - mParticle SDK may buffer data and retry
+   - Server-side mParticle (backend) can't be blocked by user
+
+6. CLEAR TRACKING DATA:
+   - Web: Delete mp_*, mpjs_* cookies
+   - Web: Clear LocalStorage mprtcl-* entries
+   - Mobile: Clear app data/cache (limited effectiveness)
+   - Mobile: Request deletion via app's privacy settings
+   - Resets mParticle identifiers
+
+7. USE DEVICE-LEVEL PRIVACY:
+   - iOS: Enable "Limit Ad Tracking" (iOS 13)
+   - iOS: "Ask App Not to Track" (iOS 14.5+)
+   - Android: Opt out of ad personalization
+   - Limits some tracking capabilities
+   - mParticle still collects first-party data
+
+8. REQUEST DATA ACCESS FIRST:
+   - CCPA/GDPR give right to data access
+   - Request copy of data from companies using mParticle
+   - Understand what's tracked before requesting deletion
+   - Helps verify deletion was successful
+
+REALITY CHECK:
+- mParticle used by major apps: Airbnb, Venmo, Burger King, Spotify
+- Strong in mobile app ecosystem
+- Often invisible (no cookies banner mentions it)
+- Server-side tracking increasingly common (impossible to block)
+- Best strategy: request deletion from apps you use
+- Companies legally required to honor requests
+
+TECHNICAL DETAILS:
+- Web domains:
+  * api.mparticle.com (event collection)
+  * jssdks.mparticle.com (SDK delivery)
+  * cdn.mparticle.com
+- Cookies: mp_{workspace_id}_*, mpjs_*
+- LocalStorage: mprtcl-api, mprtcl-v4_{workspace_id}
+- Mobile SDKs: iOS (Swift/Objective-C), Android (Java/Kotlin)
+- Identity: MPID (mParticle ID) - long number, persistent
+- Batch API: events sent in batches for efficiency
+
+DATA DESTINATIONS (EXAMPLES):
+- Analytics: Google Analytics, Amplitude, Mixpanel, Heap
+- Marketing automation: Braze, Iterable, Customer.io
+- Advertising: Facebook, Google Ads, Snapchat, TikTok
+- Attribution: Adjust, AppsFlyer, Branch
+- Data warehouses: Snowflake, BigQuery, Redshift
+- CRMs: Salesforce, HubSpot, Zendesk
+- 300+ total integrations
+
+COMPANIES KNOWN TO USE MPARTICLE:
+- Mobile apps: Airbnb, Venmo, Burger King, NBCUniversal
+- E-commerce: Jack in the Box, Chick-fil-A
+- Media: Spotify, SiriusXM
+- Finance: Credit Karma, SoFi
+- Check app privacy labels (iOS) or company tech stacks
+
+MPARTICLE'S GDPR COMPLIANCE:
+- GDPR deletion API for client companies
+- Data Processing Agreement (DPA) with customers
+- Consent management features
+- Supports CCPA Do Not Sell requests
+- Claims compliance as data processor
+- Provides tools but companies must use them
+
+DATA RETENTION:
+- Event storage: typically 30-90 days in mParticle
+- User profiles: retained while customer account active
+- After deletion request: 30 days to complete
+- Data also in downstream destinations (separate retention)
+- Request deletion from both mParticle and destinations
+
+EFFECTIVENESS OF REMOVAL:
+- Medium difficulty: requires company cooperation
+- Most companies respond to CCPA/GDPR requests
+- mParticle provides good deletion tooling
+- Downstream destinations must also delete (complex)
+- Web blocking: effective
+- Mobile blocking: difficult (SDK embedded)
+
+MPARTICLE VS. SEGMENT:
+- Both are CDPs with similar routing capabilities
+- mParticle: stronger mobile focus
+- Segment: better known, larger user base
+- mParticle: identity resolution features
+- Segment: simpler, more developer-friendly
+- Both have hundreds of integrations
+
+MPARTICLE VS. RUDDERSTACK:
+- mParticle: commercial, closed-source
+- RudderStack: open-source alternative
+- mParticle: enterprise support, SLAs
+- RudderStack: self-hostable, transparent
+- mParticle: more mature, established
+- RudderStack: privacy-friendly option
+
+PRIVACY FEATURES (PROVIDED TO CLIENTS):
+- GDPR deletion API
+- CCPA opt-out handling
+- Consent management
+- PII filtering/hashing
+- Data minimization controls
+- But core business is still comprehensive tracking
+
+DETECTION IN MOBILE APPS:
+- iOS App Privacy Labels: check App Store listing
+- Android: Use ClassyShark or APK analyzer
+- Network monitoring: Charles Proxy, HTTP Toolkit
+- Look for mParticle SDK in app binary
+- Check app's privacy policy for mention
+
+BLOCKING CONSIDERATIONS:
+- Web: blocking may break analytics-dependent features
+- Mobile: blocking may cause app instability
+- mParticle often core to app functionality
+- Server-side tracking cannot be blocked by users
+- Consider requesting opt-out from app provider
+
+ENTERPRISE ADOPTION:
+- Popular with mobile-first companies
+- Strong in retail, media, finance sectors
+- Used when multi-platform tracking needed
+- Integration complexity drives CDP adoption
+- Alternative to building custom data pipelines
+
+RECOMMENDATIONS:
+1. Block mparticle.com domains in browser adblocker
+2. Use iOS "Ask App Not to Track" for mobile apps
+3. Request deletion from apps/sites you use regularly
+4. Check App Store privacy labels before installing apps
+5. Clear cookies and storage regularly
+6. File CCPA requests with specific companies
+7. Use privacy-focused app alternatives when available
+8. Monitor network traffic for mParticle detection
+
+DATA FLOW EXAMPLE:
+1. User opens mobile app with mParticle SDK
+2. SDK collects: app open event, user ID, device info
+3. Data sent to mParticle API
+4. mParticle enriches data (location, device details)
+5. mParticle routes to configured destinations:
+   - Google Analytics (usage stats)
+   - Braze (push notification targeting)
+   - Amplitude (product analytics)
+   - Snowflake (data warehouse)
+6. User data now in 4+ separate systems
+7. Each system retains data per their own policies
+
+WHY COMPANIES USE MPARTICLE:
+- One SDK instead of dozens
+- Easier to switch marketing tools
+- Data quality and validation
+- Audience segmentation
+- Compliance tools (GDPR/CCPA)
+- Cost-effective vs. building custom solution
+
+FUTURE DEVELOPMENTS:
+- Server-side tracking increasing (privacy-resistant)
+- Privacy sandbox integrations
+- Consent management evolution
+- Competition from open-source (RudderStack)
+- Potential acquisition by larger enterprise vendor
+"""
+
+[removal.cookies]
+patterns = ["mp_*", "mparticle_*", "mpjs_*"]
+domains = [".mparticle.com"]

@@ -150,6 +150,14 @@ pub enum BrokerCategory {
     Marketing,
     /// Social media aggregators
     SocialMedia,
+    /// Automotive/vehicle data
+    Automotive,
+    /// Employment/HR data
+    Employment,
+    /// Location tracking data
+    LocationData,
+    /// Property records and real estate
+    PropertyRecords,
     /// Other/uncategorized
     Other,
 }
@@ -181,6 +189,10 @@ impl BrokerCategory {
             Self::GovernmentRecords => "Government Records",
             Self::Marketing => "Marketing",
             Self::SocialMedia => "Social Media",
+            Self::Automotive => "Automotive",
+            Self::Employment => "Employment",
+            Self::LocationData => "Location Data",
+            Self::PropertyRecords => "Property Records",
             Self::Other => "Other",
         }
     }
@@ -369,6 +381,64 @@ impl SearchMethod {
     }
 }
 
+/// Email-based removal fallback configuration.
+///
+/// This provides an alternative email-based removal method when web forms fail
+/// or are unresponsive. The email fallback is officially documented and supported
+/// by the broker according to their privacy policy.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct EmailFallback {
+    /// Whether email fallback is enabled
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Primary email address for removal requests
+    pub email: String,
+
+    /// Alternative phone number for assistance (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+
+    /// Dedicated CCPA phone for California residents (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ccpa_phone: Option<String>,
+
+    /// Recommended email subject line (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+
+    /// Whether the subject line is required to be exact (default: false)
+    #[serde(default)]
+    pub subject_required: bool,
+
+    /// Fields required in the email body
+    pub required_fields: Vec<String>,
+
+    /// Estimated processing time in days
+    pub processing_days: u32,
+
+    /// Email template for the body (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_template: Option<String>,
+
+    /// Additional notes about email removal process
+    #[serde(default)]
+    pub notes: String,
+
+    /// Network note if this email covers multiple related sites (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_note: Option<String>,
+
+    /// Whether CCPA compliant
+    #[serde(default)]
+    pub ccpa_compliant: bool,
+
+    /// Whether GDPR compliant
+    #[serde(default)]
+    pub gdpr_compliant: bool,
+}
+
 /// CSS selectors for web form elements.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FormSelectors {
@@ -427,6 +497,9 @@ pub enum RemovalMethod {
         /// Additional notes or instructions
         #[serde(default)]
         notes: String,
+        /// Optional email fallback when web form fails
+        #[serde(skip_serializing_if = "Option::is_none")]
+        email_fallback: Option<EmailFallback>,
     },
 
     /// Email-based removal
@@ -469,6 +542,9 @@ pub enum RemovalMethod {
         /// Additional notes or instructions
         #[serde(default)]
         notes: String,
+        /// Optional email fallback when browser form fails
+        #[serde(skip_serializing_if = "Option::is_none")]
+        email_fallback: Option<EmailFallback>,
     },
 
     /// Manual process with instructions
@@ -690,6 +766,7 @@ mod tests {
             form_selectors,
             confirmation: ConfirmationType::EmailVerification,
             notes: String::new(),
+            email_fallback: None,
         };
         assert!(method.validate(&broker_id).is_ok());
 
@@ -713,6 +790,7 @@ mod tests {
             form_selectors,
             confirmation: ConfirmationType::EmailVerification,
             notes: String::new(),
+            email_fallback: None,
         };
         assert!(method.validate(&broker_id).is_err());
 
@@ -780,6 +858,7 @@ mod tests {
                 form_selectors,
                 confirmation: ConfirmationType::EmailVerification,
                 notes: String::new(),
+                email_fallback: None,
             },
         };
 

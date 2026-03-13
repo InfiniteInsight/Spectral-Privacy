@@ -21,10 +21,12 @@ export interface CookieScanResponse {
  * Scanned cookie details.
  */
 export interface ScannedCookie {
+	id?: string;
 	cookieName: string;
 	cookieDomain: string;
 	browserType: string;
 	profileName: string;
+	cookieDbFilename: string;
 	matchedBrokerId: string | null;
 	isSecure: boolean;
 	isHttponly: boolean;
@@ -76,9 +78,54 @@ export const cookiesAPI = {
 	},
 
 	/**
+	 * Remove all cookies for a specific domain.
+	 */
+	async removeCookiesForDomain(vaultId: string, domain: string): Promise<CookieRemovalResponse[]> {
+		return await invoke<CookieRemovalResponse[]>('remove_cookies_for_domain', {
+			vaultId,
+			domain
+		});
+	},
+
+	/**
+	 * Remove all scanned cookies (both matched and unmatched).
+	 */
+	async removeAllCookies(vaultId: string): Promise<CookieRemovalResponse[]> {
+		return await invoke<CookieRemovalResponse[]>('remove_all_cookies', { vaultId });
+	},
+
+	/**
+	 * Remove all tracking cookies (only matched cookies).
+	 */
+	async removeAllTrackingCookies(vaultId: string): Promise<CookieRemovalResponse[]> {
+		return await invoke<CookieRemovalResponse[]>('remove_all_tracking_cookies', { vaultId });
+	},
+
+	/**
+	 * Remove a single cookie by its database ID.
+	 */
+	async removeSingleCookie(vaultId: string, cookieId: string): Promise<CookieRemovalResponse> {
+		return await invoke<CookieRemovalResponse>('remove_single_cookie', { vaultId, cookieId });
+	},
+
+	/**
 	 * Get recent cookie scan history.
 	 */
 	async getRecentCookieScans(vaultId: string, limit: number): Promise<CookieScanResponse[]> {
 		return await invoke<CookieScanResponse[]>('get_recent_cookie_scans', { vaultId, limit });
+	},
+
+	/**
+	 * Get unmatched cookies from the most recent scan.
+	 */
+	async getUnmatchedCookies(vaultId: string): Promise<ScannedCookie[]> {
+		return await invoke<ScannedCookie[]>('get_unmatched_cookies', { vaultId });
+	},
+
+	/**
+	 * Open the cookie's browser database location in file explorer.
+	 */
+	async openCookieLocation(browserType: string, profileName: string): Promise<void> {
+		return await invoke('open_cookie_location', { browserType, profileName });
 	}
 };

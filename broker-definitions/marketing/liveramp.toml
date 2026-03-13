@@ -56,7 +56,7 @@ Note: Opt-out prevents future data linking but doesn't delete existing profile d
 """
 
 [removal.fields]
-email = "{user_email}"
+email = "consumercare@liveramp.com"
 address = "{address}"
 city = "{city}"
 state = "{state}"

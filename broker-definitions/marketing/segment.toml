@@ -1,0 +1,129 @@
+# Segment - Customer Data Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "segment"
+name = "Segment"
+url = "https://segment.com"
+domain = "segment.com"
+category = "marketing"
+difficulty = "Hard"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://segment.com"
+instructions = "Segment is a customer data platform (CDP) that companies use to collect and route user data to hundreds of marketing tools. Cannot search directly - data is owned by companies using Segment infrastructure."
+
+[removal]
+method = "email"
+email = "privacy@twilio.com"
+subject = "CCPA/GDPR Data Deletion Request - Segment CDP"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through Segment
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Anonymous ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Segment's systems
+2. Notify client companies to delete data routed through Segment
+3. Stop processing my data through Segment infrastructure
+4. Confirm deletion in writing
+
+I expect completion within 30 days.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Segment tracking and removal (COMPLEX):
+
+WHAT SEGMENT IS:
+- Customer Data Platform (CDP) used by 20,000+ companies
+- Collects user behavior data (pageviews, clicks, purchases)
+- Routes data to 300+ marketing/analytics tools
+- Think of it as a "data highway" for customer information
+
+HOW IT WORKS:
+1. Company adds Segment JavaScript to their website
+2. Segment tracks all user interactions
+3. Data sent to Segment's servers
+4. Segment forwards data to company's chosen tools:
+   - Google Analytics
+   - Facebook Ads
+   - Mailchimp
+   - Salesforce
+   - Hundreds of others
+
+REMOVAL CHALLENGES:
+- Segment is infrastructure (not the data owner)
+- Data owned by each company using Segment
+- No centralized search for your data
+- Must contact each company individually
+- Segment processes but doesn't "own" the data
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY:
+   - Identify sites using Segment (look for segment.com in network tab)
+   - Email each company's privacy contact
+   - Request CCPA/GDPR deletion
+   - They should delete from Segment + all connected tools
+
+2. EMAIL SEGMENT PRIVACY:
+   - Address: privacy@segment.com
+   - Include email, name, and IP
+   - They may facilitate company deletions
+   - Limited effectiveness (data owned by clients)
+
+3. DETECT SEGMENT TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to: api.segment.io, cdn.segment.com
+   - Cookies: ajs_anonymous_id, ajs_user_id
+   - These sites are using Segment
+
+4. BLOCK SEGMENT TRACKING:
+   - Install Privacy Badger or uBlock Origin
+   - Add custom filter: ||segment.com^, ||segment.io^
+   - Blocks tracking across all Segment-enabled sites
+
+5. USE DO NOT TRACK:
+   - Some Segment implementations respect DNT header
+   - Enable in browser privacy settings
+   - Not all companies honor it
+
+6. CLEAR COOKIES REGULARLY:
+   - Delete ajs_anonymous_id cookie
+   - Segment uses this to track users
+   - Clearing breaks cross-session tracking
+
+REALITY:
+- Segment is used by many major companies (Instacart, Loom, Intuit, etc.)
+- Data deletion requires company cooperation
+- Best approach: block tracking + request deletion from each company
+- Segment is symptom of fragmented data privacy landscape
+
+TECHNICAL DETAILS:
+- Tracking domains: api.segment.io, cdn.segment.com
+- Cookies: ajs_anonymous_id, ajs_user_id, ajs_group_id
+- LocalStorage: also used for persistent tracking
+- Server-side tracking also common (harder to detect)
+
+COMPANIES KNOWN TO USE SEGMENT:
+- Instacart, Loom, Glossier, Bonobos, Ibotta
+- Check BuiltWith.com to find which companies use Segment
+"""
+
+[removal.cookies]
+patterns = ["ajs_*", "segment_*"]
+domains = [".segment.com", ".segment.io"]

@@ -15,7 +15,7 @@ scan_priority = "OnRequest"
 region_relevance = ["Global"]
 
 [search]
-method = "none"
+method = "manual"
 url = "https://www.adobe.com/analytics/audience-manager.html"
 instructions = "Adobe Audience Manager is a data management platform (DMP) used by companies to unify customer data. Cannot search directly - data held by companies using Adobe."
 

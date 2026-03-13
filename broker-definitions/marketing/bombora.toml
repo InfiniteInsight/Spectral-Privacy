@@ -15,7 +15,7 @@ scan_priority = "OnRequest"
 region_relevance = ["US", "UK", "Global"]
 
 [search]
-method = "none"
+method = "manual"
 url = "https://bombora.com"
 instructions = "Bombora tracks B2B 'intent signals' - which companies are researching specific topics based on employee browsing behavior. Cannot search for individual data - operates at company level."
 

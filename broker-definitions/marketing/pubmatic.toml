@@ -1,0 +1,310 @@
+# PubMatic - Programmatic Advertising Platform and SSP
+# Last verified: 2026-02-27
+
+[broker]
+id = "pubmatic"
+name = "PubMatic"
+url = "https://pubmatic.com"
+domain = "pubmatic.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 0
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://pubmatic.com"
+instructions = "PubMatic is a supply-side platform (SSP) for programmatic advertising. Facilitates real-time bidding and header bidding for publishers. Tracks user behavior across thousands of websites for ad targeting."
+
+[removal]
+method = "manual"
+url = "https://pubmatic.com/legal/opt-out/"
+instructions = "Visit PubMatic's opt-out page at https://pubmatic.com/legal/opt-out/ to opt out of interest-based advertising. Also use NAI opt-out at https://optout.networkadvertising.org and DAA opt-out at https://optout.aboutads.info."
+response_days = 0
+notes = """
+PubMatic tracking and opt-out (MODERATE COMPLEXITY):
+
+WHAT PUBMATIC IS:
+- Leading supply-side platform (SSP) for programmatic advertising
+- Processes 700+ billion ad requests per month
+- Used by 2,000+ publishers globally
+- Enables real-time bidding (RTB) and header bidding
+- Publicly traded company (NASDAQ: PUBM)
+- Major competitor to Google Ad Exchange, Index Exchange
+
+HOW IT WORKS (PROGRAMMATIC ADVERTISING):
+1. You visit website using PubMatic
+2. Website sends bid request to PubMatic with your data
+3. PubMatic forwards to demand partners (DSPs, advertisers)
+4. Multiple advertisers bid in real-time auction
+5. Highest bidder wins, their ad is served
+6. PubMatic tracks impression, clicks, conversions
+7. Data used to build behavioral profiles for future targeting
+
+WHAT THEY TRACK:
+- Device information: browser, OS, screen resolution, device type
+- Geographic data: country, region, city, zip code from IP
+- Page context: URL, content category, keywords
+- Cookie ID: persistent identifier for cross-site tracking
+- Ad interactions: impressions, clicks, viewability metrics
+- Browsing behavior: sites visited, frequency, recency
+- Audience segments: interests, demographics, purchase intent
+- Conversion data: purchases, signups, form fills (if tracked)
+- Video engagement: for video ad placements
+- Mobile app usage: via PubMatic mobile SDK
+
+WHY IT'S PRIVACY-INVASIVE:
+- UBIQUITOUS: thousands of high-traffic websites use PubMatic
+- Real-time bidding: your data shared with hundreds of advertisers
+- Bid requests contain detailed personal information
+- Cross-site tracking via cookies and device IDs
+- Behavioral profiling for targeted advertising
+- Invisible intermediary (no direct user interaction)
+- Data shared across ad tech ecosystem
+- Mobile app tracking via SDK
+
+REMOVAL CHALLENGES:
+- Cannot "delete" data from PubMatic
+- Must OPT OUT of interest-based advertising instead
+- Opt-out prevents personalization (still see generic ads)
+- Requires opting out from multiple places (PubMatic, NAI, DAA)
+- Opt-out via cookies (cleared when you clear cookies)
+- Mobile requires separate device-level opt-out
+
+HOW TO OPT OUT AND REDUCE TRACKING:
+
+1. PUBMATIC OPT-OUT PAGE (PRIMARY METHOD):
+   - Visit: https://pubmatic.com/legal/opt-out/
+   - Click "Opt-Out" button
+   - Sets opt-out cookie in your browser
+   - Prevents PubMatic from interest-based ad targeting
+   - Still see ads (just not behaviorally targeted)
+   - Must re-do if you clear cookies
+   - Per-browser/device (repeat on all browsers)
+
+2. NAI OPT-OUT (NETWORK ADVERTISING INITIATIVE):
+   - Visit: https://optout.networkadvertising.org
+   - Opt out of PubMatic and 100+ other ad networks
+   - Industry self-regulatory program
+   - Sets opt-out cookies for participating networks
+   - PubMatic is NAI member (honors opt-outs)
+   - Most comprehensive multi-network opt-out
+
+3. DAA OPT-OUT (DIGITAL ADVERTISING ALLIANCE):
+   - Visit: https://optout.aboutads.info (US)
+   - Visit: https://youronlinechoices.com (Europe/Canada)
+   - Opt out of PubMatic and other ad networks
+   - Similar to NAI, different industry organization
+   - Sets opt-out cookies
+   - Geographic-specific options
+
+4. IAB EUROPE TRANSPARENCY & CONSENT FRAMEWORK:
+   - For EU users: look for consent management platforms (CMPs)
+   - Cookie banners on European websites
+   - Reject PubMatic specifically or reject all advertising cookies
+   - GDPR-compliant consent mechanism
+   - More control than US opt-outs
+
+5. BROWSER-LEVEL BLOCKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add filter rules:
+     * ||pubmatic.com^
+     * ||pubmatic.io^
+   - Blocks PubMatic tracking and ads entirely
+   - May impact website ad revenue (consider if you support site)
+   - Most effective prevention method
+
+6. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks PubMatic automatically)
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - Chrome with third-party cookie blocking
+   - All significantly reduce tracking effectiveness
+
+7. CLEAR PUBMATIC COOKIES:
+   - Delete cookies from:
+     * .pubmatic.com (primary cookie domain)
+   - Cookie names: KRTBCOOKIE_*, PugT, KTPCACOOKIE
+   - Breaks cross-site tracking temporarily
+   - PubMatic re-assigns new cookie ID on next visit
+   - Use browser DevTools or cookie manager
+
+8. DISABLE THIRD-PARTY COOKIES:
+   - Browser Settings → Privacy → Block third-party cookies
+   - Prevents PubMatic cookie-based tracking
+   - May break some website functionality
+   - Browsers phasing out third-party cookies (Chrome by 2024-2025)
+
+9. MOBILE DEVICE OPT-OUT:
+   - iOS: Settings → Privacy & Security → Tracking → Off
+   - iOS: Settings → Privacy → Apple Advertising → Personalized Ads → Off
+   - Android: Settings → Google → Ads → Opt out of Ads Personalization
+   - Android: Settings → Google → Ads → Reset advertising ID
+   - Limits mobile app advertising ID tracking
+   - Applies to PubMatic mobile SDK in apps
+
+10. USE PRIVACY-FOCUSED BROWSERS:
+    - Brave: built-in ad/tracker blocking
+    - Firefox Focus: mobile privacy browser
+    - DuckDuckGo browser: tracker blocking
+    - Tor Browser: maximum privacy (slower)
+    - All reduce PubMatic tracking significantly
+
+REALITY CHECK:
+- PubMatic is on thousands of high-traffic websites
+- Programmatic advertising shares your data widely
+- Opt-out reduces targeting, doesn't stop all tracking
+- Still see ads (just not personalized to you)
+- Browser blocking most effective prevention
+- Best strategy: multi-layered (opt-out + blocking + privacy settings)
+
+TECHNICAL DETAILS:
+- Primary domains:
+  * pubmatic.com (main platform)
+  * pubmatic.io (tracking domain)
+  * ads.pubmatic.com (ad serving)
+- Cookies:
+  * KRTBCOOKIE_{ID} (main tracking cookie, 3-month)
+  * PugT (user ID, 30-day)
+  * KTPCACOOKIE (traffic control, session)
+  * KADUSERCOOKIE (user match)
+  * DPSync3 (cookie sync)
+  * SPugT (secure user ID)
+- Header bidding: Prebid.js integration (very common)
+- Mobile SDK: iOS and Android apps
+
+PUBLISHERS USING PUBMATIC:
+- News: Forbes, Bloomberg, Reuters
+- Entertainment: Viacom, Discovery, AMC Networks
+- E-commerce: Major retail websites
+- Gaming: Mobile games and gaming sites
+- Thousands of websites and mobile apps
+- Very common in premium digital media
+
+PUBMATIC'S GDPR/CCPA COMPLIANCE:
+- Claims full GDPR/CCPA compliance
+- Provides opt-out mechanisms (legally required)
+- IAB Transparency & Consent Framework (TCF) certified
+- Privacy Policy: https://pubmatic.com/legal/privacy-policy/
+- DPA available for publisher customers
+- NAI and DAA member (self-regulatory)
+- ISO 27001 certified (security)
+
+DATA RETENTION:
+- PubMatic retains data for:
+  * Cookie data: 3 months (main cookie)
+  * Some cookies: 30 days
+  * Log data: varies by data type
+  * Aggregate/anonymized data: indefinitely
+- After opt-out, interest-based ads stop immediately
+- Historical data retained but not used for targeting
+- No direct user-facing deletion mechanism
+
+REAL-TIME BIDDING (RTB) CONCERNS:
+- Every ad request broadcasts your data to bidders
+- Bid request contains:
+  * Device and browser details
+  * Geographic location (from IP)
+  * Cookie ID or mobile ad ID
+  * Page URL and content category
+  * User segments (interests, demographics)
+- Shared with demand-side platforms (DSPs)
+- Privacy concern: data shared before you see ad
+- GDPR/CCPA concerns: potential compliance issues
+
+HEADER BIDDING:
+- PubMatic major player in header bidding
+- Multiple ad exchanges bid simultaneously (client-side)
+- Increases publisher revenue (more competition)
+- More bid requests = more data sharing
+- Your data sent to multiple exchanges at once
+- Prebid.js often used (open-source header bidding)
+
+AUDIENCE SEGMENTS:
+- PubMatic creates behavioral audience segments:
+  * Demographics: age range, gender, income bracket
+  * Interests: sports, technology, travel, shopping
+  * Purchase intent: in-market for specific products
+  * Behavioral: site engagement, visit frequency
+  * Contextual: content categories viewed
+- Segments used for ad targeting
+- Opt-out prevents segment-based targeting
+
+COOKIE SYNCING:
+- PubMatic syncs cookies with other ad tech companies
+- Enables cross-platform user identification
+- Your PubMatic ID matched with DSPs, DMPs, other SSPs
+- Privacy concern: data sharing across ecosystem
+- Hundreds of cookie sync partners
+- Opt-out reduces but may not eliminate syncing
+
+DEVICE GRAPHING:
+- PubMatic may link multiple devices to same user
+- Cross-device tracking: desktop, mobile, tablet, CTV
+- Uses probabilistic matching (IP patterns, behavior)
+- Deterministic matching (logged-in user IDs)
+- Opt-out limits cross-device tracking
+
+VIDEO ADVERTISING:
+- PubMatic supports video ad placements
+- Tracks video engagement: views, completion rate, quartiles
+- In-stream (YouTube-like) and out-stream video
+- Connected TV (CTV) advertising
+- Video tracking more detailed than display ads
+
+MOBILE APP TRACKING:
+- PubMatic SDK integrated in thousands of mobile apps
+- Tracks mobile advertising ID (IDFA/AAID)
+- In-app behavioral tracking
+- Location tracking (if app has permission)
+- Opt out via device settings (see mobile opt-out above)
+
+CONNECTED TV (CTV) ADVERTISING:
+- PubMatic powers CTV programmatic advertising
+- Tracks viewing behavior on smart TVs, streaming devices
+- Household-level targeting
+- Harder to opt out (device-specific settings)
+
+SUPPLY-SIDE PLATFORM (SSP) ROLE:
+- PubMatic is SSP (represents publishers)
+- Connects to demand-side platforms (DSPs)
+- DSPs represent advertisers and agencies
+- SSP-DSP connection enables real-time bidding
+- Your data flows through both SSP and DSP
+
+COMPARISON TO COMPETITORS:
+Major programmatic SSPs:
+- Google Ad Exchange (largest, most common)
+- Index Exchange (major competitor)
+- OpenX (similar size and reach)
+- Rubicon Project / Magnite (merged competitor)
+- AppNexus / Xandr (Microsoft-owned)
+- Opt out from all via NAI/DAA for comprehensive coverage
+
+OPT-OUT COOKIE PERSISTENCE:
+- Opt-out relies on cookies (can be accidentally cleared)
+- Browser privacy extensions help maintain opt-outs
+- "Protect My Choices" extension maintains NAI/DAA opt-outs
+- Browser-level blocking more reliable than opt-out cookies
+
+EFFECTIVENESS:
+- Medium difficulty: opt-out available but cookie-based
+- PubMatic honors NAI/DAA opt-outs (self-regulatory compliance)
+- Opt-out immediate (stops interest-based targeting)
+- Browser blocking very effective (stops all tracking and ads)
+- Requires multi-layered approach:
+  * PubMatic direct opt-out
+  * NAI/DAA industry opt-outs
+  * Browser-level blocking
+  * Third-party cookie blocking
+- Mobile requires device-level settings
+- Opt-out cookies fragile (cleared easily)
+- Browser protection more reliable than opt-out alone
+"""
+
+[removal.cookies]
+patterns = ["KRTBCOOKIE_*", "PugT", "KTPCACOOKIE", "KADUSERCOOKIE", "DPSync3", "SPugT"]
+domains = [".pubmatic.com", ".pubmatic.io"]

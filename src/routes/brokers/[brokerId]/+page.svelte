@@ -4,6 +4,13 @@
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
 	import { vaultStore } from '$lib/stores';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
+	import {
+		getRemovalMethodDisplay,
+		getScanStatusDisplay,
+		formatDate
+	} from '$lib/utils/broker-display';
+	import EmailTemplatePreview from '$lib/components/broker/EmailTemplatePreview.svelte';
+	import EmailFallbackDisplay from '$lib/components/broker/EmailFallbackDisplay.svelte';
 
 	const brokerId = $derived($page.params.brokerId);
 
@@ -40,39 +47,6 @@
 
 		loadBrokerDetail();
 	});
-
-	function getRemovalMethodDisplay(method: string): string {
-		// Convert PascalCase to readable format
-		return method.replace(/([A-Z])/g, ' $1').trim();
-	}
-
-	function getScanStatusDisplay(status: string | null): { text: string; color: string } {
-		if (!status) {
-			return { text: 'Not Scanned', color: 'text-gray-700 bg-gray-100' };
-		}
-
-		switch (status) {
-			case 'Found':
-				return { text: 'Found', color: 'text-red-700 bg-red-100' };
-			case 'NotFound':
-				return { text: 'Not Found', color: 'text-green-700 bg-green-100' };
-			default:
-				return { text: status, color: 'text-gray-700 bg-gray-100' };
-		}
-	}
-
-	function formatDate(dateString: string): string {
-		try {
-			const date = new Date(dateString);
-			return date.toLocaleDateString('en-US', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			});
-		} catch {
-			return dateString;
-		}
-	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 p-4">
@@ -199,6 +173,36 @@
 								appears on this site.
 							</p>
 						</div>
+					{/if}
+
+					<!-- Zendesk Warning -->
+					{#if broker.id === 'zendesk'}
+						<div class="mb-8 p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+							<h2 class="text-xl font-bold text-yellow-900 mb-2 flex items-center gap-2">
+								<span class="text-2xl">⚠️</span>
+								Important Warning
+							</h2>
+							<p class="text-sm text-yellow-900 font-medium mb-2">
+								Requesting deletion from Zendesk may affect your support tickets with companies that
+								use Zendesk.
+							</p>
+							<p class="text-sm text-yellow-800">
+								If you have open support tickets with any companies (e.g., customer support, help
+								desk tickets), requesting data deletion from Zendesk could cancel or close those
+								tickets. Consider resolving your open support issues before proceeding with this
+								removal request.
+							</p>
+						</div>
+					{/if}
+
+					<!-- Email Template Preview -->
+					{#if broker.email_template}
+						<EmailTemplatePreview template={broker.email_template} />
+					{/if}
+
+					<!-- Email Fallback Section -->
+					{#if broker.email_fallback && broker.email_fallback.enabled}
+						<EmailFallbackDisplay emailFallback={broker.email_fallback} />
 					{/if}
 
 					<!-- Action Buttons -->

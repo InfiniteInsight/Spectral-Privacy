@@ -40,6 +40,7 @@ VALID_REMOVAL_METHODS = {
     "phone",
     "api",
     "account-required",
+    "manual",
 }
 
 VALID_JURISDICTIONS = {

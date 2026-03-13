@@ -1,0 +1,277 @@
+# Customer.io - Marketing Automation for Tech Companies
+# Last verified: 2026-02-27
+
+[broker]
+id = "customer-io"
+name = "Customer.io"
+url = "https://customer.io"
+domain = "customer.io"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://customer.io"
+instructions = "Customer.io is an event-driven messaging platform used by SaaS and tech companies. Tracks: user behavior events, feature usage, email/SMS engagement, push notifications. Data owned by companies using Customer.io."
+
+[removal]
+method = "email"
+email = "privacy@customer.io"
+subject = "CCPA/GDPR Data Deletion Request - Customer.io"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through Customer.io
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID: (if known)
+- Phone: {phone_number}
+
+Please delete from:
+- Customer.io platform databases
+- All customer company profiles
+- Event tracking data
+- Email and SMS engagement history
+- Behavioral workflow data
+
+Confirm deletion within legally required timeframe.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Customer.io tracking and removal:
+
+WHAT CUSTOMER.IO IS:
+- Marketing automation platform for SaaS and tech companies
+- Event-driven messaging (trigger emails based on user actions)
+- Used by: InVision, Codecademy, Segment, Webflow, Notion
+- Focus: behavioral messaging for product-led growth
+- Popular with B2B SaaS, developer tools, tech startups
+
+HOW CUSTOMER.IO WORKS:
+
+1. EVENT-DRIVEN TRACKING:
+   - Tracks every action you take in a product
+   - "User signed up", "Viewed dashboard", "Clicked export"
+   - Events sent in real-time from app to Customer.io
+   - Builds timeline of user behavior
+   - Triggers automated messages based on actions
+
+2. BEHAVIORAL SEGMENTATION:
+   - "Power users" (high engagement)
+   - "At-risk users" (declining usage)
+   - "Inactive users" (haven't logged in 30 days)
+   - Feature adoption tracking
+   - Custom segments based on any event combination
+
+3. MULTI-CHANNEL MESSAGING:
+   - Email (transactional + marketing)
+   - SMS notifications
+   - Push notifications (mobile/web)
+   - In-app messages
+   - Webhooks to external systems
+
+4. WORKFLOW AUTOMATION:
+   - "If user signs up, send welcome email"
+   - "If no login in 7 days, send re-engagement email"
+   - "If feature X used, add to beta program"
+   - Multi-step campaigns with branching logic
+   - Time-based delays and conditions
+
+5. PRODUCT USAGE TRACKING:
+   - Feature usage frequency
+   - Time spent in product
+   - Pages/screens visited
+   - Actions taken per session
+   - Conversion events (free → paid)
+
+6. DATA ATTRIBUTES:
+   - Custom user properties (plan type, role, company)
+   - Computed attributes ("days since last login")
+   - Enrichment from third-party sources
+   - Account-level data (for B2B)
+
+WHAT DATA CUSTOMER.IO COLLECTS:
+
+IDENTITY DATA:
+- Email address, name, user ID
+- Phone number (if SMS enabled)
+- User handle/username
+- IP address, device IDs
+
+BEHAVIORAL DATA:
+- Every event sent by the product
+- Event properties (page, button, item)
+- Timestamps of all actions
+- Session duration, frequency
+- Feature adoption milestones
+
+ENGAGEMENT DATA:
+- Email opens, clicks, unsubscribes
+- SMS delivery, clicks
+- Push notification engagement
+- In-app message interactions
+- Campaign receipt history
+
+USER ATTRIBUTES:
+- Account created date
+- Plan type (free, pro, enterprise)
+- Company name, size
+- Custom fields set by product
+- Lifecycle stage (trial, active, churned)
+
+DEVICE/TECHNICAL:
+- Email client, browser
+- Operating system, device type
+- Push tokens
+- Timezone, language
+
+HOW TO REMOVE YOUR DATA:
+
+1. DELETE ACCOUNT IN PRODUCT:
+   - Most effective method
+   - Look for Settings → Account → Delete Account
+   - Should trigger Customer.io data deletion
+   - Deletes from product's database + Customer.io
+   - Some companies retain data for legal/financial reasons
+
+2. UNSUBSCRIBE FROM EMAILS:
+   - Click "Unsubscribe" link in email footer
+   - Removes from marketing emails
+   - May still receive transactional emails (receipts, alerts)
+   - Doesn't delete historical data or events
+
+3. OPT OUT OF SMS:
+   - Reply "STOP" to any SMS
+   - Halts SMS messages from that company
+   - Required by TCPA
+   - Opt-out recorded but data retained
+
+4. DISABLE NOTIFICATIONS:
+   - In-app notification settings
+   - Or device Settings → Notifications
+   - Stops push messages
+   - Doesn't delete event tracking
+
+5. REQUEST FROM COMPANY DIRECTLY:
+   - Email company's privacy/support contact
+   - Request CCPA/GDPR deletion
+   - Company should delete from Customer.io + their systems
+   - Most reliable approach
+   - Legally required within 30-45 days
+
+6. EMAIL CUSTOMER.IO PRIVACY:
+   - Address: privacy@customer.io
+   - Include email, user ID if known
+   - Customer.io will facilitate deletion from customer workspaces
+   - May require company cooperation
+   - Privacy policy: https://customer.io/legal/privacy-policy
+
+7. DETECT CUSTOMER.IO TRACKING:
+   - Check browser DevTools → Network tab
+   - Look for: track.customer.io, track-eu.customer.io
+   - Cookies: _cio_*, cio_id
+   - API calls on every significant action
+
+8. BLOCK CUSTOMER.IO TRACKING:
+   - Use Privacy Badger or uBlock Origin
+   - Block domains: *.customer.io
+   - Prevents behavioral event tracking
+   - May break some product features (A/B tests, in-app messages)
+
+REALITY CHECK:
+- Customer.io widely used in SaaS/tech products
+- Event tracking is invisible to average users
+- No centralized way to search for your data
+- Each company has separate Customer.io workspace
+- Best approach: Delete unused accounts + request deletion
+
+CUSTOMER.IO'S TRACKING POWER:
+- Complete behavioral timeline of product usage
+- Knows which features you use (and ignore)
+- Tracks engagement patterns over time
+- Predicts churn risk based on usage decline
+- Monitors conversion from free to paid
+- Links email engagement to product actions
+- Enables hyper-personalized "you haven't used X" messages
+
+TECHNICAL DETAILS:
+
+TRACKING DOMAINS:
+- track.customer.io (US region)
+- track-eu.customer.io (EU region)
+- api.customer.io (REST API)
+
+COOKIES:
+- _cio_* (various tracking cookies)
+- cio_id (user identifier)
+- Set on product domains, not Customer.io
+
+JAVASCRIPT SDK:
+- customerio.js embedded in products
+- Tracks page views, clicks, custom events
+- Real-time event streaming
+- Supports identify, track, page methods
+
+MOBILE SDKs:
+- iOS SDK (CustomerIO)
+- Android SDK
+- React Native support
+- Push notification tokens
+
+API TRACKING:
+- Server-side event tracking (most common)
+- Product backend sends events to Customer.io API
+- More reliable than JavaScript (can't be blocked)
+- Invisible to end users
+
+INTEGRATION POINTS:
+- Segment, RudderStack (CDPs)
+- Stripe (payment events)
+- Intercom, Zendesk (support events)
+- Salesforce (CRM sync)
+- Data warehouses (Snowflake, BigQuery)
+
+MESSAGE TYPES:
+- Transactional (receipts, confirmations)
+- Behavioral (triggered by events)
+- Broadcast (sent to segments)
+- A/B tests
+- Time-based campaigns
+
+PRIVACY IMPLICATIONS:
+- Extremely detailed product usage surveillance
+- Every click, view, action tracked
+- Behavioral profiles used for retention
+- Churn prediction feels invasive
+- Data synced to other marketing tools
+- Most users unaware Customer.io is tracking them
+- No opt-out from event tracking (only emails)
+
+WHO USES CUSTOMER.IO:
+- SaaS companies (B2B and B2C)
+- Developer tools, API platforms
+- Productivity software
+- EdTech, creative tools
+- Check product's privacy policy or network traffic
+
+CUSTOMER.IO VS COMPETITORS:
+- More developer-friendly than Mailchimp
+- Event-driven vs Klaviyo (purchase-driven)
+- Similar to Iterable (cross-channel automation)
+- Less mobile-focused than Braze
+- Competes with Intercom (product messaging)
+- Preferred by technical/product-led companies
+"""
+
+[removal.cookies]
+patterns = ["_cio_*", "cio_id", "customer_io_*"]
+domains = [".customer.io", "track.customer.io", "track-eu.customer.io"]

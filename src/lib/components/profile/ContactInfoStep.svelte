@@ -9,10 +9,18 @@
 
 	let { profile, onUpdate }: Props = $props();
 
-	let emailAddresses = $state<EmailAddress[]>(profile.email_addresses || []);
+	let emailAddresses = $state<EmailAddress[]>([]);
 	let emailErrors = $state<(string | null)[]>([]);
-	let phoneNumbers = $state<PhoneNumber[]>(profile.phone_numbers || []);
+	let phoneNumbers = $state<PhoneNumber[]>([]);
 	let phoneErrors = $state<(string | null)[]>([]);
+
+	// Sync with profile prop changes
+	$effect(() => {
+		console.log('ContactInfoStep effect - profile.email_addresses:', profile.email_addresses);
+		console.log('ContactInfoStep effect - profile.phone_numbers:', profile.phone_numbers);
+		emailAddresses = profile.email_addresses ? [...profile.email_addresses] : [];
+		phoneNumbers = profile.phone_numbers ? [...profile.phone_numbers] : [];
+	});
 
 	function addEmailAddress() {
 		emailAddresses = [...emailAddresses, { email: '', email_type: 'Personal' }];

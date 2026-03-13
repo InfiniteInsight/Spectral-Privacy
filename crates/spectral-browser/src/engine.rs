@@ -46,6 +46,93 @@ pub struct BrowserEngine {
     current_page: Arc<RwLock<Option<Page>>>,
 }
 
+/// Helper: Detect Chrome installation path on Windows
+#[cfg(target_os = "windows")]
+fn detect_chrome_path() -> Option<String> {
+    let possible_paths = vec![
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Users\%USERNAME%\AppData\Local\Google\Chrome\Application\chrome.exe",
+    ];
+
+    for path_template in possible_paths {
+        let path =
+            path_template.replace("%USERNAME%", &std::env::var("USERNAME").unwrap_or_default());
+        if std::path::Path::new(&path).exists() {
+            tracing::info!("Auto-detected Chrome at: {}", path);
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Helper: Check if running in WSL2 environment
+#[cfg(target_os = "linux")]
+fn is_wsl2() -> bool {
+    std::fs::read_to_string("/proc/version")
+        .map(|release| {
+            let lower = release.to_lowercase();
+            lower.contains("microsoft") || lower.contains("wsl")
+        })
+        .unwrap_or(false)
+}
+
+/// Helper: Apply platform-specific browser configuration
+#[allow(unused_mut)] // mut only needed on Linux/WSL2
+fn apply_platform_config(
+    mut config: chromiumoxide::browser::BrowserConfigBuilder,
+) -> chromiumoxide::browser::BrowserConfigBuilder {
+    #[cfg(target_os = "linux")]
+    if is_wsl2() {
+        tracing::info!("Detected WSL2 environment, using single-process mode");
+        config = config
+            .arg("--single-process")
+            .arg("--no-zygote")
+            .arg("--mute-audio")
+            .arg("--disable-software-rasterizer");
+    }
+    config
+}
+
+/// Helper: Convert browser launch error to helpful error message
+fn handle_browser_launch_error(msg: String) -> BrowserError {
+    if msg.contains("Could not auto detect") || msg.contains("chrome executable") {
+        #[cfg(target_os = "windows")]
+        let install_help = "Chrome not found. Please install Google Chrome from:\n\
+            https://www.google.com/chrome/\n\
+            Or set CHROME_PATH environment variable to your Chrome installation.";
+
+        #[cfg(not(target_os = "windows"))]
+        let install_help = "Chrome/Chromium not found. Please install:\n\
+            Ubuntu/Debian: sudo apt-get install chromium-browser\n\
+            Fedora: sudo dnf install chromium\n\
+            Arch: sudo pacman -S chromium\n\
+            Or set CHROME_PATH environment variable.";
+
+        BrowserError::ChromiumError(format!("{}\nOriginal error: {}", install_help, msg))
+    } else if msg.contains("ExitStatus(21)") || msg.contains("ExitStatus(ExitStatus(21))") {
+        #[cfg(target_os = "windows")]
+        let help_text = "Chrome failed to launch (exit status 21).\n\
+            Possible causes:\n\
+            1. Anti-virus software blocking Chrome\n\
+            2. Chrome is already running - try closing all Chrome instances\n\
+            3. Missing Visual C++ Runtime - install from Microsoft\n\
+            4. Corrupted Chrome installation - try reinstalling Chrome\n\
+            \n\
+            You can also set CHROME_PATH to specify Chrome location:\n\
+            set CHROME_PATH=\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\"";
+
+        #[cfg(not(target_os = "windows"))]
+        let help_text = "Chrome failed to launch (exit status 21).\n\
+            Try setting CHROME_PATH to your Chrome installation:\n\
+            export CHROME_PATH=/usr/bin/google-chrome";
+
+        BrowserError::ChromiumError(format!("{}\nOriginal error: {}", help_text, msg))
+    } else {
+        BrowserError::ChromiumError(msg)
+    }
+}
+
 impl BrowserEngine {
     /// Create a new browser engine with default configuration
     pub async fn new() -> Result<Self> {
@@ -55,34 +142,38 @@ impl BrowserEngine {
     /// Create a new browser engine with specific fingerprint
     pub async fn with_fingerprint(fingerprint: FingerprintConfig) -> Result<Self> {
         // Build minimal browser config to avoid snap Chromium incompatibilities
-        let mut config = BrowserConfig::builder().no_sandbox().disable_default_args(); // Disable chromiumoxide's default args
+        let mut config = BrowserConfig::builder().no_sandbox().disable_default_args();
 
-        // Add only essential args that work with snap Chromium
+        // Set Chrome path from environment variable or auto-detect
+        if let Ok(chrome_path) = std::env::var("CHROME_PATH") {
+            tracing::info!("Using Chrome from CHROME_PATH: {}", chrome_path);
+            config = config.chrome_executable(&chrome_path);
+        } else {
+            #[cfg(target_os = "windows")]
+            if let Some(path) = detect_chrome_path() {
+                config = config.chrome_executable(&path);
+            }
+        }
+
+        // Add essential args
         config = config
             .arg("--headless")
             .arg("--disable-gpu")
             .arg("--no-first-run")
-            .arg("--disable-dev-shm-usage");
+            .arg("--disable-dev-shm-usage")
+            .arg("--disable-extensions")
+            .arg("--disable-sync");
+
+        // Apply platform-specific configuration
+        config = apply_platform_config(config);
 
         let config = config
             .build()
             .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
 
-        let (browser, mut handler) = Browser::launch(config).await.map_err(|e| {
-            let msg = e.to_string();
-            if msg.contains("Could not auto detect") || msg.contains("chrome executable") {
-                BrowserError::ChromiumError(format!(
-                    "Chrome/Chromium not found. Please install:\n\
-                        Ubuntu/Debian: sudo apt-get install chromium-browser\n\
-                        Fedora: sudo dnf install chromium\n\
-                        Arch: sudo pacman -S chromium\n\
-                        Or set CHROME_PATH environment variable to your Chrome installation.\n\
-                        Original error: {msg}"
-                ))
-            } else {
-                BrowserError::ChromiumError(msg)
-            }
-        })?;
+        let (browser, mut handler) = Browser::launch(config)
+            .await
+            .map_err(|e| handle_browser_launch_error(e.to_string()))?;
 
         // Spawn browser handler
         tokio::spawn(async move {

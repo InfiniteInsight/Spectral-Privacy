@@ -31,6 +31,34 @@ impl From<&BrokerDefinition> for BrokerSummary {
     }
 }
 
+/// Email template information for removal.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmailTemplate {
+    pub email: String,
+    pub subject: String,
+    pub body: String,
+    pub response_days: u32,
+    pub notes: Option<String>,
+}
+
+/// Email fallback information when web forms fail.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmailFallbackResponse {
+    pub enabled: bool,
+    pub email: String,
+    pub phone: Option<String>,
+    pub ccpa_phone: Option<String>,
+    pub subject: Option<String>,
+    pub subject_required: bool,
+    pub required_fields: Vec<String>,
+    pub processing_days: u32,
+    pub email_template: Option<String>,
+    pub notes: String,
+    pub network_note: Option<String>,
+    pub ccpa_compliant: bool,
+    pub gdpr_compliant: bool,
+}
+
 /// Detailed information about a broker including user scan status.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BrokerDetail {
@@ -42,6 +70,8 @@ pub struct BrokerDetail {
     pub last_verified: String,
     pub scan_status: Option<String>,
     pub finding_count: Option<i64>,
+    pub email_template: Option<EmailTemplate>,
+    pub email_fallback: Option<EmailFallbackResponse>,
 }
 
 /// List all broker definitions.
@@ -95,6 +125,55 @@ pub async fn get_broker_detail(
         Err(_) => (None, None),
     };
 
+    // Extract email template if removal method is Email
+    let email_template = if let spectral_broker::definition::RemovalMethod::Email {
+        email,
+        subject,
+        body,
+        response_days,
+        notes,
+    } = &def.removal
+    {
+        Some(EmailTemplate {
+            email: email.clone(),
+            subject: subject.clone(),
+            body: body.clone(),
+            response_days: *response_days,
+            notes: if notes.is_empty() {
+                None
+            } else {
+                Some(notes.clone())
+            },
+        })
+    } else {
+        None
+    };
+
+    // Extract email fallback if present in WebForm or BrowserForm methods
+    let email_fallback = match &def.removal {
+        spectral_broker::definition::RemovalMethod::WebForm { email_fallback, .. }
+        | spectral_broker::definition::RemovalMethod::BrowserForm { email_fallback, .. } => {
+            email_fallback
+                .as_ref()
+                .map(|fallback| EmailFallbackResponse {
+                    enabled: fallback.enabled,
+                    email: fallback.email.clone(),
+                    phone: fallback.phone.clone(),
+                    ccpa_phone: fallback.ccpa_phone.clone(),
+                    subject: fallback.subject.clone(),
+                    subject_required: fallback.subject_required,
+                    required_fields: fallback.required_fields.clone(),
+                    processing_days: fallback.processing_days,
+                    email_template: fallback.email_template.clone(),
+                    notes: fallback.notes.clone(),
+                    network_note: fallback.network_note.clone(),
+                    ccpa_compliant: fallback.ccpa_compliant,
+                    gdpr_compliant: fallback.gdpr_compliant,
+                })
+        }
+        _ => None,
+    };
+
     Ok(BrokerDetail {
         summary: BrokerSummary::from(&def),
         removal_method: format!("{:?}", def.removal),
@@ -103,6 +182,8 @@ pub async fn get_broker_detail(
         last_verified: def.broker.last_verified.to_string(),
         scan_status,
         finding_count,
+        email_template,
+        email_fallback,
     })
 }
 
@@ -151,6 +232,7 @@ mod tests {
                 },
                 confirmation: ConfirmationType::EmailVerification,
                 notes: String::new(),
+                email_fallback: None,
             },
         };
 

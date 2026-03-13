@@ -4,6 +4,64 @@ Open-source, local-first privacy tool for automated data broker removal and pers
 
 ---
 
+## ⚠️ CRITICAL: CROSS-PLATFORM REQUIREMENT ⚠️
+
+**EVERY ASPECT OF THIS APPLICATION MUST WORK ON ALL PLATFORMS.**
+
+This is a **NON-NEGOTIABLE** requirement. All features, file operations, path handling, and UI must work identically on:
+
+- **Windows** (native Windows 11/10)
+- **macOS** (Intel and Apple Silicon)
+- **Linux** (Ubuntu 22.04+, Fedora, Arch)
+- **WSL** (Windows Subsystem for Linux - Ubuntu)
+
+### Platform-Specific Implementation Rules
+
+**Path Handling:**
+- ✅ Use `std::path::Path` and `PathBuf` - NEVER hardcode path separators
+- ✅ Use `std::env::consts::OS` to detect platform
+- ✅ For WSL: Detect with `/proc/version` check, convert paths with `wslpath -w`
+- ❌ NEVER assume forward slashes or backslashes
+- ❌ NEVER use platform-specific paths without abstraction
+
+**File Operations:**
+- ✅ Use `std::fs::canonicalize()` to resolve paths before opening
+- ✅ On WSL: Convert Linux paths to Windows paths before calling `explorer.exe`
+- ✅ On macOS: Use `open -R` to reveal files in Finder
+- ✅ On Windows: Use `explorer /select,` to highlight files
+- ✅ On Linux: Use `xdg-open` for file manager
+- ❌ NEVER assume file paths work across system boundaries
+
+**Testing Requirements:**
+- ✅ Test on Windows (native or VM)
+- ✅ Test on WSL (if using Linux dev environment)
+- ✅ Test on macOS via GitHub Actions
+- ✅ Use `#[cfg(target_os = "...")]` for platform-specific code
+- ✅ Document platform differences in code comments
+
+**Before Completing ANY Task:**
+- [ ] Does this work on Windows?
+- [ ] Does this work on macOS?
+- [ ] Does this work on native Linux?
+- [ ] Does this work on WSL?
+- [ ] Are paths handled correctly on all platforms?
+- [ ] Are file operations cross-platform compatible?
+
+**Common Pitfalls to Avoid:**
+- Assuming Linux paths work in WSL with Windows executables
+- Using `xdg-open` in WSL (doesn't work - use `explorer.exe` instead)
+- Not canonicalizing paths before file operations
+- Hardcoding path separators (`/` or `\`)
+- Not testing on actual target platforms
+
+**When in doubt:**
+- Check existing cross-platform code in the codebase
+- Use conditional compilation with `#[cfg(target_os = "...")]`
+- Test in WSL if developing on Linux
+- Ask the user about platform compatibility
+
+---
+
 ## YOU ARE THE SPECTRAL PROJECT MANAGER
 
 **Claude operates as the Spectral PM by default.** This means you:
@@ -51,6 +109,7 @@ Open-source, local-first privacy tool for automated data broker removal and pers
 - **Frontend:** Svelte 5, SvelteKit (static adapter, SSR disabled), TypeScript, Tailwind CSS, shadcn-svelte
 - **Database:** SQLite via SQLx (will migrate to SQLCipher for encryption)
 - **Build:** Cargo workspace, npm, Vite
+- **Platforms:** Windows 10/11, macOS (Intel + Apple Silicon), Linux (Ubuntu 22.04+), WSL2
 - **CI:** GitHub Actions (Linux, Windows, macOS)
 
 ## Project Structure

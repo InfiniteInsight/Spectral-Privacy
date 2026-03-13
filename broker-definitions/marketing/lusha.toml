@@ -1,0 +1,265 @@
+# Lusha - B2B Contact Database and Email/Phone Finder
+# Last verified: 2026-02-27
+
+[broker]
+id = "lusha"
+name = "Lusha"
+url = "https://www.lusha.com"
+domain = "lusha.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.lusha.com"
+instructions = "Lusha is a B2B contact database that provides email addresses and phone numbers for business professionals. Scrapes LinkedIn, company websites, and public sources. No direct search - must request removal via privacy form or email."
+
+[removal]
+method = "email"
+email = "privacy@lusha.com"
+subject = "CCPA/GDPR Data Deletion and Opt-Out Request"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Permanent deletion and opt-out from Lusha database
+
+Personal Information:
+- Full Name: {full_name}
+- Email addresses: {user_email}, [any work emails]
+- Phone numbers: {phone_number}, [any work phones]
+- Company: [Current and previous employers]
+- LinkedIn profile: [LinkedIn URL if applicable]
+- Job title: [Current title]
+
+Please:
+1. Permanently delete ALL my data from Lusha's database
+2. Add me to a permanent opt-out/suppression list
+3. Stop scraping my data from LinkedIn and public sources
+4. Confirm deletion and opt-out in writing
+5. Explain your re-scraping prevention measures
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Lusha removal and opt-out (MODERATE COMPLEXITY - RE-SCRAPING RISK):
+
+WHAT LUSHA IS:
+- B2B contact database with 100M+ professional profiles
+- Provides email addresses and phone numbers for sales/recruiting
+- Browser extension for LinkedIn (instant contact lookup)
+- API for bulk contact enrichment
+- Used by 800,000+ sales professionals and recruiters
+- Major competitor to ZoomInfo, Apollo.io, RocketReach
+
+HOW LUSHA GETS YOUR DATA:
+1. LINKEDIN SCRAPING (PRIMARY SOURCE):
+   - Automated scraping of public LinkedIn profiles
+   - Extracts: name, title, company, location
+   - Infers email addresses using common patterns
+   - Validates emails via verification services
+
+2. COMPANY WEBSITE SCRAPING:
+   - Scrapes "About Us", "Team", "Contact" pages
+   - Extracts emails and phone numbers
+   - Associates with LinkedIn profiles
+
+3. PUBLIC BUSINESS DIRECTORIES:
+   - Chambers of Commerce listings
+   - Professional association directories
+   - Company registries and annual reports
+   - Conference attendee lists
+
+4. PUBLICLY AVAILABLE DATABASES:
+   - Press releases and news articles
+   - Patent filings (inventor information)
+   - Academic publications (researcher contacts)
+   - Government contract databases
+
+5. EMAIL PATTERN GUESSING:
+   - Analyzes known email patterns at your company
+   - Guesses your email: firstname.lastname@company.com
+   - Validates using email verification services
+   - High accuracy for common patterns
+
+6. PHONE NUMBER SOURCING:
+   - Company switchboards + directory services
+   - Publicly listed numbers on websites
+   - Social media profiles (if public)
+   - Business card data (from partner sources)
+
+WHAT THEY STORE:
+- Personal: full name, email, phone, location
+- Professional: job title, company, seniority level
+- Social: LinkedIn URL, Twitter handle
+- Company info: company size, industry, revenue
+- Verification status: email/phone validity
+- Confidence scores: data accuracy ratings
+
+WHY IT'S PRIVACY-INVASIVE:
+- Scrapes without explicit consent
+- Makes private contact info easily searchable
+- Used for cold outreach (spam email/calls)
+- Combines data from multiple sources (detailed profiles)
+- Re-scrapes periodically (hard to stay removed)
+- No user-facing control or visibility
+- You never interact with Lusha directly
+
+REMOVAL CHALLENGES:
+- RE-SCRAPING: Lusha re-scrapes public sources every 30-90 days
+- Data comes back unless you remove it at the source
+- Deletion is temporary without source removal
+- No guaranteed way to prevent re-scraping
+- Must combine deletion with source data removal
+
+HOW TO REMOVE YOUR DATA:
+
+1. OFFICIAL OPT-OUT FORM:
+   - Visit: https://www.lusha.com/optout/ (check current URL)
+   - Or search Lusha website for "opt out" or "privacy"
+   - Fill out form with: name, email, phone, LinkedIn URL
+   - Lusha should process within 30 days
+   - Request confirmation email
+
+2. EMAIL PRIVACY TEAM:
+   - Address: privacy@lusha.com
+   - Use subject: "CCPA/GDPR Data Deletion and Opt-Out Request"
+   - Include all emails, phone numbers, employers
+   - Request permanent opt-out (not just deletion)
+   - Ask about re-scraping prevention measures
+
+3. PREVENT RE-SCRAPING (CRITICAL):
+   - LINKEDIN: Set profile to "Connections Only" or private
+   - COMPANY WEBSITE: Ask employer to remove you from team page
+   - SOCIAL MEDIA: Set profiles to private
+   - EMAIL: Use uncommon email patterns if possible
+   - This is the ONLY way to stay removed long-term
+
+4. LINKEDIN PRIVACY SETTINGS:
+   - Go to Settings & Privacy → Visibility
+   - Set profile viewing to "Your connections only"
+   - Disable public profile: Settings → Public profile & URL → Turn off
+   - This prevents future LinkedIn scraping
+   - Existing data may still be in Lusha (request deletion)
+
+5. REQUEST PERMANENT SUPPRESSION LIST:
+   - Ask Lusha to add you to permanent "do not scrape" list
+   - Some data brokers maintain suppression lists
+   - Prevents re-adding even if found in public sources
+   - Not all companies offer this - worth requesting
+
+6. VERIFY DELETION:
+   - After 30 days, ask sales/recruiting contact to check Lusha
+   - Have them search your name/email in Lusha
+   - If still present, follow up with Lusha privacy team
+   - May require multiple deletion requests
+
+7. ONGOING MONITORING:
+   - Periodically ask contacts to check Lusha (every 90 days)
+   - If data reappears, file new deletion request
+   - Document re-scraping to escalate complaint
+   - Consider regulatory complaint if persistent re-scraping
+
+REALITY CHECK:
+- Lusha re-scrapes public sources regularly
+- Deletion is temporary without source removal
+- If you have public LinkedIn, you WILL be re-scraped
+- Best strategy: delete from Lusha + make LinkedIn private
+- B2B sales professionals may prefer to stay listed (findability)
+- Consider: do you want to be findable by recruiters/partners?
+
+TECHNICAL DETAILS:
+- Browser extension: lusha.com Chrome/Firefox extensions
+- Runs on LinkedIn to show instant contact data
+- API: api.lusha.com for bulk lookups
+- No cookies/tracking on your browser (you don't visit Lusha)
+- Data accessed by sales/recruiting professionals, not you
+
+COMPANIES/PEOPLE USING LUSHA:
+- Sales teams: cold outreach to prospects
+- Recruiters: finding candidate contact info
+- Marketers: building email lists
+- Journalists: finding interview subjects
+- You're the product, not the user
+
+LUSHA'S GDPR COMPLIANCE:
+- Claims GDPR/CCPA compliance
+- Provides opt-out form (legally required)
+- Processes deletion requests within 30 days
+- Based in Israel (adequate protection under GDPR)
+- DPA available for business customers
+- Privacy Policy: https://www.lusha.com/privacy-policy/
+
+DATA RETENTION:
+- Lusha retains data indefinitely (constantly refreshed)
+- After deletion, removed within 30 days
+- Will re-scrape if data appears in public sources again
+- No permanent opt-out guarantee (depends on implementation)
+- Request written confirmation of suppression list addition
+
+OPT-OUT EFFECTIVENESS:
+- Medium effectiveness: deletion works, but temporary
+- Re-scraping is the main issue
+- Private LinkedIn = significant reduction in re-scraping
+- Removal from company websites helps
+- Requires ongoing monitoring and maintenance
+- Not a one-time fix
+
+COMPARISON TO COMPETITORS:
+- Similar to ZoomInfo, Apollo.io, RocketReach, Hunter.io
+- All scrape the same public sources
+- Opt out from ALL B2B data providers:
+  * Lusha: privacy@lusha.com
+  * ZoomInfo: privacy@zoominfo.com
+  * Apollo.io: privacy@apollo.io
+  * RocketReach: privacy@rocketreach.co
+  * Hunter.io: privacy@hunter.io
+- Same re-scraping challenges apply to all
+
+LEGITIMATE INTEREST CLAIMS:
+- Lusha may claim "legitimate interest" under GDPR
+- Argument: publicly available data can be processed
+- GDPR still provides right to erasure (Article 17)
+- CCPA provides deletion rights regardless
+- Cite GDPR Article 21 (right to object) if needed
+
+VERIFY YOUR DATA IS IN LUSHA:
+- Ask a sales/recruiting contact with Lusha account
+- Have them search your name, email, or LinkedIn
+- They can see what data Lusha has on you
+- Use this to verify deletion success
+
+ALTERNATIVE APPROACH:
+- Instead of full removal, request data correction
+- Update Lusha data to be accurate (current title, company)
+- May be more practical than endless deletion requests
+- Useful if you want to be findable (recruiters, partners)
+- Email privacy@lusha.com with corrections
+
+B2B PROFESSIONAL CONSIDERATIONS:
+- Being in Lusha may benefit your career:
+  * Recruiters can find you for job opportunities
+  * Potential clients/partners can reach you
+  * Industry visibility for thought leadership
+- Weigh privacy vs. professional discoverability
+- Consider selective approach: remove phone, keep email
+
+EFFECTIVENESS:
+- Medium difficulty: Lusha responds to deletion requests
+- Re-scraping makes permanent removal difficult
+- Private LinkedIn + website removal = most effective
+- Requires ongoing monitoring (every 90 days)
+- Best for people who can make LinkedIn private
+- Challenging for those who need public LinkedIn (sales, executives)
+"""
+
+[removal.cookies]
+patterns = []
+domains = []

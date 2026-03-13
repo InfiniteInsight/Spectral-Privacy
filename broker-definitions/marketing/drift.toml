@@ -1,0 +1,266 @@
+# Drift - Conversational Marketing and Sales Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "drift"
+name = "Drift"
+url = "https://www.drift.com"
+domain = "drift.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "OnRequest"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://www.drift.com"
+instructions = "Drift is a conversational marketing and sales chatbot platform. Tracks website visitors, chat conversations, and behavioral data to qualify leads and schedule meetings. Cannot search directly - data is owned by companies using Drift."
+
+[removal]
+method = "email"
+email = "privacy@drift.com"
+subject = "CCPA/GDPR Data Deletion Request - Drift Conversation Data"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data, conversation history, and behavioral tracking data collected through Drift
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- Phone: {phone_number} (if provided)
+- Drift Visitor ID: (if known)
+- IP Address: {ip_address}
+
+Please:
+1. Delete all my data from Drift's systems
+2. Notify client companies to delete my data from their Drift accounts
+3. Stop processing my behavioral data and conversation history
+4. Remove all visitor attributes, chat transcripts, and lead qualification data
+5. Delete any scheduled meetings and associated notes
+6. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Drift tracking and removal (MODERATE COMPLEXITY):
+
+WHAT DRIFT IS:
+- Conversational marketing and sales platform
+- Used by 5,000+ B2B companies (especially SaaS)
+- AI-powered chatbot for lead qualification
+- Schedules meetings and routes conversations to sales
+- Tracks website behavior to identify high-intent visitors
+- Major competitor to Intercom (more sales-focused)
+
+HOW IT WORKS:
+1. Company integrates Drift chatbot on website
+2. Drift JavaScript tracks all visitors and page views
+3. Chatbot appears to engage visitors (automated or live)
+4. Captures lead information: name, email, phone, company
+5. Qualifies leads based on conversation and behavior
+6. Routes qualified leads to sales team
+7. Integrates with CRM (Salesforce, HubSpot) to sync data
+
+WHAT THEY TRACK:
+- Visitor identification: email, name, phone, title, company
+- Page views: every page visited before and during conversations
+- Behavioral data: time on site, pages viewed, referral source
+- Conversation history: all chatbot and live chat messages
+- Lead qualification: qualification scores and routing decisions
+- Meeting scheduling: scheduled meetings, calendar integrations
+- Device data: browser, OS, screen resolution
+- Geographic data: country, region, city from IP
+- Company data: company name, size, industry (for ABM targeting)
+- Email engagement: opens/clicks on Drift emails
+- CRM data: synced from Salesforce/HubSpot (if integrated)
+
+WHY IT'S PRIVACY-INVASIVE:
+- Tracks visitors before any chat interaction
+- Identifies you by email without explicit consent
+- Shares data with sales teams and CRM
+- Persistent cross-session tracking
+- Combines behavioral + conversational + CRM data
+- Often used for account-based marketing (targeted stalking)
+- No user-facing opt-out mechanism
+- Conversation data may contain sensitive business information
+
+REMOVAL CHALLENGES:
+- Drift is a data processor (not data controller)
+- Data legally owned by companies using Drift
+- Conversation history treated as "business records"
+- Synced with CRM (requires deleting from CRM too)
+- No direct search capability for end users
+- Must request deletion from individual companies
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Drift (look for chatbot or network requests)
+   - Look for: js.driftt.com, customer.io, driftt.imgix.net
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL Drift data:
+     * Visitor profile and behavioral data
+     * Conversation history (chatbot and live chat)
+     * Lead qualification scores
+     * Scheduled meetings and notes
+     * Synced CRM data (Salesforce, HubSpot)
+   - Companies should use Drift's contact deletion feature
+   - Emphasize deletion from integrated systems (CRM)
+
+2. EMAIL DRIFT PRIVACY TEAM:
+   - Address: privacy@drift.com
+   - Include email, name, phone, any known visitor IDs
+   - Drift may coordinate deletions with client companies
+   - Limited direct power (they're data processor, not controller)
+   - Worth trying for comprehensive removal
+   - Mention specific companies if you know them
+
+3. DETECT DRIFT TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * js.driftt.com (JavaScript SDK)
+     * event.api.drift.com (event tracking)
+     * customer.io (email marketing - Drift acquired Customer.io)
+     * driftt.imgix.net (image CDN)
+   - Cookies: driftt_*, drift_*
+   - LocalStorage: drift_* entries
+   - Chat widget (usually bottom-right, often with "Drift" branding)
+   - Widget may be hidden initially and appear on scroll/timer
+
+4. BLOCK DRIFT TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     * ||drift.com^
+     * ||driftt.com^
+     * ||driftt.imgix.net^
+   - Blocks chatbot and all tracking
+   - May impact ability to contact sales/support
+   - Prevents behavioral lead qualification
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks Drift automatically)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - Third-party cookie blocking
+   - All reduce Drift tracking effectiveness
+
+6. CLEAR TRACKING DATA:
+   - Delete all Drift cookies:
+     * driftt_aid (anonymous ID, 2-year expiration)
+     * driftt_eid (email ID, persistent)
+     * driftt_sid (session ID)
+     * drift_* (various tracking cookies)
+   - Clear LocalStorage drift_* entries
+   - Drift assigns new visitor ID on next visit
+   - Breaks cross-session tracking and conversation history
+
+7. OPT OUT OF DRIFT EMAILS:
+   - Unsubscribe from emails sent via Drift
+   - Click unsubscribe link in Drift/Customer.io emails
+   - Only stops marketing emails, not behavioral tracking
+   - Must request full deletion for comprehensive removal
+
+REALITY CHECK:
+- Drift very common in B2B SaaS and tech sales
+- Conversation data often shared with sales teams
+- May be synced to CRM (Salesforce, HubSpot)
+- Companies reluctant to delete "sales records"
+- Emphasize personal data rights under GDPR/CCPA
+- Best strategy: block Drift + persistent deletion requests
+- Companies legally obligated to honor requests
+
+TECHNICAL DETAILS:
+- Tracking domains:
+  * js.driftt.com (JavaScript SDK)
+  * event.api.drift.com (event tracking API)
+  * customer.io (email marketing, owned by Drift)
+  * driftt.imgix.net (image/avatar CDN)
+  * api.drift.com (REST API)
+- Cookies:
+  * driftt_aid (anonymous visitor ID, 2-year)
+  * driftt_eid (email-based ID, persistent)
+  * driftt_sid (session ID, 30-min)
+  * drift_* (implementation-specific)
+- LocalStorage:
+  * drift_* (conversation state, settings)
+  * Caches chatbot configuration and history
+
+COMPANIES KNOWN TO USE DRIFT:
+- B2B SaaS: Ellie Mae, G2, Sisense, Gong
+- Technology: Many high-growth tech companies
+- Common in sales-heavy B2B websites
+- Check chatbot branding ("Powered by Drift")
+- Often used alongside Salesforce, HubSpot
+
+DRIFT'S GDPR COMPLIANCE:
+- Claims full GDPR/CCPA compliance as data processor
+- Provides contact deletion features
+- Deletion includes: visitor, conversations, scheduled meetings
+- DPA (Data Processing Agreement) with customers
+- ISO 27001, SOC 2 Type II certified
+- Privacy Shield certified (US-EU data transfers)
+
+DATA RETENTION:
+- Drift retains data as long as customer maintains account
+- Conversation history often retained indefinitely
+- Visitor behavioral data per customer configuration
+- After deletion request, data removed within 30 days
+- CRM-synced data requires separate deletion from CRM
+- Request written confirmation of complete deletion
+
+CONVERSATION HISTORY CONCERNS:
+- Conversations may contain sensitive business information:
+  * Company budgets, project details
+  * Technical requirements, pain points
+  * Decision-maker names, buying timeline
+- Companies treat as "sales records"
+- Emphasize GDPR Article 17 "Right to Erasure"
+- Personal data in conversations must be deleted
+
+CRM INTEGRATION CONCERNS:
+- Drift syncs contacts to Salesforce, HubSpot, Marketo
+- Deletion from Drift doesn't delete from CRM
+- Must request separate deletion from CRM
+- Companies should delete from both systems
+- Mention CRM integration in deletion requests
+
+ACCOUNT-BASED MARKETING (ABM):
+- Drift heavily used for ABM targeting
+- Identifies visitors by company IP address
+- Prioritizes visitors from target accounts
+- Routes to specific sales reps based on company
+- Implies extensive company-level tracking
+- Request deletion of account-level data too
+
+MEETING SCHEDULING:
+- Drift integrates with Calendly, Google Calendar, Outlook
+- Scheduled meetings may sync to calendars
+- Request deletion of scheduled meetings
+- Calendar integrations may retain data separately
+
+DRIFT INTEL:
+- Drift Intel identifies companies visiting website
+- Uses IP address to company mapping
+- Tracks company-level behavior (pages viewed, frequency)
+- Request deletion of company-level data if applicable
+
+EFFECTIVENESS:
+- Medium difficulty: companies generally respond to requests
+- Drift provides deletion tools for customers
+- Browser blocking highly effective (prevents chatbot and tracking)
+- Cookie deletion breaks visitor identification
+- CRM integration complicates deletion (requires multi-step)
+- Conversation history may require emphasis on GDPR rights
+- Ongoing monitoring needed (common in B2B)
+"""
+
+[removal.cookies]
+patterns = ["driftt_*", "drift_*"]
+domains = [".drift.com", ".driftt.com"]

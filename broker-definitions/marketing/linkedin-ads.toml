@@ -15,14 +15,15 @@ scan_priority = "AutoScanTier1"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.linkedin.com/psettings/advertising"
 instructions = "LinkedIn Ads uses professional profile data (job title, industry, skills, company) plus activity (articles read, posts engaged with, job searches) for B2B advertising targeting."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://www.linkedin.com/psettings/advertising"
 confirmation = "automatic"
+instructions = "Visit the LinkedIn ad settings page while logged in and disable personalization options."
 notes = """
 LinkedIn advertising opt-out:
 

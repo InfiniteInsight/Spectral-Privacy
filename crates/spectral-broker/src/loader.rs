@@ -123,9 +123,11 @@ impl BrokerLoader {
                 // Recursively process subdirectories
                 Self::walk_and_load_recursive(&path, definitions)?;
             } else if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-                // Skip README files
-                if path.file_name().and_then(|s| s.to_str()) == Some("README.toml") {
-                    continue;
+                // Skip README and schema files
+                if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
+                    if filename == "README.toml" || filename == "schema.toml" {
+                        continue;
+                    }
                 }
 
                 // Load and parse TOML

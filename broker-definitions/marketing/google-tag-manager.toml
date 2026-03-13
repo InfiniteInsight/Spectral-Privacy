@@ -1,0 +1,300 @@
+# Google Tag Manager - Tag Management System
+# Last verified: 2026-02-27
+
+[broker]
+id = "google-tag-manager"
+name = "Google Tag Manager"
+url = "https://tagmanager.google.com"
+domain = "googletagmanager.com"
+category = "marketing"
+difficulty = "Easy"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier1"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://tagmanager.google.com"
+instructions = "Google Tag Manager (GTM) is a tag management system that websites use to deploy and manage marketing/analytics tags. It's infrastructure, not a direct data collector - data is owned by companies using GTM to deploy their tracking tools."
+
+[removal]
+method = "email"
+email = "privacy@google.com"
+subject = "CCPA/GDPR Data Deletion Request - Google Tag Manager"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data associated with Google Tag Manager tracking
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- IP Address: {ip_address}
+- Google Account ID: (if known)
+
+Please:
+1. Delete all my data from Google Tag Manager systems
+2. Opt me out of Google Tag Manager tracking across all sites
+3. Remove all tags, triggers, and variables associated with my identifiers
+4. Stop processing my data through GTM infrastructure
+5. Confirm deletion in writing
+
+I also request deletion from related Google services that GTM commonly deploys:
+- Google Analytics (all versions)
+- Google Ads tracking
+- Google Marketing Platform services
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Google Tag Manager tracking and removal (EASY - WIDESPREAD):
+
+WHAT GOOGLE TAG MANAGER IS:
+- Free tag management system from Google
+- Used by MILLIONS of websites worldwide (estimated 35%+ of top 1M sites)
+- Deploys and manages marketing/analytics/tracking tags without code changes
+- Think of it as a "container" that loads other tracking scripts
+- Not a tracker itself - it's the infrastructure that loads trackers
+- Most popular tag management system globally
+
+HOW IT WORKS:
+1. Company adds single GTM container snippet to their website
+2. GTM loads and executes tags configured in the GTM dashboard
+3. Tags can be: Google Analytics, Facebook Pixel, AdWords, any JavaScript
+4. Company can add/remove/modify tags without deploying code
+5. Tags fire based on triggers (pageviews, clicks, form submissions)
+6. Makes it easy to deploy dozens of tracking tools simultaneously
+
+WHAT GTM DEPLOYS (COMMON TAGS):
+- Google Analytics (Universal Analytics, GA4)
+- Google Ads conversion tracking
+- Facebook Pixel
+- LinkedIn Insight Tag
+- Hotjar, Mixpanel, Amplitude
+- Custom HTML/JavaScript
+- A/B testing tools (Optimizely, VWO)
+- Chat widgets (Intercom, Drift)
+- Literally any JavaScript-based tool
+
+WHAT DATA GTM ITSELF COLLECTS:
+- GTM primarily acts as a loader/orchestrator
+- Minimal direct data collection
+- May collect:
+  - Container load events
+  - Tag firing data (debugging info)
+  - Basic pageview information
+  - Data layer variables (customer-defined)
+- Real data collection happens through tags GTM deploys
+
+PRIVACY IMPLICATIONS:
+- GTM makes it EASY for companies to deploy dozens of trackers
+- Users often have no idea how many tools are tracking them
+- Single GTM container can load 50+ tracking scripts
+- No consent needed to add new tags (once GTM is installed)
+- Makes tracking ubiquitous and hard to audit
+- Privacy nightmare: invisible tracking infrastructure
+
+REMOVAL CHALLENGES:
+- GTM is infrastructure, not primary data collector
+- Data owned by each company using GTM
+- Data also owned by services GTM loads (Analytics, Ads, etc.)
+- No centralized GTM data to delete
+- Must address both GTM and the tags it deploys
+- Blocking GTM breaks many tracking tools simultaneously (good!)
+
+HOW TO REMOVE YOUR DATA:
+
+1. CONTACT INDIVIDUAL WEBSITES (MOST EFFECTIVE):
+   - Identify sites using GTM (look for googletagmanager.com requests)
+   - Email each site's privacy contact
+   - Request CCPA/GDPR deletion of ALL data collected via GTM
+   - Specifically mention: "including all tracking tools deployed via GTM"
+   - Companies should delete data from GTM-deployed tags
+
+2. EMAIL GOOGLE PRIVACY:
+   - Address: privacy@google.com
+   - Request deletion from Google Tag Manager systems
+   - Also request deletion from Google services GTM commonly deploys:
+     * Google Analytics (all properties)
+     * Google Ads
+     * DoubleClick
+     * Google Marketing Platform
+   - Use Google's unified deletion request form: myaccount.google.com
+
+3. USE GOOGLE AD SETTINGS OPT-OUT:
+   - Visit: adssettings.google.com
+   - Turn off ad personalization
+   - This opts out of Google's advertising tracking
+   - Affects Google Ads tags deployed via GTM
+   - Does NOT affect non-Google tags (Facebook, etc.)
+
+4. DETECT GTM USAGE:
+   - Open browser DevTools → Network tab
+   - Look for requests to: googletagmanager.com, www.googletagmanager.com
+   - Look for script: gtm.js, gtag.js
+   - Cookies: _ga, _gid, _gcl_*, _gac_* (Google Analytics via GTM)
+   - Container IDs in source: GTM-XXXXXX format
+   - If present, site uses GTM to deploy trackers
+
+5. BLOCK GOOGLE TAG MANAGER (HIGHLY EFFECTIVE):
+   - Install uBlock Origin or Privacy Badger
+   - Add filter rules:
+     ||googletagmanager.com^
+     ||google-analytics.com^
+     ||doubleclick.net^
+   - This blocks GTM AND many tags it would load
+   - One block prevents dozens of trackers
+   - May break some site functionality (forms, analytics-dependent features)
+
+6. BROWSER-LEVEL BLOCKING:
+   - Use Brave Browser (blocks GTM by default)
+   - Firefox with Enhanced Tracking Protection
+   - Safari with Intelligent Tracking Prevention
+   - Chrome with Privacy Sandbox (limited effectiveness)
+
+7. CLEAR COOKIES AND STORAGE:
+   - Delete all _ga*, _gid, _gcl_*, _gac_* cookies
+   - Clear LocalStorage for Google domains
+   - Clear IndexedDB for tracking data
+   - Breaks Google's cross-session tracking
+   - GTM-deployed tags will assign new IDs
+
+8. USE PRIVACY EXTENSIONS:
+   - Privacy Badger: learns and blocks GTM tags
+   - Ghostery: shows and blocks GTM trackers
+   - Disconnect: blocks Google tracking including GTM
+   - Cookie AutoDelete: removes tracking cookies automatically
+
+9. NETWORK-LEVEL BLOCKING:
+   - Pi-hole DNS blocking
+   - Add googletagmanager.com to blocklist
+   - Blocks GTM across entire home network
+   - Affects all devices (phones, tablets, smart TVs)
+
+REALITY CHECK:
+- GTM is on MILLIONS of sites (more common than any other tracker)
+- Extremely effective tracking infrastructure
+- Makes it trivial for companies to deploy invasive tracking
+- Blocking GTM breaks much of the tracking ecosystem
+- One of the MOST IMPORTANT things to block for privacy
+- Companies like GTM because it's free and powerful
+- Users suffer because of ubiquitous tracking
+
+TECHNICAL DETAILS:
+- Primary domains: www.googletagmanager.com, googletagmanager.com
+- Script files: gtm.js, gtag.js
+- Container format: GTM-XXXXXX (where X is alphanumeric)
+- Data layer: JavaScript object (dataLayer) for passing data to tags
+- Cookies: depends on tags deployed (_ga, _gid common from Analytics)
+- LocalStorage: dataLayer, GTM-specific configuration
+- Loads tags asynchronously (performance optimized)
+
+COMMONLY DEPLOYED GOOGLE SERVICES:
+- Google Analytics 4 (GA4)
+- Universal Analytics (UA, deprecated but still common)
+- Google Ads conversion tracking
+- Google Marketing Platform
+- DoubleClick floodlight tags
+- Google Optimize (A/B testing)
+
+NON-GOOGLE TAGS COMMONLY DEPLOYED:
+- Facebook Pixel
+- LinkedIn Insight Tag
+- Twitter/X conversion tracking
+- Hotjar session recording
+- Mixpanel/Amplitude analytics
+- Customer.io, Intercom, Drift
+- Literally thousands of possible integrations
+
+DETECTION IN THE WILD:
+- Check page source for: <!-- Google Tag Manager -->
+- Network tab: requests to googletagmanager.com/gtm.js?id=GTM-XXXXX
+- Console: window.dataLayer object exists
+- Extensions like Wappalyzer show GTM usage
+- BuiltWith.com shows GTM on company websites
+
+GDPR/CCPA COMPLIANCE:
+- GTM itself doesn't "own" data (it's infrastructure)
+- Data controllers are: websites using GTM + services GTM loads
+- Companies should obtain consent BEFORE loading GTM
+- Many sites load GTM before consent (illegal under GDPR)
+- Users have right to deletion from all GTM-deployed services
+- Companies must honor deletion requests within 30 days
+
+DATA FLOW:
+1. User visits website with GTM
+2. GTM container loads from googletagmanager.com
+3. GTM checks triggers (pageview, click, form submit)
+4. GTM fires configured tags (Analytics, Ads, Pixel)
+5. Each tag sends data to its own service
+6. Data stored by: website + each tag's service
+7. Your data now in dozens of systems simultaneously
+
+WHY GTM IS A PRIVACY PROBLEM:
+- Makes tracking invisible and effortless for companies
+- No technical barrier to adding more trackers
+- Users can't easily see what's tracking them
+- One "yes" to cookies enables dozens of trackers via GTM
+- Companies can add new tracking without user awareness
+- Centralizes surveillance infrastructure
+- Google controls the deployment mechanism for much of web tracking
+
+EFFECTIVENESS OF BLOCKING:
+- Highly effective: breaks most Google tracking
+- Also breaks many non-Google tags loaded via GTM
+- One block = dozens of trackers stopped
+- Essential for privacy-conscious users
+- May break some legitimate site features
+- Alternative: use sites' "reject all" cookie banners (when available)
+
+COMPANIES KNOWN TO USE GTM:
+- Literally millions of sites including:
+- Major e-commerce (Target, Walmart, Wayfair)
+- SaaS companies (Slack, Asana, Monday.com)
+- Financial services (banks, fintech)
+- Healthcare organizations
+- Government websites
+- Educational institutions
+- Basically: if site has any tracking, likely uses GTM
+
+GTM ALTERNATIVES:
+- Tealium Tag Management
+- Adobe Launch (part of Adobe Experience Platform)
+- Segment (CDP with tag management)
+- Matomo Tag Manager (privacy-focused, open source)
+- Server-side tagging (more privacy-respecting)
+
+RECOMMENDATIONS:
+1. Block googletagmanager.com in your adblocker (ESSENTIAL)
+2. Request deletion from sites you use regularly
+3. Use privacy-focused browsers (Brave, Firefox)
+4. Enable Do Not Track (limited effectiveness)
+5. Clear cookies regularly
+6. Use Google's own opt-out tools (adssettings.google.com)
+7. Consider Pi-hole for network-wide blocking
+8. Check which sites use GTM: builtwith.com/googletagmanager
+
+GOOGLE'S POSITION:
+- GTM is "privacy-neutral" infrastructure
+- Responsibility lies with sites using GTM
+- Provides tools for GDPR compliance (consent mode)
+- Many sites misuse these tools or ignore them
+- Google benefits from ubiquitous GTM deployment
+- Drives data to Google Analytics and Ads
+
+FUTURE DEVELOPMENTS:
+- Server-side GTM gaining adoption (harder to block)
+- Google promoting "consent mode" (still tracks, just differently)
+- Privacy regulations forcing more transparency
+- Some companies moving away from client-side GTM
+- Privacy-focused alternatives gaining traction
+"""
+
+[removal.cookies]
+patterns = ["_ga", "_gid", "_gcl_*", "_gac_*", "_ga_*"]
+domains = [".googletagmanager.com", ".google-analytics.com"]

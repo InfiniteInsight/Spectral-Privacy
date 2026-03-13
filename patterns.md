@@ -15,6 +15,7 @@ This document defines the coding patterns, conventions, and architectural decisi
 9. [Security Patterns](#9-security-patterns)
 10. [Database Patterns](#10-database-patterns)
 11. [Authentication](#11-authentication)
+12. [Cross-Platform Compatibility](#12-cross-platform-compatibility)
 
 ---
 
@@ -2282,3 +2283,396 @@ auto_lock_minutes = 15
 [auth.session]
 require_reauth_for_sensitive = true  # Re-auth for PII export, credential view
 ```
+
+---
+
+## 12. Cross-Platform Compatibility
+
+**CRITICAL:** Every feature MUST work on Windows, macOS, Linux, and WSL. This is non-negotiable.
+
+### 12.1 Platform Detection
+
+Use `std::env::consts::OS` for compile-time detection and runtime checks:
+
+```rust
+use std::env::consts::OS;
+
+fn get_platform_name() -> &'static str {
+    OS  // "windows", "macos", "linux"
+}
+
+// WSL detection (Linux that's actually Windows)
+fn is_wsl() -> bool {
+    cfg!(target_os = "linux")
+        && std::path::Path::new("/proc/version").exists()
+        && std::fs::read_to_string("/proc/version")
+            .map(|s| s.to_lowercase().contains("microsoft"))
+            .unwrap_or(false)
+}
+```
+
+### 12.2 Path Handling
+
+**NEVER** hardcode path separators or assume path formats.
+
+```rust
+use std::path::{Path, PathBuf};
+
+// ✅ CORRECT: Use PathBuf and Path
+fn get_config_dir() -> PathBuf {
+    let mut path = dirs::config_dir().expect("config dir");
+    path.push("spectral");
+    path.push("config.toml");
+    path
+}
+
+// ❌ WRONG: Hardcoded separators
+fn get_config_dir() -> String {
+    "/home/user/.config/spectral/config.toml".to_string()  // Only works on Linux!
+}
+
+// ✅ CORRECT: Canonicalize before using
+fn open_file_location(file_path: &str) -> Result<(), String> {
+    let canonical = Path::new(file_path)
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve path: {}", e))?;
+
+    // Now use canonical path for operations
+    Ok(())
+}
+```
+
+### 12.3 File Operations
+
+Opening files in the native file manager requires platform-specific code:
+
+```rust
+use std::process::Command;
+
+pub fn open_file_location(file_path: String) -> Result<(), String> {
+    // Always canonicalize first
+    let canonical = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize: {}", e))?;
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: Highlight file in Explorer
+        let path_str = canonical.to_str()
+            .ok_or("Invalid UTF-8 in path")?;
+        Command::new("explorer")
+            .args(["/select,", path_str])
+            .spawn()
+            .map_err(|e| format!("Failed to open Explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: Reveal in Finder
+        let path_str = canonical.to_str()
+            .ok_or("Invalid UTF-8 in path")?;
+        Command::new("open")
+            .args(["-R", path_str])
+            .spawn()
+            .map_err(|e| format!("Failed to open Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if is_wsl() {
+            // WSL: Convert to Windows path and use explorer.exe
+            let output = Command::new("wslpath")
+                .arg("-w")
+                .arg(&canonical)
+                .output()
+                .map_err(|e| format!("Failed to convert WSL path: {}", e))?;
+
+            if !output.status.success() {
+                return Err(format!(
+                    "wslpath failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
+
+            let windows_path = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .to_string();
+
+            Command::new("explorer.exe")
+                .args(["/select,", &windows_path])
+                .spawn()
+                .map_err(|e| format!("Failed to open Explorer from WSL: {}", e))?;
+        } else {
+            // Native Linux: Open parent directory
+            let dir = canonical.parent()
+                .ok_or("No parent directory")?;
+            Command::new("xdg-open")
+                .arg(dir)
+                .spawn()
+                .map_err(|e| format!("Failed to open file manager: {}", e))?;
+        }
+    }
+
+    Ok(())
+}
+```
+
+### 12.4 System Directories
+
+Use the `dirs` crate for cross-platform directory access:
+
+```rust
+use dirs;
+
+// ✅ CORRECT: Cross-platform
+let config_dir = dirs::config_dir().expect("config dir");  // ~/.config on Linux, %APPDATA% on Windows
+let data_dir = dirs::data_local_dir().expect("data dir");  // ~/.local/share on Linux, %LOCALAPPDATA% on Windows
+let home = dirs::home_dir().expect("home dir");
+
+// ❌ WRONG: Platform-specific
+let config_dir = PathBuf::from("/home/user/.config");  // Only works on Linux
+```
+
+### 12.5 Environment Variables
+
+```rust
+use std::env;
+
+// ✅ CORRECT: Handle missing vars gracefully
+let path = env::var("HOME")
+    .or_else(|_| env::var("USERPROFILE"))  // Windows fallback
+    .unwrap_or_else(|_| "/tmp".to_string());
+
+// ❌ WRONG: Assume var exists
+let home = env::var("HOME").unwrap();  // Panics on Windows
+```
+
+### 12.6 Line Endings
+
+Use `\n` in code, let git handle conversion via `.gitattributes`:
+
+```gitattributes
+# .gitattributes
+* text=auto
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+```
+
+In Rust, always use `\n`:
+
+```rust
+// ✅ CORRECT
+let message = "Line 1\nLine 2\n";
+
+// ❌ WRONG
+let message = "Line 1\r\nLine 2\r\n";  // Don't manually add \r
+```
+
+### 12.7 WSL-Specific Considerations
+
+WSL is **Linux that runs inside Windows**. Key differences:
+
+| Aspect | Native Linux | WSL |
+|--------|-------------|-----|
+| File paths | `/home/user/file.txt` | `/home/user/file.txt` (Linux format) |
+| Windows access | N/A | `/mnt/c/Users/...` |
+| File managers | `xdg-open` | `explorer.exe` (requires Windows paths) |
+| Path conversion | N/A | Use `wslpath -w /linux/path` |
+| Browser cookies | `~/.config/...` | Windows browser data at `/mnt/c/Users/.../AppData/...` |
+
+**Common WSL pitfalls:**
+
+```rust
+// ❌ WRONG: Using xdg-open in WSL
+if cfg!(target_os = "linux") {
+    Command::new("xdg-open").arg(path).spawn()?;  // Doesn't work in WSL!
+}
+
+// ✅ CORRECT: Detect WSL and use Windows tools
+if cfg!(target_os = "linux") {
+    if is_wsl() {
+        let windows_path = convert_to_windows_path(path)?;
+        Command::new("explorer.exe").arg(windows_path).spawn()?;
+    } else {
+        Command::new("xdg-open").arg(path).spawn()?;
+    }
+}
+```
+
+### 12.8 Browser Data Locations
+
+Browser cookie databases have different locations per platform:
+
+```rust
+fn get_chrome_profile_dir() -> Option<PathBuf> {
+    let mut base = if cfg!(target_os = "windows") {
+        dirs::data_local_dir()?
+            .join("Google")
+            .join("Chrome")
+            .join("User Data")
+    } else if cfg!(target_os = "macos") {
+        dirs::home_dir()?
+            .join("Library")
+            .join("Application Support")
+            .join("Google")
+            .join("Chrome")
+    } else if cfg!(target_os = "linux") {
+        // In WSL, check Windows location first
+        if is_wsl() {
+            // Try Windows Chrome location
+            let windows_appdata = Path::new("/mnt/c/Users")
+                .join(env::var("USER").ok()?)
+                .join("AppData/Local/Google/Chrome/User Data");
+            if windows_appdata.exists() {
+                return Some(windows_appdata);
+            }
+        }
+        // Native Linux
+        dirs::config_dir()?
+            .join("google-chrome")
+    } else {
+        return None;
+    };
+
+    base.push("Default");
+    Some(base)
+}
+```
+
+### 12.9 Testing Checklist
+
+Before completing ANY task involving file operations, paths, or system commands:
+
+- [ ] Tested on Windows (native or VM)?
+- [ ] Tested on WSL (if using Linux dev environment)?
+- [ ] Tested on macOS (via GitHub Actions or actual hardware)?
+- [ ] Paths use `PathBuf` and `Path` (no hardcoded separators)?
+- [ ] File operations use `canonicalize()` before opening?
+- [ ] Platform-specific code uses `#[cfg(target_os = "...")]`?
+- [ ] WSL detection and path conversion if needed?
+- [ ] System directories use `dirs` crate?
+- [ ] Error messages mention platform when relevant?
+
+### 12.10 Common Patterns
+
+#### Opening a file in system viewer
+
+```rust
+pub fn open_file(path: &Path) -> Result<(), String> {
+    let canonical = path.canonicalize()
+        .map_err(|e| format!("File not found: {}", e))?;
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg(canonical)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(canonical)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if is_wsl() {
+            let windows_path = wsl_to_windows_path(&canonical)?;
+            Command::new("cmd.exe")
+                .args(["/C", "start", "", &windows_path])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            Command::new("xdg-open")
+                .arg(canonical)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+fn wsl_to_windows_path(linux_path: &Path) -> Result<String, String> {
+    let output = Command::new("wslpath")
+        .arg("-w")
+        .arg(linux_path)
+        .output()
+        .map_err(|e| format!("wslpath failed: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "Path conversion failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+```
+
+#### Getting app data directory
+
+```rust
+use dirs;
+
+pub fn get_app_data_dir() -> Result<PathBuf, String> {
+    let mut path = dirs::data_local_dir()
+        .ok_or("Could not determine app data directory")?;
+
+    path.push("Spectral");
+
+    // Create if doesn't exist
+    std::fs::create_dir_all(&path)
+        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
+
+    Ok(path)
+}
+```
+
+### 12.11 Documentation Requirements
+
+When writing cross-platform code, document:
+
+```rust
+/// Opens the file in the system's default file manager.
+///
+/// # Platform Behavior
+/// - **Windows**: Opens Explorer with file highlighted (`/select`)
+/// - **macOS**: Opens Finder with file revealed (`open -R`)
+/// - **Linux**: Opens parent directory in default file manager (`xdg-open`)
+/// - **WSL**: Converts path to Windows format and uses `explorer.exe`
+///
+/// # Errors
+/// Returns error if:
+/// - File doesn't exist (all platforms)
+/// - Path cannot be canonicalized
+/// - WSL path conversion fails
+/// - System command fails to spawn
+pub fn open_file_location(path: &str) -> Result<(), String> {
+    // ...
+}
+```
+
+### 12.12 Remember
+
+**Every time you write code that:**
+- Opens files or directories
+- Constructs file paths
+- Runs system commands
+- Accesses system directories
+- Handles browser data
+
+**Ask yourself:**
+- Does this work on Windows?
+- Does this work on macOS?
+- Does this work on Linux?
+- Does this work in WSL?
+
+If the answer to ANY of these is "I don't know" or "No", **stop and fix it** before proceeding.

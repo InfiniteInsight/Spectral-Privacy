@@ -1,0 +1,217 @@
+# FullStory - Digital Experience Intelligence and Session Replay Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "fullstory"
+name = "FullStory"
+url = "https://fullstory.com"
+domain = "fullstory.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://fullstory.com"
+instructions = "FullStory records complete user sessions with pixel-perfect DOM reconstruction, tracking every click, keystroke, and page interaction. Cannot search directly - session replays are owned by companies using FullStory."
+
+[removal]
+method = "email"
+email = "privacy@fullstory.com"
+subject = "CCPA/GDPR Data Deletion Request - FullStory Session Recordings"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all session recordings, user data, and behavioral profiles collected through FullStory
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID: (if known)
+- IP Address: {ip_address}
+- Websites/apps visited: (list any known)
+
+Please:
+1. Delete all my session recordings from FullStory's systems
+2. Remove my user profile and associated behavioral data
+3. Notify client companies to delete my data from their FullStory accounts
+4. Stop processing any data associated with my identity or devices
+5. Confirm complete deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+FullStory tracking and removal (MODERATE-HIGH COMPLEXITY):
+
+WHAT FULLSTORY IS:
+- Enterprise-grade session replay and analytics platform
+- Records pixel-perfect reconstructions of user sessions
+- Captures every DOM change, interaction, and user input
+- Powers digital experience intelligence for product teams
+- Used by 20,000+ companies including major enterprises
+- More comprehensive than Hotjar (full DOM capture vs. video)
+
+HOW IT WORKS:
+1. Company adds FullStory JavaScript to their website/app
+2. FullStory captures complete DOM state and all changes
+3. Records every interaction: clicks, hovers, inputs, scrolls
+4. Reconstructs sessions as pixel-perfect playback
+5. Allows searching sessions by user actions, events, errors
+6. Companies watch replays to debug issues and understand UX
+
+WHAT THEY TRACK (HIGHLY DETAILED):
+- Complete DOM capture: entire page structure and changes
+- User interactions: every click, tap, hover, scroll
+- Form inputs: keystrokes in form fields (sensitive data should be masked)
+- JavaScript errors and console logs
+- Network performance and page load times
+- Rage clicks, dead clicks, error clicks
+- User properties: name, email, custom attributes
+- Device info: browser, OS, screen size, device type
+- Location data: IP address, geolocation
+- Session metadata: duration, page path, referrer
+- Custom events: anything developers choose to track
+
+PRIVACY CONCERNS (SERIOUS):
+- Extremely detailed session reconstruction (more invasive than video)
+- Captures form inputs including passwords if not properly masked
+- Can record sensitive personal information inadvertently
+- Console logs may contain debugging data with PII
+- Network requests captured (may reveal API tokens, session IDs)
+- Recordings searchable by email, name, or user actions
+- Data accessible to entire product/engineering teams
+
+REMOVAL CHALLENGES:
+- FullStory is data processor (companies are data controllers)
+- Session replays owned by individual companies
+- No end-user portal to search or delete data
+- Must contact each company using FullStory
+- Data may be retained across multiple FullStory accounts
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using FullStory (see detection below)
+   - Email company's privacy contact (privacy@company.com)
+   - Request deletion of all FullStory session recordings and user data
+   - Cite GDPR Article 17 Right to Erasure / CCPA deletion rights
+   - Companies should delete from FullStory account (permanent deletion)
+
+2. EMAIL FULLSTORY PRIVACY TEAM:
+   - Address: privacy@fullstory.com
+   - Include email, name, IP, and any known user IDs
+   - List websites/apps where you encountered FullStory
+   - Request facilitation of deletions with client companies
+   - FullStory has limited direct power (data processor role)
+
+3. DETECT FULLSTORY TRACKING (CRITICAL):
+   - Open browser DevTools → Network tab
+   - Look for requests to: rs.fullstory.com, fullstory.com/s/fs.js
+   - Cookies: fs_uid, fs_lua, _fs_*
+   - LocalStorage: _fs_* entries
+   - If present, your session is being recorded in detail
+
+4. BLOCK FULLSTORY TRACKING (STRONGLY RECOMMENDED):
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filters: ||fullstory.com^, ||fullstory.io^
+   - Blocks session recording across all FullStory-enabled sites
+   - Critical for preventing detailed behavioral surveillance
+
+5. USE PRIVACY BROWSERS:
+   - Brave Browser blocks FullStory by default
+   - Firefox Enhanced Tracking Protection (strict mode)
+   - Safari Intelligent Tracking Prevention
+   - These prevent most session replay tracking
+
+6. CLEAR FULLSTORY COOKIES:
+   - Delete all fs_* and _fs_* cookies
+   - Clear LocalStorage entries
+   - FullStory assigns new user ID on next visit
+   - Do this regularly to prevent cross-session tracking
+
+7. DISABLE JAVASCRIPT FOR SENSITIVE SITES:
+   - FullStory requires JavaScript to function
+   - Use NoScript or uMatrix for granular control
+   - Disable JS on sites with sensitive information
+   - Not practical for all sites but effective when needed
+
+8. PRIVATE BROWSING MODE:
+   - Use incognito/private mode for sensitive browsing
+   - Prevents persistent tracking via cookies
+   - FullStory can still record session but can't link across visits
+
+REALITY CHECK:
+- FullStory is extremely invasive (full DOM reconstruction)
+- Used by major companies (GitHub, Delta, Grammarly, Shopify)
+- Most users completely unaware of session recording
+- Blocking is essential for meaningful privacy
+- Best approach: aggressive blocking + deletion requests from each company
+
+TECHNICAL DETAILS:
+- Tracking domains: rs.fullstory.com, fullstory.com, edge.fullstory.com
+- Cookies: fs_uid (user identifier), fs_lua (last update), _fs_tab_id
+- LocalStorage: _fs_uid, _fs_debug, _fs_is_outer_script
+- SessionStorage: also used for temporary state
+- IndexedDB: may be used for buffering session data
+- WebSocket connections: real-time session streaming
+
+COMPANIES KNOWN TO USE FULLSTORY:
+- GitHub, Delta, Grammarly, Shopify, Brex, Toast
+- Thousands of SaaS, fintech, e-commerce companies
+- Popular in enterprise software and high-value digital products
+- Check BuiltWith.com, Wappalyzer, or network tab to identify
+
+FULLSTORY'S GDPR COMPLIANCE:
+- GDPR-compliant Data Processing Addendum (DPA) with customers
+- Customers are data controllers (legally responsible)
+- FullStory is data processor (processes on behalf of customers)
+- Supports deletion via customer account deletion features
+- Claims to automatically mask sensitive data (varies by implementation)
+
+DATA RETENTION:
+- Session recordings: typically 1-12 months (configurable by customer)
+- User profiles: retained while customer maintains FullStory account
+- After deletion request: removed within 30 days
+- Backups may retain data for up to 90 additional days
+- Request confirmation of deletion including backups
+
+SENSITIVE DATA HANDLING:
+- Auto-masking: attempts to mask passwords, SSNs, credit cards
+- Masking quality varies by implementation
+- Some companies fail to properly configure exclusions
+- Console logs often leak sensitive debugging data
+- Network payloads may contain API keys, tokens
+- Assume recordings may inadvertently capture sensitive information
+
+LEGAL CONSIDERATIONS:
+- GDPR requires clear consent for session recording (often violated)
+- Many sites fail to disclose FullStory in privacy policies
+- Session replay considered "profiling" under GDPR (requires opt-in)
+- CCPA requires disclosure and deletion rights
+- Consider filing complaints if sites don't properly disclose FullStory
+
+EFFECTIVENESS:
+- Medium difficulty: companies usually comply with deletion requests
+- Blocking is highly effective and strongly recommended
+- FullStory provides good deletion tools to customers
+- Requires ongoing vigilance (sites add FullStory over time)
+- Consider this a high-priority tracking service to block
+
+ADDITIONAL PROTECTIONS:
+- Use email aliases (hide real email from tracking)
+- Avoid entering sensitive data on sites using FullStory
+- Regular cookie/storage clearing
+- Privacy-focused browser extensions
+- Consider reporting invasive implementations to privacy regulators
+"""
+
+[removal.cookies]
+patterns = ["fs_*", "_fs_*"]
+domains = [".fullstory.com", ".fullstory.io"]

@@ -22,6 +22,7 @@ instructions = "Yahoo (part of Yahoo Inc., formerly Verizon Media) tracks across
 [removal]
 method = "web-form"
 url = "https://legal.yahoo.com/us/en/yahoo/privacy/adinfo/index.html"
+fields = { email = "{user_email}" }
 notes = """
 Yahoo advertising privacy controls:
 

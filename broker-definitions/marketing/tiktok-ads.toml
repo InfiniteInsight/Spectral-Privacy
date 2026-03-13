@@ -15,14 +15,15 @@ scan_priority = "AutoScanTier1"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.tiktok.com/ads/settings"
 instructions = "TikTok tracks video views, likes, shares, watch time, interests, demographics, device info, and browsing behavior for ad targeting. Pixel tracks activity across other websites."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://www.tiktok.com/ads/settings"
 confirmation = "automatic"
+instructions = "Visit TikTok ads settings while logged in and disable ad personalization."
 notes = """
 TikTok advertising opt-out:
 

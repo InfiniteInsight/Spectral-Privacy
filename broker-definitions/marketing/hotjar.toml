@@ -1,0 +1,201 @@
+# Hotjar - Heatmaps and Session Recording Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "hotjar"
+name = "Hotjar"
+url = "https://hotjar.com"
+domain = "hotjar.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://hotjar.com"
+instructions = "Hotjar records user sessions, creates heatmaps, and tracks on-page behavior including mouse movements, clicks, and scrolling. Cannot search directly - session recordings are owned by websites using Hotjar."
+
+[removal]
+method = "email"
+email = "privacy@hotjar.com"
+subject = "CCPA/GDPR Data Deletion Request - Hotjar Session Recordings"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all session recordings, heatmaps, and behavioral data collected through Hotjar
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID: (if known)
+- IP Address: {ip_address}
+- Websites visited: (list any known sites using Hotjar)
+
+Please:
+1. Delete all my session recordings from Hotjar's systems
+2. Remove my data from heatmaps, scroll maps, and click tracking
+3. Notify client websites to delete my Hotjar data from their accounts
+4. Stop processing any behavioral data associated with my identity
+5. Confirm deletion in writing
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Hotjar tracking and removal (MODERATE COMPLEXITY):
+
+WHAT HOTJAR IS:
+- Behavior analytics and user feedback platform
+- Records actual user sessions (screen recordings of browsing)
+- Creates heatmaps showing where users click, move, scroll
+- Collects feedback through surveys and polls
+- Used by 1,000,000+ websites globally
+- Popular for UX optimization and conversion rate optimization
+
+HOW IT WORKS:
+1. Website adds Hotjar JavaScript tracking code
+2. Hotjar records your mouse movements, clicks, scrolls
+3. Creates video-like "session recordings" of your browsing
+4. Aggregates data into heatmaps and scroll maps
+5. Website owners watch recordings to understand user behavior
+
+WHAT THEY TRACK (PRIVACY INVASIVE):
+- Session recordings: video-like playback of your entire visit
+- Mouse movements: every cursor movement tracked
+- Clicks: where you click, tap, or interact
+- Scroll depth: how far you scroll on pages
+- Form interactions: which fields you fill (text usually masked)
+- Rage clicks: frustrated clicking behavior
+- Device info: screen size, browser, OS
+- Location data: IP address, country, city
+- Visit metadata: referrer, visit duration, pages visited
+
+PRIVACY CONCERNS:
+- Session recordings can capture sensitive behavior
+- Some implementations fail to mask passwords/credit cards
+- Mouse movements reveal uncertainty and attention patterns
+- Recordings shared with third parties (website teams, contractors)
+- Data stored on Hotjar servers, not just client websites
+
+REMOVAL CHALLENGES:
+- Hotjar is a data processor (websites are data controllers)
+- Recordings owned by individual websites
+- No centralized search for your recordings
+- Must contact each website individually
+- Hotjar deletes data when customers request it
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM WEBSITES DIRECTLY (MOST EFFECTIVE):
+   - Identify sites using Hotjar (see detection below)
+   - Email website's privacy contact
+   - Request deletion of all Hotjar recordings and heatmap data
+   - Cite GDPR Article 17 / CCPA deletion rights
+   - Websites should delete recordings from their Hotjar account
+
+2. EMAIL HOTJAR PRIVACY TEAM:
+   - Address: privacy@hotjar.com
+   - Include email, IP, and websites visited
+   - Hotjar may facilitate deletion with client websites
+   - Limited direct control (they're processor, not controller)
+   - They can suppress data collection going forward
+
+3. DETECT HOTJAR TRACKING (IMPORTANT):
+   - Open browser DevTools → Network tab
+   - Look for requests to: script.hotjar.com, vars.hotjar.com
+   - Cookies: _hjSessionUser_*, _hjSession_*, _hjIncludedInPageviewSample
+   - These cookies indicate active session recording
+   - You're likely being recorded if present
+
+4. BLOCK HOTJAR TRACKING (HIGHLY RECOMMENDED):
+   - Install uBlock Origin or Privacy Badger
+   - Add filter rules: ||hotjar.com^, ||hotjar.io^
+   - Prevents session recording across all sites
+   - This is critical for privacy (stops video-like tracking)
+
+5. USE PRIVACY-FOCUSED BROWSERS:
+   - Brave Browser blocks Hotjar by default
+   - Firefox with Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - These prevent most session recording
+
+6. CLEAR HOTJAR COOKIES:
+   - Delete all _hj* cookies
+   - Hotjar uses cookies to determine sampling
+   - Clearing may exclude you from recording samples
+   - Do this regularly for ongoing protection
+
+7. OPT OUT TOOL:
+   - Hotjar provides opt-out: https://www.hotjar.com/policies/do-not-track/
+   - Sets opt-out cookie: _hjDNT
+   - Must be done per-browser and survives cookie clearing
+   - Not foolproof but adds protection
+
+8. DISABLE JAVASCRIPT (EXTREME):
+   - Hotjar requires JavaScript to function
+   - Disabling JS prevents all session recording
+   - Breaks many site features (not practical for most users)
+
+REALITY CHECK:
+- Hotjar session recording is highly invasive
+- Used by major companies (Nintendo, Microsoft, Adobe, Decathlon)
+- Many users unaware their sessions are being recorded
+- Blocking is critical for privacy protection
+- Best approach: block tracking + request deletion from sites
+
+TECHNICAL DETAILS:
+- Tracking domains: script.hotjar.com, vars.hotjar.com, vc.hotjar.io
+- Cookies: _hjSessionUser_{site_id}, _hjSession_{site_id}, _hjIncludedInPageviewSample
+- LocalStorage: _hjLocalStorageTest, _hjid
+- Session recordings stored up to 365 days by default
+- Heatmaps aggregated data (harder to delete specific user data)
+
+COMPANIES KNOWN TO USE HOTJAR:
+- Nintendo, Microsoft, Adobe, Audi, Decathlon, Panasonic
+- Millions of small-to-medium businesses
+- Very popular with e-commerce, SaaS, marketing sites
+- Check Wappalyzer or network requests to identify usage
+
+HOTJAR'S GDPR COMPLIANCE:
+- GDPR-compliant data processing agreement with customers
+- Customers (websites) are data controllers
+- Hotjar is data processor
+- Supports deletion requests through customer accounts
+- Claims to mask sensitive data (implementation varies)
+
+DATA RETENTION:
+- Session recordings: up to 365 days (configurable by website)
+- Heatmaps: aggregated data retained longer
+- Feedback/surveys: retained per customer settings
+- After deletion request: removed within 30 days
+- Backups may retain data up to 90 additional days
+
+SENSITIVE DATA HANDLING:
+- Hotjar attempts to auto-mask password fields
+- Credit card masking not always reliable
+- Some implementations leak sensitive form data
+- Recordings can reveal private information inadvertently
+- Always assume recordings may capture sensitive behavior
+
+EFFECTIVENESS:
+- Medium difficulty: websites usually comply with deletion
+- Blocking is highly effective and recommended
+- Opt-out tool provides additional protection
+- Ongoing vigilance required (many sites add Hotjar over time)
+
+LEGAL CONSIDERATIONS:
+- Some jurisdictions consider session recording invasive
+- GDPR requires clear consent for recording (often violated)
+- CCPA requires disclosure in privacy policy
+- Consider filing complaints if websites don't disclose Hotjar usage
+"""
+
+[removal.cookies]
+patterns = ["_hj*", "hjSessionUser*", "hjIncludedInPageviewSample*"]
+domains = [".hotjar.com", ".hotjar.io"]

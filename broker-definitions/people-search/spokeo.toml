@@ -39,7 +39,7 @@ notes = "Requires email verification. Link expires after 72 hours. Re-check afte
 
 [removal.fields]
 listing_url = "{found_listing_url}"
-email = "{user_email}"
+email = "privacy@spokeo.com"
 
 [removal.form_selectors]
 listing_url_input = "#url"
@@ -47,3 +47,14 @@ email_input = "#email"
 submit_button = "button[type='submit']"
 captcha_frame = "iframe[title*='recaptcha' i]"
 success_indicator = ".alert-success, .confirmation-message"
+
+[removal.email_fallback]
+enabled = true
+email = "privacy@spokeo.com"
+phone = "1-888-558-9004"
+ccpa_phone = "1-877-864-0183"
+subject = "Profile Removal Request - CCPA/GDPR"
+required_fields = ["full_name", "profile_url", "state", "user_email"]
+processing_days = 2
+notes = "Email removal accepted as alternative to web form if form fails or is unresponsive. California residents can call dedicated CCPA phone line."
+ccpa_compliant = true

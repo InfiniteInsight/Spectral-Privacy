@@ -1,0 +1,332 @@
+# Tealium - Enterprise Tag Management and Customer Data Platform
+# Last verified: 2026-02-27
+
+[broker]
+id = "tealium"
+name = "Tealium"
+url = "https://tealium.com"
+domain = "tealium.com"
+category = "marketing"
+difficulty = "Medium"
+typical_removal_days = 30
+recheck_interval_days = 90
+last_verified = "2026-02-27"
+scan_priority = "AutoScanTier2"
+region_relevance = ["Global"]
+
+[search]
+method = "manual"
+url = "https://tealium.com"
+instructions = "Tealium is an enterprise tag management and customer data platform (CDP) used by large companies to collect, unify, and route customer data to marketing tools. Cannot search directly - data is owned by companies using Tealium infrastructure."
+
+[removal]
+method = "email"
+email = "privacy@tealium.com"
+subject = "CCPA/GDPR Data Deletion Request - Tealium Platform"
+body = """
+I am exercising my privacy rights under CCPA/GDPR.
+
+Request: Delete all personal data processed through Tealium's platform
+
+Personal Information:
+- Email: {user_email}
+- Name: {full_name}
+- User ID/Visitor ID: (if known)
+- IP Address: {ip_address}
+- Device ID: (if known)
+
+Please:
+1. Delete all my data from Tealium's systems (both tag management and CDP)
+2. Notify client companies to delete data collected via Tealium
+3. Stop processing my data through Tealium infrastructure
+4. Remove all visitor profiles, event data, and audience segments
+5. Confirm deletion from all Tealium products (iQ, AudienceStream, EventStream)
+6. Provide written confirmation of deletion
+
+I expect completion within 30 days as required by GDPR/CCPA.
+
+Thank you.
+"""
+response_days = 30
+notes = """
+Tealium tracking and removal (MODERATE COMPLEXITY - ENTERPRISE FOCUS):
+
+WHAT TEALIUM IS:
+- Enterprise-grade tag management and customer data platform
+- Used by Fortune 500 companies and large enterprises
+- Combines tag management (like Google Tag Manager) with CDP capabilities
+- Collects, unifies, and routes customer data across marketing stack
+- Premium solution (expensive, enterprise-focused)
+- Competes with Google Tag Manager + Segment combined
+
+TEALIUM PRODUCTS:
+1. Tealium iQ (Tag Management):
+   - Deploys and manages marketing/analytics tags
+   - Similar to Google Tag Manager
+   - Enterprise features: governance, security, versioning
+
+2. Tealium AudienceStream (CDP):
+   - Customer data platform
+   - Builds unified customer profiles
+   - Creates audience segments
+   - Powers personalization
+
+3. Tealium EventStream (Data Collection):
+   - Collects customer events in real-time
+   - Validates and enriches data
+   - Routes to destinations
+
+4. Tealium DataAccess:
+   - Data warehouse connector
+   - Exports customer data to analytics platforms
+
+HOW IT WORKS:
+1. Company deploys Tealium tag to their website/app
+2. Tealium iQ loads configured marketing tags
+3. Tealium EventStream collects customer events
+4. AudienceStream builds unified customer profiles
+5. Data routed to hundreds of marketing tools:
+   - Adobe Analytics
+   - Salesforce Marketing Cloud
+   - Google Analytics
+   - Facebook Ads
+   - Email platforms
+   - CRM systems
+6. Real-time personalization based on customer data
+
+WHAT THEY TRACK:
+- Event data: pageviews, clicks, purchases, custom events
+- User identity: email, name, customer ID, visitor ID
+- Device data: browser, OS, device type, screen resolution
+- Location data: IP address, country, region, city
+- Behavioral data: visit history, product views, cart activity
+- Conversion data: purchases, leads, form submissions
+- Session data: visit duration, frequency, last visit
+- Custom attributes: unlimited company-defined properties
+- Cross-device tracking: links devices to unified customer profile
+- Audience segments: behavioral cohorts and targeting groups
+
+PRIVACY IMPLICATIONS:
+- Extremely comprehensive tracking (enterprise-grade surveillance)
+- Builds detailed unified customer profiles across devices
+- Data shared with dozens/hundreds of marketing tools
+- Real-time behavioral targeting
+- Cross-device/cross-platform tracking
+- Used by companies with sophisticated marketing operations
+- Often deployed on high-traffic enterprise sites
+
+REMOVAL CHALLENGES:
+- Tealium is data processor (not data controller)
+- Data owned by companies using Tealium
+- No direct search capability for end users
+- Must request deletion from individual companies
+- Enterprise clients often have complex data flows
+- Data may be in dozens of connected systems
+
+HOW TO REMOVE YOUR DATA:
+
+1. REQUEST FROM COMPANIES DIRECTLY (PRIMARY METHOD):
+   - Identify sites using Tealium (check network requests)
+   - Email company's privacy contact (privacy@company.com)
+   - Request CCPA/GDPR deletion of ALL data collected via Tealium
+   - Specifically mention: "including Tealium tag management and CDP data"
+   - Request deletion from all systems Tealium routes data to
+   - Companies should use Tealium's privacy tools (visitor delete API)
+
+2. EMAIL TEALIUM PRIVACY TEAM:
+   - Address: privacy@tealium.com
+   - Include email, name, any known visitor IDs
+   - Request deletion from all Tealium products
+   - Tealium may facilitate deletions with client companies
+   - Limited direct power (they're processor, not controller)
+   - Worth trying for comprehensive removal
+
+3. DETECT TEALIUM TRACKING:
+   - Open browser DevTools → Network tab
+   - Look for requests to:
+     * tags.tiqcdn.com (tag delivery)
+     * collect.tealiumiq.com (event collection)
+     * datacloud.tealium.com (CDP)
+     * tealium.com subdomains
+   - Cookies: utag_*, _tealium_*, utag_main
+   - LocalStorage: tealium entries
+   - JavaScript object: window.utag exists
+
+4. BLOCK TEALIUM TRACKING:
+   - Install uBlock Origin or Privacy Badger
+   - Add custom filter rules:
+     ||tealium.com^
+     ||tiqcdn.com^
+   - Blocks tag management and CDP tracking
+   - Prevents data collection and tag deployment
+   - May break some site functionality
+
+5. BROWSER PRIVACY SETTINGS:
+   - Use Brave Browser (blocks many Tealium tags)
+   - Firefox Enhanced Tracking Protection
+   - Safari Intelligent Tracking Prevention
+   - These may block some Tealium components
+
+6. CLEAR TRACKING DATA:
+   - Delete all utag_* and _tealium_* cookies
+   - Clear LocalStorage tealium entries
+   - Tealium assigns new visitor ID on next visit
+   - Breaks cross-session tracking
+
+7. USE DO NOT TRACK:
+   - Some Tealium implementations respect DNT header
+   - Enable in browser settings
+   - Not consistently honored
+   - Depends on client configuration
+
+8. ENTERPRISE PRIVACY PORTALS:
+   - Large companies using Tealium often have privacy centers
+   - Look for "Privacy Preferences" or "Do Not Sell My Info"
+   - Some allow opt-out of Tealium-based tracking
+   - Access via company website footer
+
+REALITY CHECK:
+- Tealium used by major enterprises (IBM, Verizon, Sony, Samsung)
+- Extremely sophisticated tracking capabilities
+- Enterprise focus means fewer sites, but high-traffic ones
+- Often paired with other enterprise tools (Adobe, Salesforce)
+- Best strategy: combine blocking + deletion requests
+- Companies legally obligated to honor GDPR/CCPA requests
+
+TECHNICAL DETAILS:
+- Primary domains:
+  * tags.tiqcdn.com (tag delivery CDN)
+  * collect.tealiumiq.com (event collection)
+  * datacloud.tealium.com (CDP/AudienceStream)
+  * tealium.hs.llnwd.net (legacy CDN)
+- Cookies: utag_main, utag_*{account}_{profile}
+- LocalStorage: tealium_session, tealium_visitor
+- JavaScript: window.utag, window.utag_data
+- Visitor ID format: typically long alphanumeric string
+
+COMMONLY DEPLOYED TAGS:
+- Adobe Analytics
+- Google Analytics
+- Salesforce Marketing Cloud
+- Oracle Eloqua
+- Marketo
+- Facebook Pixel
+- LinkedIn Insight Tag
+- Custom HTML/JavaScript
+- Dozens of marketing/analytics tools
+
+DATA DESTINATIONS:
+- Marketing automation (Marketo, Eloqua, HubSpot)
+- CRM systems (Salesforce, Microsoft Dynamics)
+- Analytics (Adobe, Google, Mixpanel)
+- Advertising (Google Ads, Facebook, LinkedIn)
+- Email platforms (SendGrid, Mailchimp)
+- Data warehouses (Snowflake, BigQuery, Redshift)
+
+COMPANIES KNOWN TO USE TEALIUM:
+- Fortune 500 focus: IBM, Verizon, Sony, Samsung, Lowe's
+- Major retailers: Home Depot, Best Buy, Macy's
+- Financial services: major banks and insurance companies
+- Travel: airlines, hotel chains
+- Healthcare: large hospital systems
+- Check BuiltWith.com for specific companies
+
+TEALIUM'S GDPR COMPLIANCE:
+- Provides privacy tools for enterprise clients
+- Visitor deletion API
+- Data suppression capabilities
+- Consent management integrations
+- DPA (Data Processing Agreement) with customers
+- Claims GDPR/CCPA compliance as data processor
+- Responsibility ultimately with client companies
+
+DATA RETENTION:
+- Retention controlled by client company settings
+- AudienceStream: typically 365 days by default (configurable)
+- Event data: retention varies by client
+- After deletion request: data removed within 30 days
+- Backups may retain data longer
+- Request confirmation including backup deletion
+
+EFFECTIVENESS OF REMOVAL:
+- Medium difficulty: requires company cooperation
+- Enterprise companies usually have privacy teams
+- Better GDPR compliance than smaller companies
+- Tealium provides good deletion tooling
+- Browser blocking is effective for prevention
+- May need to request from multiple regional entities
+
+TEALIUM VS. GOOGLE TAG MANAGER:
+- Tealium: enterprise features, CDP included, expensive
+- GTM: free, simpler, more widespread but less capable
+- Tealium: better governance, security, data quality
+- GTM: easier to implement, larger user base
+- Tealium: unified customer profiles (CDP)
+- GTM: tag management only (no CDP)
+
+TEALIUM VS. SEGMENT:
+- Both are CDPs with tag management
+- Tealium: enterprise focus, on-premise options
+- Segment: startup/growth focus, cloud-native
+- Tealium: more expensive, more features
+- Segment: easier to use, developer-friendly
+- Tealium: strong in regulated industries
+- Segment: popular with tech companies
+
+PRIVACY FEATURES (IRONIC):
+- Tealium markets privacy/consent tools to clients
+- Privacy Manager (consent management)
+- GDPR compliance features
+- Data suppression and deletion APIs
+- But core business is still comprehensive tracking
+- Privacy features exist to enable legal tracking, not prevent it
+
+DETECTION IN THE WILD:
+- Page source: look for utag.js, tealium scripts
+- Network tab: requests to tags.tiqcdn.com
+- Console: window.utag object
+- Extensions: Wappalyzer, Ghostery detect Tealium
+- BuiltWith.com shows Tealium usage
+
+BLOCKING CONSIDERATIONS:
+- May break personalization features
+- Some sites rely on Tealium for core functionality
+- A/B tests may fail
+- Analytics-dependent features affected
+- Generally safe to block for privacy
+
+ENTERPRISE DEPLOYMENT PATTERNS:
+- Often deployed globally across all company properties
+- Regional variations for data residency (GDPR)
+- Integration with enterprise auth (SSO)
+- Complex tag governance workflows
+- Extensive testing/QA before tag deployment
+
+RECOMMENDATIONS:
+1. Block tealium.com and tiqcdn.com in adblocker
+2. Request deletion from enterprise sites you use
+3. Use privacy-focused browsers
+4. Check enterprise sites for privacy preference centers
+5. Clear cookies regularly
+6. File CCPA/GDPR requests with specific companies
+7. Monitor for Tealium tracking with browser DevTools
+
+TEALIUM'S MARKET POSITION:
+- Leader in enterprise tag management
+- Strong in CDP category
+- Competes with Adobe, Salesforce, Segment
+- Known for: reliability, governance, enterprise features
+- Used when companies need sophisticated data operations
+- Premium pricing limits adoption to large enterprises
+
+FUTURE DEVELOPMENTS:
+- Server-side tagging expansion (harder to block)
+- Increased focus on privacy compliance tools
+- Integration with privacy regulations
+- Competition from cloud-native alternatives
+- Potential consolidation with larger enterprise vendors
+"""
+
+[removal.cookies]
+patterns = ["utag_*", "_tealium_*", "tealium_*"]
+domains = [".tealium.com", "tags.tiqcdn.com"]
