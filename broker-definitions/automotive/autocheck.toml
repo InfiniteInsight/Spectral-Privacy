@@ -20,8 +20,8 @@ url = "https://www.autocheck.com"
 requires_fields = []
 
 [removal]
-method = "mail"
-address = "AutoCheck Data Corrections, P.O. Box 105496, Atlanta, GA 30348"
+method = "manual"
+instructions = "Mail data correction request to: AutoCheck Data Corrections, P.O. Box 105496, Atlanta, GA 30348"
 notes = """
 AutoCheck vehicle history (DISPUTE ERRORS ONLY):
 

@@ -20,8 +20,8 @@ url = "https://www.carfax.com/VehicleHistory"
 requires_fields = []
 
 [removal]
-method = "mail"
-address = "Carfax Data Corrections, 5860 Trinity Parkway, Suite 600, Centreville, VA 20120"
+method = "manual"
+instructions = "Mail data correction request to: Carfax Data Corrections, 5860 Trinity Parkway, Suite 600, Centreville, VA 20120"
 notes = """
 Carfax vehicle history (LIMITED REMOVAL):
 
