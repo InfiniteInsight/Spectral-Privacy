@@ -11,6 +11,7 @@ pub struct PiiPatterns {
     address_patterns: Vec<AddressPattern>,
     name_patterns: Vec<(String, Regex)>,
     dob_pattern: Option<(String, Regex)>,
+    #[allow(dead_code)]
     config: ScanConfig,
 }
 
@@ -225,11 +226,8 @@ impl PiiPatterns {
             }
 
             for addr in &self.address_patterns {
-                let street_match = addr
-                    .street_regex
-                    .as_ref()
-                    .map_or(false, |r| r.is_match(line));
-                let zip_match = addr.zip_regex.as_ref().map_or(false, |r| r.is_match(line));
+                let street_match = addr.street_regex.as_ref().is_some_and(|r| r.is_match(line));
+                let zip_match = addr.zip_regex.as_ref().is_some_and(|r| r.is_match(line));
                 if street_match || zip_match {
                     matches.push(PiiMatch {
                         pii_type: PiiType::Address,

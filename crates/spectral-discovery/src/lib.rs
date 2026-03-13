@@ -1,11 +1,9 @@
-//! Spectral Discovery Module
-//!
-//! Local PII discovery for scanning filesystems, browsers, and email.
+//! Spectral Discovery - PII scanning library
 
-pub mod filesystem;
+pub mod patterns;
+pub mod scanner;
+pub mod types;
 
-// Re-export main types
-pub use filesystem::{
-    is_scannable, scan_directory, scan_file, FileScanResult, PiiMatch, PiiPatterns, PiiType,
-    UserPii,
-};
+pub use patterns::PiiPatterns;
+pub use scanner::{create_scanner_channels, ScanResult, Scanner};
+pub use types::*;
