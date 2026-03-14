@@ -2,25 +2,27 @@
 
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use spectral_discovery::{FileScanResult, PiiMatch, PiiPatterns, UserPii};
-use std::path::Path;
-use std::sync::{Arc, Mutex};
+use spectral_db::scan_logs::{self, ScanConfig as DbScanConfig};
+use spectral_discovery::{
+    create_scanner_channels, AddressInfo, ScanCommand, ScanConfig, Scanner, UserPii,
+};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::thread;
 use tauri::{Emitter, State};
-use tracing::{error, info, warn};
+use tokio::sync::Mutex;
+use tracing::info;
 
-/// Scan control state for pause/resume/stop
-#[derive(Debug, Clone)]
-enum ScanControl {
-    Running,
-    Paused,
-    Stopped,
+#[allow(dead_code)]
+struct ActiveScan {
+    session_id: String,
+    command_tx: crossbeam_channel::Sender<ScanCommand>,
 }
 
-/// Global scan control state
-static SCAN_CONTROL: once_cell::sync::Lazy<Arc<Mutex<ScanControl>>> =
-    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(ScanControl::Running)));
+static ACTIVE_SCAN: once_cell::sync::Lazy<Arc<Mutex<Option<ActiveScan>>>> =
+    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(None)));
 
-/// Discovery finding response
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DiscoveryFinding {
     pub id: String,
@@ -35,303 +37,45 @@ pub struct DiscoveryFinding {
     pub ignored: bool,
     pub still_present_after_remediation: bool,
     pub found_at: String,
+    pub matched_value: Option<String>,
+    pub line_number: Option<i64>,
 }
 
-/// Wait for scan to be running (handle pause/stop state)
-/// Returns true if scan should continue, false if stopped
-async fn wait_for_scan_running() -> bool {
-    loop {
-        let control = SCAN_CONTROL
-            .lock()
-            .expect("Failed to acquire scan control lock")
-            .clone();
-        match control {
-            ScanControl::Stopped => {
-                // Scan was stopped, exit
-                return false;
-            }
-            ScanControl::Paused => {
-                // Scan is paused, wait and check again
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                continue;
-            }
-            ScanControl::Running => {
-                // Continue scanning
-                return true;
-            }
-        }
-    }
+#[derive(Debug, Deserialize)]
+pub struct ScanConfigInput {
+    pub scan_emails: bool,
+    pub scan_phones: bool,
+    pub scan_ssn: bool,
+    pub scan_addresses: bool,
+    pub scan_names: bool,
+    pub scan_dob: bool,
+    pub custom_directories: Option<Vec<String>>,
 }
 
-/// Scanned file information for batch progress updates
-#[derive(Clone, serde::Serialize)]
-struct ScannedFileInfo {
-    name: String,
-    path: String,
-}
-
-/// Process a single file during scan
-async fn process_scanned_file<R: tauri::Runtime>(
-    path: &Path,
-    patterns: &PiiPatterns,
-    app: &tauri::AppHandle<R>,
-    files_scanned: &mut usize,
-    results: &mut Vec<FileScanResult>,
-    file_batch: &mut Vec<ScannedFileInfo>,
-) {
-    *files_scanned += 1;
-
-    // Add file to batch
-    let file_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("Unknown")
-        .to_string();
-    file_batch.push(ScannedFileInfo {
-        name: file_name,
-        path: path.to_string_lossy().to_string(),
-    });
-
-    // Emit batch progress every 50 files
-    if file_batch.len() >= 50 {
-        let _ = app.emit(
-            "discovery:progress",
-            serde_json::json!({
-                "files_scanned": *files_scanned,
-                "batch": file_batch.clone()
-            }),
-        );
-        file_batch.clear();
-    }
-
-    if let Some(result) = spectral_discovery::scan_file(path, patterns).await {
-        results.push(result);
-    }
-}
-
-/// Check if a directory should be excluded from scanning
-fn should_exclude_directory(path: &Path) -> bool {
-    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-        let name_lower = name.to_lowercase();
-
-        // Exclude common system, cache, and development directories
-        matches!(
-            name_lower.as_str(),
-            // System directories
-            "appdata" | "application data" | ".cache" | "cache" | "caches" | ".local" |
-            "library" | "application support" | ".config" | "snap" | ".snapshots" |
-            // Browser caches and data
-            "google" | "mozilla" | "microsoft edge" | "brave-browser" | "firefox" | "chrome" |
-            // Cloud sync temp
-            "onedrive" | "dropbox" | "google drive" | ".icloud" | "box" | "sync" |
-            // Development
-            "node_modules" | ".git" | ".svn" | ".hg" | "target" | "build" | "dist" | ".next" |
-            "out" | "output" | ".output" | ".nuxt" | ".svelte-kit" | "coverage" |
-            // Windows system
-            "windows" | "program files" | "program files (x86)" | "programdata" | "$recycle.bin" |
-            "system volume information" | "recovery" | "perflogs" |
-            // Package managers and tooling
-            ".npm" | ".cargo" | ".rustup" | ".gradle" | ".maven" | ".pnpm-store" | ".yarn" |
-            ".composer" | ".bundler" | "vendor" |
-            // Temp directories
-            "temp" | "tmp" | ".tmp" | "temps" |
-            // Virtual environments
-            "venv" | ".venv" | "env" | ".env" | "virtualenv" | ".virtualenv" | "venvs" |
-            // IDE and editors
-            ".vscode" | ".idea" | ".vs" | ".eclipse" | ".settings" | ".metadata" |
-            // Media and large files
-            "steam" | "steamapps" | "games" | "videos" | "movies" | ".steam" |
-            // Container and VM
-            "docker" | ".docker" | "virtualbox" | ".vagrant" | "vmware" |
-            // macOS specific
-            ".trash" | ".spotlight-v100" | ".fseventsd" | ".documentrevisions-v100" |
-            // Linux specific
-            ".thumbnails" | ".gvfs" | ".dbus" | ".mozilla-thunderbird"
-        )
-    } else {
-        false
-    }
-}
-
-/// Scan directory with progress events
-async fn scan_directory_with_progress<R: tauri::Runtime>(
-    dir: &Path,
-    patterns: &PiiPatterns,
-    app: &tauri::AppHandle<R>,
-    files_scanned: &mut usize,
-) -> Vec<FileScanResult> {
-    let max_depth = 10;
-    let mut results = Vec::new();
-    let mut file_batch = Vec::new();
-    scan_recursive(
-        dir,
-        patterns,
-        app,
-        files_scanned,
-        &mut results,
-        &mut file_batch,
-        max_depth,
-    )
-    .await;
-
-    // Emit any remaining files in the batch
-    if !file_batch.is_empty() {
-        let _ = app.emit(
-            "discovery:progress",
-            serde_json::json!({
-                "files_scanned": *files_scanned,
-                "batch": file_batch
-            }),
-        );
-    }
-
-    results
-}
-
-/// Recursive scan with progress updates
-fn scan_recursive<'a, R: tauri::Runtime + 'static>(
-    dir: &'a Path,
-    patterns: &'a PiiPatterns,
-    app: &'a tauri::AppHandle<R>,
-    files_scanned: &'a mut usize,
-    results: &'a mut Vec<FileScanResult>,
-    file_batch: &'a mut Vec<ScannedFileInfo>,
-    max_depth: usize,
-) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
-    use tokio::fs;
-
-    Box::pin(async move {
-        if max_depth == 0 {
-            return;
-        }
-
-        let mut entries = match fs::read_dir(dir).await {
-            Ok(entries) => entries,
-            Err(_) => return,
-        };
-
-        while let Ok(Some(entry)) = entries.next_entry().await {
-            // Check if scan should continue (handles pause/stop)
-            if !wait_for_scan_running().await {
-                return;
-            }
-
-            let path = entry.path();
-
-            if path.is_dir() {
-                // Skip excluded directories
-                if should_exclude_directory(&path) {
-                    tracing::debug!("Skipping excluded directory: {:?}", path);
-                } else {
-                    scan_recursive(
-                        &path,
-                        patterns,
-                        app,
-                        files_scanned,
-                        results,
-                        file_batch,
-                        max_depth - 1,
-                    )
-                    .await;
-                }
-            } else if path.is_file() {
-                process_scanned_file(&path, patterns, app, files_scanned, results, file_batch)
-                    .await;
-            }
-        }
-    })
-}
-
-/// Process scan results and insert findings into the database
-async fn process_scan_results(
-    results: Vec<FileScanResult>,
-    pool: &sqlx::SqlitePool,
-    vault_id: &str,
-) -> usize {
-    let mut findings_count = 0;
-
-    for result in results {
-        for pii_match in &result.matches {
-            if insert_pii_finding(&result.path, pii_match, pool, vault_id)
-                .await
-                .is_ok()
-            {
-                findings_count += 1;
-            }
-        }
-    }
-
-    findings_count
-}
-
-/// Insert a PII finding into the database
-async fn insert_pii_finding(
-    file_path: &Path,
-    pii_match: &PiiMatch,
-    pool: &sqlx::SqlitePool,
-    vault_id: &str,
-) -> Result<(), sqlx::Error> {
-    let file_name = match file_path.file_name() {
-        Some(name) => name.to_string_lossy().to_string(),
-        None => {
-            tracing::warn!("Could not extract filename from path: {:?}", file_path);
-            file_path.to_string_lossy().to_string()
-        }
-    };
-
-    let description = format!(
-        "{} found in file: {} (line {})",
-        pii_match.description(),
-        file_name,
-        pii_match.line_number
-    );
-
-    spectral_db::discovery_findings::insert_discovery_finding(
-        pool,
-        spectral_db::discovery_findings::CreateDiscoveryFinding {
-            vault_id: vault_id.to_string(),
-            source: "filesystem".to_string(),
-            source_detail: file_path.to_string_lossy().to_string(),
-            finding_type: "pii_exposure".to_string(),
-            risk_level: pii_match.risk_level().to_string(),
-            description,
-            recommended_action: Some(
-                "Review file and remove sensitive information if no longer needed".to_string(),
-            ),
-            pii_type: pii_match.pii_type_str().to_string(),
-            matched_value: Some(pii_match.matched_value.clone()),
-            line_number: Some(pii_match.line_number),
-        },
-    )
-    .await
-    .map(|_| ())
-}
-
-/// Start a discovery scan of local files
-///
-/// Scans the entire user profile directory for PII by default, or custom
-/// directories if specified. Runs in background and emits `discovery:complete`
-/// event when done.
 #[tauri::command]
 pub async fn start_discovery_scan<R: tauri::Runtime>(
     state: State<'_, AppState>,
     app: tauri::AppHandle<R>,
     vault_id: String,
-    custom_directories: Option<Vec<String>>,
+    config: ScanConfigInput,
 ) -> Result<String, String> {
     info!("start_discovery_scan: vault_id={}", vault_id);
 
-    // Get the unlocked vault
+    {
+        let active = ACTIVE_SCAN.lock().await;
+        if active.is_some() {
+            return Err("A scan is already running".to_string());
+        }
+    }
+
     let vault = state
         .get_vault(&vault_id)
         .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
-    // Get the vault's database
     let db = vault
         .database()
         .map_err(|e| format!("Failed to get vault database: {e}"))?;
 
-    // Load user profiles to extract their specific PII
     let profile_ids = vault
         .list_profiles()
         .await
@@ -341,231 +85,220 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         return Err("No user profiles found. Create a profile first.".to_string());
     }
 
-    // Load the first profile (primary profile)
     let profile = vault
         .load_profile(&profile_ids[0])
         .await
         .map_err(|e| format!("Failed to load profile: {e}"))?;
 
-    // Extract user-specific PII from the profile
-    let mut user_pii = UserPii::empty();
-
-    // Get the vault key for decryption
     let vault_key = vault
         .encryption_key()
         .map_err(|e| format!("Failed to get vault key: {e}"))?;
 
-    // Extract email addresses (from both old and new fields)
-    #[allow(deprecated)]
-    if let Some(email_field) = &profile.email {
-        if let Ok(email) = email_field.decrypt(vault_key) {
-            user_pii.emails.push(email);
-        }
-    }
-    for email_entry in &profile.email_addresses {
-        if let Ok(email) = email_entry.email.decrypt(vault_key) {
-            user_pii.emails.push(email);
-        }
+    let user_pii = extract_user_pii(&profile, vault_key);
+
+    if is_pii_empty(&user_pii) {
+        return Err("No PII configured in your profile".to_string());
     }
 
-    // Extract phone numbers (from both old and new fields)
-    #[allow(deprecated)]
-    if let Some(phone_field) = &profile.phone {
-        if let Ok(phone) = phone_field.decrypt(vault_key) {
-            user_pii.phones.push(phone);
+    let scan_config = ScanConfig {
+        scan_emails: config.scan_emails,
+        scan_phones: config.scan_phones,
+        scan_ssn: config.scan_ssn,
+        scan_addresses: config.scan_addresses,
+        scan_names: config.scan_names,
+        scan_dob: config.scan_dob,
+        custom_directories: config
+            .custom_directories
+            .map(|d| d.into_iter().map(PathBuf::from).collect()),
+    };
+
+    let ignored_paths = get_ignored_paths(db.pool(), &vault_id).await;
+
+    let db_config = DbScanConfig {
+        scan_emails: scan_config.scan_emails,
+        scan_phones: scan_config.scan_phones,
+        scan_ssn: scan_config.scan_ssn,
+        scan_addresses: scan_config.scan_addresses,
+        scan_names: scan_config.scan_names,
+        scan_dob: scan_config.scan_dob,
+    };
+
+    let session_id = scan_logs::create_scan_session(db.pool(), &vault_id, &db_config)
+        .await
+        .map_err(|e| format!("Failed to create scan session: {e}"))?;
+
+    let (cmd_tx, cmd_rx, progress_tx, progress_rx) = create_scanner_channels();
+
+    {
+        let mut active = ACTIVE_SCAN.lock().await;
+        *active = Some(ActiveScan {
+            session_id: session_id.clone(),
+            command_tx: cmd_tx,
+        });
+    }
+
+    let scan_dirs = if let Some(custom) = scan_config.custom_directories.clone() {
+        custom
+    } else {
+        match directories::UserDirs::new() {
+            Some(dirs) => vec![dirs.home_dir().to_path_buf()],
+            None => return Err("Failed to get home directory".to_string()),
         }
-    }
-    for phone_entry in &profile.phone_numbers {
-        if let Ok(phone) = phone_entry.number.decrypt(vault_key) {
-            user_pii.phones.push(phone);
-        }
-    }
+    };
 
-    // Extract SSN
-    if let Some(ssn_field) = &profile.ssn {
-        if let Ok(ssn) = ssn_field.decrypt(vault_key) {
-            user_pii.ssn = Some(ssn);
-        }
-    }
-
-    info!(
-        "Loaded user PII - {} emails, {} phones, SSN: {}",
-        user_pii.emails.len(),
-        user_pii.phones.len(),
-        user_pii.ssn.is_some()
-    );
-
-    // Warn if no PII is configured
-    if user_pii.emails.is_empty() && user_pii.phones.is_empty() && user_pii.ssn.is_none() {
-        warn!("No PII configured in user profile. Scanner will find nothing.");
-    }
-
-    // Clone the pool for background task
     let pool = db.pool().clone();
     let vault_id_clone = vault_id.clone();
+    let session_id_clone = session_id.clone();
+    let app_clone = app.clone();
 
-    // Spawn background scan task
+    // Progress reporter on tokio
+    let progress_session_id = session_id.clone();
     tokio::spawn(async move {
-        info!("Starting filesystem scan for vault {}", vault_id_clone);
-
-        // Reset scan control to Running
-        {
-            let mut control = SCAN_CONTROL
-                .lock()
-                .expect("Failed to acquire scan control lock for reset");
-            *control = ScanControl::Running;
-        }
-
-        // Create user-specific PII patterns
-        let patterns = PiiPatterns::from_user_pii(user_pii);
-
-        // Get user home directory
-        let home_dir = match directories::UserDirs::new() {
-            Some(dirs) => dirs.home_dir().to_path_buf(),
-            None => {
-                error!("Failed to get user home directory");
-                let _ = app.emit(
-                    "discovery:error",
-                    serde_json::json!({
-                        "error": "Failed to get user home directory"
-                    }),
-                );
-                return;
-            }
-        };
-
-        // Directories to scan
-        let scan_dirs: Vec<std::path::PathBuf> = if let Some(custom_dirs) = custom_directories {
-            // Use custom directories specified by user
-            custom_dirs
-                .into_iter()
-                .map(std::path::PathBuf::from)
-                .collect()
-        } else {
-            // Scan entire user profile by default
-            vec![home_dir.clone()]
-        };
-
-        let mut total_findings = 0;
-        let mut files_scanned = 0;
-        let mut was_stopped = false;
-
-        for dir in scan_dirs {
-            // Check if scan was stopped
-            {
-                let control = SCAN_CONTROL
-                    .lock()
-                    .expect("Failed to acquire scan control lock");
-                if matches!(*control, ScanControl::Stopped) {
-                    info!("Scan stopped by user");
-                    was_stopped = true;
-                    break;
-                }
-            }
-
-            if !dir.exists() {
-                continue;
-            }
-
-            // Emit progress event for directory
-            let dir_name = dir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown");
-            let _ = app.emit(
+        while let Ok(progress) = progress_rx.recv() {
+            let _ = app_clone.emit(
                 "discovery:progress",
                 serde_json::json!({
-                    "directory": dir_name,
-                    "path": dir.to_string_lossy(),
-                    "files_scanned": files_scanned
+                    "session_id": progress_session_id,
+                    "files_scanned": progress.files_scanned,
+                    "files_with_findings": progress.files_with_findings,
+                    "current_directory": progress.current_directory,
+                    "is_complete": progress.is_complete,
+                    "was_stopped": progress.was_stopped,
                 }),
             );
-
-            info!("Scanning directory: {:?}", dir);
-
-            // Scan directory with progress updates
-            let results =
-                scan_directory_with_progress(&dir, &patterns, &app, &mut files_scanned).await;
-            let findings = process_scan_results(results, &pool, &vault_id_clone).await;
-            total_findings += findings;
-        }
-
-        // Emit final progress update to ensure UI shows correct count
-        let _ = app.emit(
-            "discovery:progress",
-            serde_json::json!({
-                "directory": "Finalizing...",
-                "path": "",
-                "files_scanned": files_scanned
-            }),
-        );
-
-        if was_stopped {
-            info!(
-                "Discovery scan stopped: {} findings in {} files",
-                total_findings, files_scanned
-            );
-            // Emit stopped event
-            let _ = app.emit(
-                "discovery:stopped",
-                serde_json::json!({
-                    "vault_id": vault_id_clone,
-                    "findings_count": total_findings
-                }),
-            );
-        } else {
-            info!(
-                "Discovery scan complete: {} findings in {} files",
-                total_findings, files_scanned
-            );
-            // Emit completion event
-            let _ = app.emit(
-                "discovery:complete",
-                serde_json::json!({
-                    "vault_id": vault_id_clone,
-                    "findings_count": total_findings
-                }),
-            );
+            if progress.is_complete {
+                break;
+            }
         }
     });
 
-    Ok("Scan started".to_string())
+    // Scanner on std thread (NOT tokio)
+    thread::spawn(move || {
+        let scanner = Scanner::new(user_pii, scan_config, ignored_paths, cmd_rx, progress_tx);
+        let result = scanner.scan(scan_dirs);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create runtime");
+
+        rt.block_on(async {
+            let mut findings_count = 0;
+            let mut files_logged = Vec::new();
+
+            for file_result in &result.findings {
+                let path = file_result.path.to_string_lossy().to_string();
+                files_logged.push((path.clone(), true));
+
+                for pii_match in &file_result.matches {
+                    if insert_pii_finding(&pool, &vault_id_clone, &file_result.path, pii_match)
+                        .await
+                        .is_ok()
+                    {
+                        findings_count += 1;
+                    }
+                }
+            }
+
+            if !files_logged.is_empty() {
+                let _ = scan_logs::log_scanned_files_batch(&pool, &session_id_clone, &files_logged)
+                    .await;
+            }
+
+            let status = if result.was_stopped {
+                "stopped"
+            } else {
+                "completed"
+            };
+            let _ = scan_logs::update_scan_session(
+                &pool,
+                &session_id_clone,
+                status,
+                result.files_scanned as i64,
+                findings_count,
+                None,
+            )
+            .await;
+
+            let _ = app.emit(
+                "discovery:complete",
+                serde_json::json!({
+                    "session_id": session_id_clone,
+                    "vault_id": vault_id_clone,
+                    "files_scanned": result.files_scanned,
+                    "findings_count": findings_count,
+                    "was_stopped": result.was_stopped,
+                }),
+            );
+
+            let mut active = ACTIVE_SCAN.lock().await;
+            *active = None;
+        });
+    });
+
+    Ok(session_id)
 }
 
-/// Get all discovery findings for a vault
+#[tauri::command]
+pub async fn stop_discovery_scan() -> Result<(), String> {
+    let active = ACTIVE_SCAN.lock().await;
+    if let Some(scan) = active.as_ref() {
+        scan.command_tx
+            .send(ScanCommand::Stop)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("No scan running".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn pause_discovery_scan() -> Result<(), String> {
+    let active = ACTIVE_SCAN.lock().await;
+    if let Some(scan) = active.as_ref() {
+        scan.command_tx
+            .send(ScanCommand::Pause)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("No scan running".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn resume_discovery_scan() -> Result<(), String> {
+    let active = ACTIVE_SCAN.lock().await;
+    if let Some(scan) = active.as_ref() {
+        scan.command_tx
+            .send(ScanCommand::Continue)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    } else {
+        Err("No scan running".to_string())
+    }
+}
+
 #[tauri::command]
 pub async fn get_discovery_findings(
     state: State<'_, AppState>,
     vault_id: String,
     include_ignored: Option<bool>,
 ) -> Result<Vec<DiscoveryFinding>, String> {
-    let include_ignored = include_ignored.unwrap_or(false);
-    info!(
-        "get_discovery_findings: vault_id={}, include_ignored={}",
-        vault_id, include_ignored
-    );
-
-    // Get the unlocked vault
     let vault = state
         .get_vault(&vault_id)
         .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
 
-    // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {e}"))?;
+    let db = vault.database().map_err(|e| format!("DB error: {e}"))?;
 
-    // Query findings
     let findings = spectral_db::discovery_findings::get_discovery_findings(
         db.pool(),
         &vault_id,
-        include_ignored,
+        include_ignored.unwrap_or(false),
     )
     .await
-    .map_err(|e| format!("Failed to get discovery findings: {e}"))?;
+    .map_err(|e| format!("Query error: {e}"))?;
 
-    // Convert to response format
-    let response: Vec<DiscoveryFinding> = findings
+    Ok(findings
         .into_iter()
         .map(|f| DiscoveryFinding {
             id: f.id,
@@ -580,43 +313,25 @@ pub async fn get_discovery_findings(
             ignored: f.ignored,
             still_present_after_remediation: f.still_present_after_remediation,
             found_at: f.found_at,
+            matched_value: f.matched_value,
+            line_number: f.line_number,
         })
-        .collect();
-
-    Ok(response)
+        .collect())
 }
 
-/// Mark a finding as remediated
 #[tauri::command]
 pub async fn mark_finding_remediated(
     state: State<'_, AppState>,
     vault_id: String,
     finding_id: String,
 ) -> Result<(), String> {
-    info!(
-        "mark_finding_remediated: vault_id={}, finding_id={}",
-        vault_id, finding_id
-    );
-
-    // Get the unlocked vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
-
-    // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {e}"))?;
-
-    // Update finding
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
     spectral_db::discovery_findings::update_finding_remediated(db.pool(), &finding_id, true)
         .await
-        .map_err(|e| format!("Failed to mark finding as remediated: {e}"))?;
-
-    Ok(())
+        .map_err(|e| format!("{e}"))
 }
 
-/// Mark a finding as ignored (false positive or acceptable)
 #[tauri::command]
 pub async fn mark_finding_ignored(
     state: State<'_, AppState>,
@@ -624,144 +339,234 @@ pub async fn mark_finding_ignored(
     finding_id: String,
     ignored: bool,
 ) -> Result<(), String> {
-    info!(
-        "mark_finding_ignored: vault_id={}, finding_id={}, ignored={}",
-        vault_id, finding_id, ignored
-    );
-
-    // Get the unlocked vault
-    let vault = state
-        .get_vault(&vault_id)
-        .ok_or_else(|| format!("Vault '{vault_id}' is not unlocked"))?;
-
-    // Get the vault's database
-    let db = vault
-        .database()
-        .map_err(|e| format!("Failed to get vault database: {e}"))?;
-
-    // Update finding
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
     spectral_db::discovery_findings::mark_finding_ignored(db.pool(), &finding_id, ignored)
         .await
-        .map_err(|e| format!("Failed to mark finding as ignored: {e}"))?;
-
-    Ok(())
+        .map_err(|e| format!("{e}"))
 }
 
-/// Pause the current discovery scan
 #[tauri::command]
-pub fn pause_discovery_scan() -> Result<(), String> {
-    info!("pause_discovery_scan");
-    let mut control = SCAN_CONTROL
-        .lock()
-        .expect("Failed to acquire scan control lock for pause");
-    *control = ScanControl::Paused;
-    Ok(())
+pub async fn delete_file(file_path: String) -> Result<(), String> {
+    std::fs::remove_file(&file_path).map_err(|e| format!("Delete failed: {e}"))
 }
 
-/// Resume a paused discovery scan
-#[tauri::command]
-pub fn resume_discovery_scan() -> Result<(), String> {
-    info!("resume_discovery_scan");
-    let mut control = SCAN_CONTROL
-        .lock()
-        .expect("Failed to acquire scan control lock for resume");
-    *control = ScanControl::Running;
-    Ok(())
-}
-
-/// Stop the current discovery scan
-#[tauri::command]
-pub fn stop_discovery_scan() -> Result<(), String> {
-    info!("stop_discovery_scan");
-    let mut control = SCAN_CONTROL
-        .lock()
-        .expect("Failed to acquire scan control lock for stop");
-    *control = ScanControl::Stopped;
-    Ok(())
-}
-
-/// Open the folder containing a file
 #[tauri::command]
 pub fn open_file_location(file_path: String) -> Result<(), String> {
     use std::process::Command;
 
-    // Log the file path being opened for debugging
-    info!("Opening file location for: {}", file_path);
-
-    // Canonicalize the path to resolve any symlinks or relative paths
-    let canonical_path = std::path::Path::new(&file_path)
+    let path = std::path::Path::new(&file_path);
+    let canonical = path
         .canonicalize()
-        .map_err(|e| format!("Failed to canonicalize path '{}': {}", file_path, e))?;
-
-    info!("Canonical path: {:?}", canonical_path);
+        .map_err(|e| format!("Invalid path: {e}"))?;
 
     #[cfg(target_os = "windows")]
-    {
-        // Windows: Use explorer /select to highlight the file
-        let path_str = canonical_path
-            .to_str()
-            .ok_or_else(|| "Path contains invalid UTF-8".to_string())?;
-        Command::new("explorer")
-            .args(["/select,", path_str])
-            .spawn()
-            .map_err(|e| format!("Failed to open file location: {}", e))?;
-    }
+    Command::new("explorer")
+        .args(["/select,", &canonical.to_string_lossy()])
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
 
     #[cfg(target_os = "macos")]
-    {
-        // macOS: Use open -R to reveal the file in Finder
-        let path_str = canonical_path
-            .to_str()
-            .ok_or_else(|| "Path contains invalid UTF-8".to_string())?;
-        Command::new("open")
-            .args(["-R", path_str])
-            .spawn()
-            .map_err(|e| format!("Failed to open file location: {}", e))?;
-    }
+    Command::new("open")
+        .args(["-R", &canonical.to_string_lossy()])
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
 
     #[cfg(target_os = "linux")]
     {
-        // Check if we're running in WSL
         let is_wsl = std::path::Path::new("/proc/version").exists()
             && std::fs::read_to_string("/proc/version")
                 .map(|s| s.to_lowercase().contains("microsoft"))
                 .unwrap_or(false);
 
         if is_wsl {
-            // WSL: Convert Linux path to Windows path and use explorer.exe
             let output = Command::new("wslpath")
                 .arg("-w")
-                .arg(&canonical_path)
+                .arg(&canonical)
                 .output()
-                .map_err(|e| format!("Failed to convert WSL path: {}", e))?;
-
-            if !output.status.success() {
-                return Err(format!(
-                    "wslpath command failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ));
-            }
-
-            let windows_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-            info!("Converted WSL path to Windows path: {}", windows_path);
-
-            // Use Windows explorer.exe with /select to highlight the file
+                .map_err(|e| format!("{e}"))?;
+            let win_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
             Command::new("explorer.exe")
-                .args(["/select,", &windows_path])
+                .args(["/select,", &win_path])
                 .spawn()
-                .map_err(|e| format!("Failed to open Windows Explorer from WSL: {}", e))?;
+                .map_err(|e| format!("{e}"))?;
         } else {
-            // Native Linux: Open the parent directory with xdg-open
-            let dir = canonical_path
-                .parent()
-                .ok_or_else(|| "Could not determine parent directory".to_string())?;
+            let parent = canonical.parent().ok_or("No parent")?;
             Command::new("xdg-open")
-                .arg(dir)
+                .arg(parent)
                 .spawn()
-                .map_err(|e| format!("Failed to open file location: {}", e))?;
+                .map_err(|e| format!("{e}"))?;
         }
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_scan_log(
+    state: State<'_, AppState>,
+    vault_id: String,
+    session_id: String,
+) -> Result<String, String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+
+    let logs = scan_logs::get_scan_log(db.pool(), &session_id)
+        .await
+        .map_err(|e| format!("{e}"))?;
+
+    let mut output = format!(
+        "PII Scan Log\nSession: {}\nFiles: {}\n\n",
+        session_id,
+        logs.len()
+    );
+    for (path, ts, had) in logs {
+        let marker = if had { "[FINDING]" } else { "[OK]" };
+        output.push_str(&format!("{} {} {}\n", marker, ts, path));
+    }
+
+    Ok(output)
+}
+
+// Helper functions
+
+fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
+    let mut pii = UserPii::default();
+
+    // Convert slice to array reference
+    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
+
+    #[allow(deprecated)]
+    if let Some(email) = &profile.email {
+        if let Ok(e) = email.decrypt(key_array) {
+            pii.emails.push(e);
+        }
+    }
+    for entry in &profile.email_addresses {
+        if let Ok(e) = entry.email.decrypt(key_array) {
+            pii.emails.push(e);
+        }
+    }
+
+    #[allow(deprecated)]
+    if let Some(phone) = &profile.phone {
+        if let Ok(p) = phone.decrypt(key_array) {
+            pii.phones.push(p);
+        }
+    }
+    for entry in &profile.phone_numbers {
+        if let Ok(p) = entry.number.decrypt(key_array) {
+            pii.phones.push(p);
+        }
+    }
+
+    if let Some(ssn) = &profile.ssn {
+        if let Ok(s) = ssn.decrypt(key_array) {
+            pii.ssn = Some(s);
+        }
+    }
+
+    let mut addr = AddressInfo {
+        street: None,
+        city: None,
+        state: None,
+        zip: None,
+    };
+    if let Some(a) = &profile.address {
+        addr.street = a.decrypt(key_array).ok();
+    }
+    if let Some(c) = &profile.city {
+        addr.city = c.decrypt(key_array).ok();
+    }
+    if let Some(s) = &profile.state {
+        addr.state = s.decrypt(key_array).ok();
+    }
+    if let Some(z) = &profile.zip_code {
+        addr.zip = z.decrypt(key_array).ok();
+    }
+    if addr.street.is_some() || addr.zip.is_some() {
+        pii.addresses.push(addr);
+    }
+
+    if let Some(name) = &profile.full_name {
+        if let Ok(n) = name.decrypt(key_array) {
+            pii.names.push(n);
+        }
+    }
+    if let Some(first) = &profile.first_name {
+        if let Ok(n) = first.decrypt(key_array) {
+            pii.names.push(n);
+        }
+    }
+    if let Some(last) = &profile.last_name {
+        if let Ok(n) = last.decrypt(key_array) {
+            pii.names.push(n);
+        }
+    }
+
+    if let Some(dob) = &profile.date_of_birth {
+        if let Ok(d) = dob.decrypt(key_array) {
+            pii.date_of_birth = Some(d);
+        }
+    }
+
+    pii
+}
+
+fn is_pii_empty(pii: &UserPii) -> bool {
+    pii.emails.is_empty()
+        && pii.phones.is_empty()
+        && pii.ssn.is_none()
+        && pii.addresses.is_empty()
+        && pii.names.is_empty()
+        && pii.date_of_birth.is_none()
+}
+
+async fn get_ignored_paths(pool: &sqlx::SqlitePool, vault_id: &str) -> HashSet<String> {
+    sqlx::query_as::<_, (String,)>(
+        "SELECT source_detail FROM discovery_findings WHERE vault_id = ? AND ignored = 1",
+    )
+    .bind(vault_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|(p,)| p)
+    .collect()
+}
+
+async fn insert_pii_finding(
+    pool: &sqlx::SqlitePool,
+    vault_id: &str,
+    path: &std::path::Path,
+    pii_match: &spectral_discovery::PiiMatch,
+) -> Result<(), sqlx::Error> {
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Unknown");
+    let description = format!(
+        "{} found in {} (line {})",
+        pii_match.pii_type.description(),
+        file_name,
+        pii_match.line_number
+    );
+
+    spectral_db::discovery_findings::insert_discovery_finding(
+        pool,
+        spectral_db::discovery_findings::CreateDiscoveryFinding {
+            vault_id: vault_id.to_string(),
+            source: "filesystem".to_string(),
+            source_detail: path.to_string_lossy().to_string(),
+            finding_type: "pii_exposure".to_string(),
+            risk_level: pii_match.pii_type.risk_level().to_string(),
+            description,
+            recommended_action: Some("Review and remove if not needed".to_string()),
+            pii_type: pii_match.pii_type.as_str().to_string(),
+            matched_value: Some(pii_match.matched_value.clone()),
+            line_number: Some(pii_match.line_number as i64),
+        },
+    )
+    .await
+    .map(|_| ())
 }

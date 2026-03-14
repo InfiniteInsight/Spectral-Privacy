@@ -14,15 +14,15 @@
 
 | Phase | Status | Tasks | Notes |
 |-------|--------|-------|-------|
-| Phase 1: Database Schema | `NOT_STARTED` | 3 | Migration + DB functions |
-| Phase 2: Scanner Core | `NOT_STARTED` | 3 | Types, patterns, engine |
-| Phase 3: Tauri Integration | `NOT_STARTED` | 2 | Commands + wiring |
+| Phase 1: Database Schema | `COMPLETE` | 3 | Migration + DB functions |
+| Phase 2: Scanner Core | `COMPLETE` | 3 | Types, patterns, engine |
+| Phase 3: Tauri Integration | `IN_PROGRESS` | 2 | Commands + wiring |
 | Phase 4: Frontend Components | `NOT_STARTED` | 4 | UI components |
 | Phase 5: Main Page | `NOT_STARTED` | 1 | Page rewrite |
 | Phase 6: Testing | `NOT_STARTED` | 1 | Integration tests |
 
-**Current Task:** `Phase 1 / Task 1.1`
-**Last Updated:** `[not started]`
+**Current Task:** `Phase 3 / Task 3.1 - Rewrite Discovery Commands`
+**Last Updated:** `2026-03-13`
 **Blocking Issues:** None
 
 ---
@@ -31,13 +31,13 @@
 
 **Phase Goal:** Add database tables for scan sessions and logs, plus the Rust functions to interact with them.
 
-**Phase Status:** `NOT_STARTED`
+**Phase Status:** `IN_PROGRESS`
 
 ---
 
 ### Task 1.1: Database Migration
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 **Estimated Context:** Small (single file)
 **Dependencies:** None
 
@@ -114,7 +114,7 @@ Next task creates Rust functions to interact with these tables. The key types ar
 
 ### Task 1.2: Scan Logs Database Module
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS`
 **Estimated Context:** Medium (one new file, one small edit)
 **Dependencies:** Task 1.1
 
