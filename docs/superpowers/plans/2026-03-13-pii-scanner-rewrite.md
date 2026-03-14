@@ -18,10 +18,10 @@
 | Phase 2: Scanner Core | `COMPLETE` | 3 | Types, patterns, engine |
 | Phase 3: Tauri Integration | `COMPLETE` | 2 | Commands + wiring |
 | Phase 4: Frontend Components | `COMPLETE` | 4 | UI components |
-| Phase 5: Main Page | `NOT_STARTED` | 1 | Page rewrite |
+| Phase 5: Main Page | `COMPLETE` | 1 | Page rewrite |
 | Phase 6: Testing | `NOT_STARTED` | 1 | Integration tests |
 
-**Current Task:** `Phase 5 / Task 5.1 - Rewrite Discovery Page`
+**Current Task:** `Phase 6 / Task 6.1 - Integration Testing`
 **Last Updated:** `2026-03-13`
 **Blocking Issues:** None
 
@@ -1724,13 +1724,13 @@ All components ready. Phase 5 rewrites the main discovery page to use them.
 
 **Phase Goal:** Rewrite the discovery page to use all new components.
 
-**Phase Status:** `NOT_STARTED`
+**Phase Status:** `COMPLETE`
 
 ---
 
 ### Task 5.1: Rewrite Discovery Page
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 **Estimated Context:** Large (full page rewrite)
 **Dependencies:** Phase 4 complete
 
