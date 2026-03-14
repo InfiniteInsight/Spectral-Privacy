@@ -16,12 +16,12 @@
 |-------|--------|-------|-------|
 | Phase 1: Database Schema | `COMPLETE` | 3 | Migration + DB functions |
 | Phase 2: Scanner Core | `COMPLETE` | 3 | Types, patterns, engine |
-| Phase 3: Tauri Integration | `IN_PROGRESS` | 2 | Commands + wiring |
+| Phase 3: Tauri Integration | `COMPLETE` | 2 | Commands + wiring |
 | Phase 4: Frontend Components | `NOT_STARTED` | 4 | UI components |
 | Phase 5: Main Page | `NOT_STARTED` | 1 | Page rewrite |
 | Phase 6: Testing | `NOT_STARTED` | 1 | Integration tests |
 
-**Current Task:** `Phase 3 / Task 3.1 - Rewrite Discovery Commands`
+**Current Task:** `Phase 4 / Task 4.1 - API Types and PII Explainer`
 **Last Updated:** `2026-03-13`
 **Blocking Issues:** None
 
@@ -31,7 +31,7 @@
 
 **Phase Goal:** Add database tables for scan sessions and logs, plus the Rust functions to interact with them.
 
-**Phase Status:** `IN_PROGRESS`
+**Phase Status:** `COMPLETE`
 
 ---
 
@@ -1209,13 +1209,13 @@ Key integration points:
 
 **Phase Goal:** Connect the scanner library to Tauri commands.
 
-**Phase Status:** `NOT_STARTED`
+**Phase Status:** `COMPLETE`
 
 ---
 
 ### Task 3.1: Rewrite Discovery Commands
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 **Estimated Context:** Large (complex file rewrite)
 **Dependencies:** Phase 2 complete
 
@@ -1273,7 +1273,7 @@ The commands use types from `spectral_discovery` and `spectral_db::scan_logs`. V
 
 ### Task 3.2: Verify Tauri Integration
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 **Estimated Context:** Small
 **Dependencies:** Task 3.1
 
