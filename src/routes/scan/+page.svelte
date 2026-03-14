@@ -91,7 +91,16 @@
 		try {
 			startingDiscoveryScan = true;
 			error = null;
-			await startDiscoveryScan(vaultStore.currentVaultId);
+			// Default config: scan all PII types
+			const config = {
+				scan_emails: true,
+				scan_phones: true,
+				scan_ssn: true,
+				scan_addresses: true,
+				scan_names: true,
+				scan_dob: true
+			};
+			await startDiscoveryScan(vaultStore.currentVaultId, config);
 			// Navigate to discovery page where results are shown
 			goto('/discovery');
 		} catch (err) {

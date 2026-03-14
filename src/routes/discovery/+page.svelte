@@ -61,7 +61,7 @@
 	);
 	const mediumCount = $derived(filteredFindings.filter((f) => f.risk_level === 'medium').length);
 	const informationalCount = $derived(
-		filteredFindings.filter((f) => f.risk_level === 'informational').length
+		filteredFindings.filter((f) => f.risk_level === 'low').length
 	);
 
 	// Group filtered findings by source
@@ -121,9 +121,16 @@
 			allScannedPaths.splice(0, allScannedPaths.length); // Clear in-place to preserve reference for listeners
 			totalFilesScanned = 0; // Reset total count
 
-			// Pass custom directories if in custom mode
-			const dirsToScan = scanMode === 'custom' ? customDirectories : undefined;
-			await startDiscoveryScan(vid, dirsToScan);
+			// Default config: scan all PII types
+			const config = {
+				scan_emails: true,
+				scan_phones: true,
+				scan_ssn: true,
+				scan_addresses: true,
+				scan_names: true,
+				scan_dob: true
+			};
+			await startDiscoveryScan(vid, config);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 			scanning = false;

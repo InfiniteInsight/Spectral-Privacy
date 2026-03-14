@@ -17,11 +17,11 @@
 | Phase 1: Database Schema | `COMPLETE` | 3 | Migration + DB functions |
 | Phase 2: Scanner Core | `COMPLETE` | 3 | Types, patterns, engine |
 | Phase 3: Tauri Integration | `COMPLETE` | 2 | Commands + wiring |
-| Phase 4: Frontend Components | `NOT_STARTED` | 4 | UI components |
+| Phase 4: Frontend Components | `IN_PROGRESS` | 4 | UI components |
 | Phase 5: Main Page | `NOT_STARTED` | 1 | Page rewrite |
 | Phase 6: Testing | `NOT_STARTED` | 1 | Integration tests |
 
-**Current Task:** `Phase 4 / Task 4.1 - API Types and PII Explainer`
+**Current Task:** `Phase 4 / Task 4.2 - Scan Config Component`
 **Last Updated:** `2026-03-13`
 **Blocking Issues:** None
 
@@ -1309,13 +1309,13 @@ Phase 4 creates the frontend UI components:
 
 **Phase Goal:** Create reusable Svelte components for the discovery UI.
 
-**Phase Status:** `NOT_STARTED`
+**Phase Status:** `IN_PROGRESS`
 
 ---
 
 ### Task 4.1: API Types and PII Explainer
 
-**Status:** `NOT_STARTED`
+**Status:** `COMPLETE`
 **Estimated Context:** Small (two files)
 **Dependencies:** Phase 3 complete
 
