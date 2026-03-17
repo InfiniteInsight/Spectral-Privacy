@@ -11,6 +11,7 @@ export interface CookieScanResponse {
 	scanId: string;
 	totalCookies: number;
 	matchedCookies: number;
+	removedCookies: number;
 	cookiesByBrowser: Record<string, number>;
 	cookiesByBroker: Record<string, number>;
 	browsersScanned: string[];

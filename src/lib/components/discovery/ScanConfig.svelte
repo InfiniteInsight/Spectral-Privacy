@@ -20,12 +20,12 @@
 	}
 
 	const options = [
-		{ key: 'scan_emails' as const, label: 'Emails', icon: '&#x2709;' },
-		{ key: 'scan_phones' as const, label: 'Phones', icon: '&#x1F4DE;' },
-		{ key: 'scan_ssn' as const, label: 'SSN', icon: '&#x1F510;' },
-		{ key: 'scan_addresses' as const, label: 'Addresses', icon: '&#x1F3E0;' },
-		{ key: 'scan_names' as const, label: 'Names', icon: '&#x1F464;' },
-		{ key: 'scan_dob' as const, label: 'Date of Birth', icon: '&#x1F382;' }
+		{ key: 'scan_emails' as const, label: 'Emails', icon: '✉️' },
+		{ key: 'scan_phones' as const, label: 'Phones', icon: '📞' },
+		{ key: 'scan_ssn' as const, label: 'SSN', icon: '🔐' },
+		{ key: 'scan_addresses' as const, label: 'Addresses', icon: '🏠' },
+		{ key: 'scan_names' as const, label: 'Names', icon: '👤' },
+		{ key: 'scan_dob' as const, label: 'Date of Birth', icon: '🎂' }
 	];
 
 	const hasAny = $derived(Object.values(config).some(Boolean));

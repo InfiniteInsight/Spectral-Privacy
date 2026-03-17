@@ -499,7 +499,7 @@
 						<span class="text-sm text-purple-700">{formatDate(latestScan.timestamp)}</span>
 					</div>
 
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-5">
 						<div class="rounded-lg bg-white p-4">
 							<div class="text-2xl font-bold text-purple-600">{latestScan.totalCookies}</div>
 							<div class="text-sm text-gray-600">Total Cookies</div>
@@ -507,6 +507,10 @@
 						<div class="rounded-lg bg-white p-4">
 							<div class="text-2xl font-bold text-orange-600">{latestScan.matchedCookies}</div>
 							<div class="text-sm text-gray-600">Tracking Cookies</div>
+						</div>
+						<div class="rounded-lg bg-white p-4">
+							<div class="text-2xl font-bold text-green-600">{latestScan.removedCookies}</div>
+							<div class="text-sm text-gray-600">Removed</div>
 						</div>
 						<div class="rounded-lg bg-white p-4">
 							<div class="text-2xl font-bold text-blue-600">
@@ -946,6 +950,11 @@
 										<th
 											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
 										>
+											Removed
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+										>
 											Browsers
 										</th>
 									</tr>
@@ -965,6 +974,17 @@
 												>
 													{scan.matchedCookies}
 												</span>
+											</td>
+											<td class="whitespace-nowrap px-6 py-4">
+												{#if scan.removedCookies > 0}
+													<span
+														class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800"
+													>
+														{scan.removedCookies}
+													</span>
+												{:else}
+													<span class="text-sm text-gray-400">0</span>
+												{/if}
 											</td>
 											<td class="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
 												{scan.browsersScanned.length}

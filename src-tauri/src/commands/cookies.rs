@@ -19,6 +19,7 @@ pub struct CookieScanResponse {
     pub scan_id: String,
     pub total_cookies: usize,
     pub matched_cookies: usize,
+    pub removed_cookies: usize,
     pub cookies_by_browser: HashMap<String, usize>,
     pub cookies_by_broker: HashMap<String, usize>,
     pub browsers_scanned: Vec<String>,
@@ -337,6 +338,7 @@ pub async fn scan_cookies(
         scan_id,
         total_cookies: scan_result.total_cookies,
         matched_cookies: scan_result.matched_cookies,
+        removed_cookies: 0, // New scan, no cookies removed yet
         cookies_by_browser: scan_result.cookies_by_browser,
         cookies_by_broker: scan_result.cookies_by_broker,
         browsers_scanned,
@@ -1065,13 +1067,14 @@ pub async fn get_recent_cookie_scans(
 
     let db = vault.database().map_err(|e| e.to_string())?;
 
-    let scans = spectral_db::cookies::get_recent_cookie_scans(db.pool(), &vault_id, limit)
-        .await
-        .map_err(|e| format!("Failed to get scans: {}", e))?;
+    let scans_with_removed =
+        spectral_db::cookies::get_recent_cookie_scans(db.pool(), &vault_id, limit)
+            .await
+            .map_err(|e| format!("Failed to get scans: {}", e))?;
 
     let mut scan_responses = Vec::new();
 
-    for scan in scans {
+    for (scan, removed_count) in scans_with_removed {
         // Reconstruct cookie groupings from the actual cookie data
         let (cookies_by_browser, cookies_by_broker) =
             reconstruct_cookie_groupings(db.pool(), &vault_id, &scan.scan_timestamp.to_rfc3339())
@@ -1081,6 +1084,7 @@ pub async fn get_recent_cookie_scans(
             scan_id: scan.id,
             total_cookies: scan.total_cookies_found as usize,
             matched_cookies: scan.matched_cookies as usize,
+            removed_cookies: removed_count as usize,
             cookies_by_browser,
             cookies_by_broker,
             browsers_scanned: scan.browsers_scanned,
