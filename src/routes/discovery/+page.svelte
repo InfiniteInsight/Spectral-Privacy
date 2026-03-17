@@ -89,7 +89,8 @@
 		try {
 			loading = true;
 			error = null;
-			findings = await getDiscoveryFindings(vid, showIgnored);
+			// Always load all findings including ignored ones, filter locally
+			findings = await getDiscoveryFindings(vid, true);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -355,10 +356,7 @@
 			{showIgnored}
 			onPiiTypeToggle={togglePiiType}
 			onRiskLevelToggle={toggleRiskLevel}
-			onShowIgnoredChange={(s) => {
-				showIgnored = s;
-				loadFindings();
-			}}
+			onShowIgnoredChange={(s) => (showIgnored = s)}
 			totalCount={findings.filter((f) => !f.remediated || f.still_present_after_remediation).length}
 			filteredCount={filteredFindings.length}
 		/>
