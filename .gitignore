@@ -125,3 +125,9 @@ vite.config.ts.timestamp-*
 *-sbom.json
 *.cdx.json
 **/rust-bom.json
+
+# Analysis reports
+semgrep-report.json
+clipper-report.json
+clipper-full-report.txt
+eslint-report.txt
