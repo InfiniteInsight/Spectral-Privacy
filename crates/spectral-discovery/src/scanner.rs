@@ -99,6 +99,15 @@ impl Scanner {
         let files = self.collect_files(&directories);
         tracing::info!("Found {} scannable files", files.len());
 
+        // Notify that collection is complete and scanning is starting
+        let _ = self.progress_tx.try_send(ScanProgress {
+            files_scanned: 0,
+            files_with_findings: 0,
+            current_directory: format!("Starting scan of {} files...", files.len()),
+            is_complete: false,
+            was_stopped: false,
+        });
+
         let findings: Vec<FileScanResult> = files
             .par_iter()
             .filter_map(|path| {
@@ -155,6 +164,8 @@ impl Scanner {
 
     fn collect_files(&self, directories: &[PathBuf]) -> Vec<PathBuf> {
         let mut files = Vec::new();
+        let mut last_progress_report = 0;
+
         for dir in directories {
             if !dir.exists() {
                 continue;
@@ -182,6 +193,21 @@ impl Scanner {
                     }
                     if path.is_file() && self.is_scannable(path) {
                         files.push(path.to_path_buf());
+
+                        // Report progress every 1000 files during collection
+                        if files.len() % 1000 == 0 && files.len() != last_progress_report {
+                            last_progress_report = files.len();
+                            let _ = self.progress_tx.try_send(ScanProgress {
+                                files_scanned: 0,
+                                files_with_findings: 0,
+                                current_directory: format!(
+                                    "Collecting files... found {} scannable files",
+                                    files.len()
+                                ),
+                                is_complete: false,
+                                was_stopped: false,
+                            });
+                        }
                     }
                 }
             }
