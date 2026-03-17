@@ -145,7 +145,10 @@
 		try {
 			await markFindingRemediated(vid, id);
 			// Update local state instead of reloading everything
-			findings = findings.map((f) => (f.id === id ? { ...f, remediated: true } : f));
+			// Clear still_present_after_remediation when marking fixed again
+			findings = findings.map((f) =>
+				f.id === id ? { ...f, remediated: true, still_present_after_remediation: false } : f
+			);
 			showSuccess('Marked as fixed');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
