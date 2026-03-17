@@ -97,8 +97,10 @@ pub async fn create_request(
     let now = Utc::now();
     let timestamp_str = now.to_rfc3339();
 
+    // Use INSERT OR IGNORE to make this idempotent - if a request already exists
+    // for this finding_id (UNIQUE constraint), the insert will be silently ignored
     sqlx::query(
-        "INSERT INTO google_removal_requests
+        "INSERT OR IGNORE INTO google_removal_requests
          (id, finding_id, status, google_removal_url, generated_at)
          VALUES (?, ?, 'URLGenerated', ?, ?)",
     )
@@ -109,16 +111,10 @@ pub async fn create_request(
     .execute(pool)
     .await?;
 
-    Ok(GoogleRemovalRequest {
-        id,
-        finding_id,
-        status: GoogleRemovalStatus::URLGenerated,
-        google_removal_url: removal_url,
-        generated_at: now,
-        submitted_at: None,
-        completed_at: None,
-        notes: None,
-    })
+    // Fetch the actual record (either the one we just created or the existing one)
+    get_by_finding_id(pool, &finding_id)
+        .await?
+        .ok_or_else(|| sqlx::Error::RowNotFound)
 }
 
 /// Get a Google removal request by finding ID.

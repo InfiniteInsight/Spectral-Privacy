@@ -478,7 +478,7 @@ pub async fn verify_finding(
             let google_url =
                 spectral_db::google_removal::generate_removal_url(name, address, phone);
 
-            // Create Google removal request
+            // Create Google removal request (idempotent - will return existing if already created)
             let _ = spectral_db::google_removal::create_request(
                 db.pool(),
                 finding_id.clone(),

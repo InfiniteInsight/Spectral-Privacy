@@ -58,11 +58,13 @@ uuid.workspace = true
 hex = "0.4"
 urlencoding = "2.1"
 strsim = "0.11"
+zeroize.workspace = true
 
 [dev-dependencies]
 uuid.workspace = true
 tempfile.workspace = true
 tauri = { workspace = true, features = ["test"] }
+zeroize.workspace = true
 
 [features]
 default = ["custom-protocol"]

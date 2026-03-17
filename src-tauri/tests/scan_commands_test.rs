@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tauri::{Manager, State};
 use tempfile::TempDir;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 /// Helper to create test app with `AppState` and temporary directory.
 fn create_test_app() -> (tauri::App<tauri::test::MockRuntime>, TempDir) {
@@ -33,10 +34,10 @@ async fn create_test_vault(state: &AppState, vault_id: &str) -> String {
     let vault_dir = state.vaults_dir.join(vault_id);
     std::fs::create_dir_all(&vault_dir).expect("create vault directory");
     let vault_path = vault_dir.join("vault.db");
-    let password = "test-password-123"; // pragma: allowlist secret
+    let password = Zeroizing::new("test-password-123".to_string()); // pragma: allowlist secret
 
     // Create vault
-    let vault = Vault::create(password, &vault_path)
+    let vault = Vault::create(&password, &vault_path)
         .await
         .expect("create vault");
 
