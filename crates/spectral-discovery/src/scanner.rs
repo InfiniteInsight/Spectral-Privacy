@@ -55,6 +55,7 @@ pub struct Scanner {
     command_rx: Receiver<ScanCommand>,
     progress_tx: Sender<ScanProgress>,
     stop_flag: Arc<AtomicBool>,
+    pause_flag: Arc<AtomicBool>,
     files_scanned: Arc<AtomicUsize>,
     files_with_findings: Arc<AtomicUsize>,
 }
@@ -75,6 +76,7 @@ impl Scanner {
             command_rx,
             progress_tx,
             stop_flag: Arc::new(AtomicBool::new(false)),
+            pause_flag: Arc::new(AtomicBool::new(false)),
             files_scanned: Arc::new(AtomicUsize::new(0)),
             files_with_findings: Arc::new(AtomicUsize::new(0)),
         }
@@ -104,6 +106,7 @@ impl Scanner {
                     return None;
                 }
                 self.check_commands();
+                self.wait_if_paused();
 
                 let result = self.scan_file(path);
                 // nosemgrep: llm-prompt-injection-risk
@@ -167,6 +170,7 @@ impl Scanner {
                     break;
                 }
                 self.check_commands();
+                self.wait_if_paused();
 
                 if let Ok(entry) = entry {
                     let path = entry.path();
@@ -223,22 +227,19 @@ impl Scanner {
                     self.stop_flag.store(true, Ordering::Relaxed);
                 }
                 ScanCommand::Pause => {
-                    while !self.stop_flag.load(Ordering::Relaxed) {
-                        match self
-                            .command_rx
-                            .recv_timeout(std::time::Duration::from_millis(100))
-                        {
-                            Ok(ScanCommand::Continue) => break,
-                            Ok(ScanCommand::Stop) => {
-                                self.stop_flag.store(true, Ordering::Relaxed);
-                                break;
-                            }
-                            _ => {}
-                        }
-                    }
+                    self.pause_flag.store(true, Ordering::Relaxed);
                 }
-                ScanCommand::Continue => {}
+                ScanCommand::Continue => {
+                    self.pause_flag.store(false, Ordering::Relaxed);
+                }
             }
+        }
+    }
+
+    fn wait_if_paused(&self) {
+        while self.pause_flag.load(Ordering::Relaxed) && !self.stop_flag.load(Ordering::Relaxed) {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            self.check_commands();
         }
     }
 }
