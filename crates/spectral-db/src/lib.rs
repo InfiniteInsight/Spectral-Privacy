@@ -48,6 +48,7 @@ pub mod migrations;
 pub mod removal_attempts;
 /// Scan job management for tracking broker scan operations.
 pub mod scan_jobs;
+pub mod scan_logs;
 pub mod settings;
 
 // Re-export commonly used types
@@ -235,7 +236,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 20);
+        assert_eq!(version_after, 21);
     }
 
     #[tokio::test]
@@ -273,6 +274,8 @@ mod tests {
                 "removal_attempts",
                 "removal_evidence",
                 "scan_jobs",
+                "scan_logs",
+                "scan_sessions",
                 "scheduled_jobs",
                 "settings"
             ]

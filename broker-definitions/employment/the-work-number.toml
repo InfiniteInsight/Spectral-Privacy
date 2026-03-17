@@ -15,7 +15,7 @@ scan_priority = "OnRequest"
 region_relevance = ["US"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://employees.theworknumber.com"
 instructions = "The Work Number provides employment and income verification to employers, lenders, landlords, and government agencies. Your employer reports your salary, job title, employment dates. You can view your own data with account."
 

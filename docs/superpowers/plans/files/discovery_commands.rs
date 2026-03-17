@@ -1,4 +1,7 @@
 //! Discovery commands for local PII scanning
+//!
+//! This file is a companion to the implementation plan.
+//! Copy this to src-tauri/src/commands/discovery.rs
 
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -12,9 +15,8 @@ use std::sync::Arc;
 use std::thread;
 use tauri::{Emitter, State};
 use tokio::sync::Mutex;
-use tracing::info;
+use tracing::{error, info, warn};
 
-#[allow(dead_code)]
 struct ActiveScan {
     session_id: String,
     command_tx: crossbeam_channel::Sender<ScanCommand>,
@@ -96,7 +98,7 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 
     let user_pii = extract_user_pii(&profile, vault_key);
 
-    if is_pii_empty(&user_pii) {
+    if user_pii.is_empty() {
         return Err("No PII configured in your profile".to_string());
     }
 
@@ -107,9 +109,7 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         scan_addresses: config.scan_addresses,
         scan_names: config.scan_names,
         scan_dob: config.scan_dob,
-        custom_directories: config
-            .custom_directories
-            .map(|d| d.into_iter().map(PathBuf::from).collect()),
+        custom_directories: config.custom_directories.map(|d| d.into_iter().map(PathBuf::from).collect()),
     };
 
     let ignored_paths = get_ignored_paths(db.pool(), &vault_id).await;
@@ -201,15 +201,10 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             }
 
             if !files_logged.is_empty() {
-                let _ = scan_logs::log_scanned_files_batch(&pool, &session_id_clone, &files_logged)
-                    .await;
+                let _ = scan_logs::log_scanned_files_batch(&pool, &session_id_clone, &files_logged).await;
             }
 
-            let status = if result.was_stopped {
-                "stopped"
-            } else {
-                "completed"
-            };
+            let status = if result.was_stopped { "stopped" } else { "completed" };
             let _ = scan_logs::update_scan_session(
                 &pool,
                 &session_id_clone,
@@ -243,9 +238,7 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 pub async fn stop_discovery_scan() -> Result<(), String> {
     let active = ACTIVE_SCAN.lock().await;
     if let Some(scan) = active.as_ref() {
-        scan.command_tx
-            .send(ScanCommand::Stop)
-            .map_err(|e| e.to_string())?;
+        scan.command_tx.send(ScanCommand::Stop).map_err(|e| e.to_string())?;
         Ok(())
     } else {
         Err("No scan running".to_string())
@@ -256,9 +249,7 @@ pub async fn stop_discovery_scan() -> Result<(), String> {
 pub async fn pause_discovery_scan() -> Result<(), String> {
     let active = ACTIVE_SCAN.lock().await;
     if let Some(scan) = active.as_ref() {
-        scan.command_tx
-            .send(ScanCommand::Pause)
-            .map_err(|e| e.to_string())?;
+        scan.command_tx.send(ScanCommand::Pause).map_err(|e| e.to_string())?;
         Ok(())
     } else {
         Err("No scan running".to_string())
@@ -269,9 +260,7 @@ pub async fn pause_discovery_scan() -> Result<(), String> {
 pub async fn resume_discovery_scan() -> Result<(), String> {
     let active = ACTIVE_SCAN.lock().await;
     if let Some(scan) = active.as_ref() {
-        scan.command_tx
-            .send(ScanCommand::Continue)
-            .map_err(|e| e.to_string())?;
+        scan.command_tx.send(ScanCommand::Continue).map_err(|e| e.to_string())?;
         Ok(())
     } else {
         Err("No scan running".to_string())
@@ -356,9 +345,7 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
     use std::process::Command;
 
     let path = std::path::Path::new(&file_path);
-    let canonical = path
-        .canonicalize()
-        .map_err(|e| format!("Invalid path: {e}"))?;
+    let canonical = path.canonicalize().map_err(|e| format!("Invalid path: {e}"))?;
 
     #[cfg(target_os = "windows")]
     Command::new("explorer")
@@ -380,22 +367,12 @@ pub fn open_file_location(file_path: String) -> Result<(), String> {
                 .unwrap_or(false);
 
         if is_wsl {
-            let output = Command::new("wslpath")
-                .arg("-w")
-                .arg(&canonical)
-                .output()
-                .map_err(|e| format!("{e}"))?;
+            let output = Command::new("wslpath").arg("-w").arg(&canonical).output().map_err(|e| format!("{e}"))?;
             let win_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            Command::new("explorer.exe")
-                .args(["/select,", &win_path])
-                .spawn()
-                .map_err(|e| format!("{e}"))?;
+            Command::new("explorer.exe").args(["/select,", &win_path]).spawn().map_err(|e| format!("{e}"))?;
         } else {
             let parent = canonical.parent().ok_or("No parent")?;
-            Command::new("xdg-open")
-                .arg(parent)
-                .spawn()
-                .map_err(|e| format!("{e}"))?;
+            Command::new("xdg-open").arg(parent).spawn().map_err(|e| format!("{e}"))?;
         }
     }
 
@@ -415,11 +392,7 @@ pub async fn get_scan_log(
         .await
         .map_err(|e| format!("{e}"))?;
 
-    let mut output = format!(
-        "PII Scan Log\nSession: {}\nFiles: {}\n\n",
-        session_id,
-        logs.len()
-    );
+    let mut output = format!("PII Scan Log\nSession: {}\nFiles: {}\n\n", session_id, logs.len());
     for (path, ts, had) in logs {
         let marker = if had { "[FINDING]" } else { "[OK]" };
         output.push_str(&format!("{} {} {}\n", marker, ts, path));
@@ -430,96 +403,58 @@ pub async fn get_scan_log(
 
 // Helper functions
 
-fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
+fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &spectral_vault::VaultKey) -> UserPii {
     let mut pii = UserPii::default();
-
-    // Convert slice to array reference
-    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
 
     #[allow(deprecated)]
     if let Some(email) = &profile.email {
-        if let Ok(e) = email.decrypt(key_array) {
-            pii.emails.push(e);
-        }
+        if let Ok(e) = email.decrypt(key) { pii.emails.push(e); }
     }
     for entry in &profile.email_addresses {
-        if let Ok(e) = entry.email.decrypt(key_array) {
-            pii.emails.push(e);
-        }
+        if let Ok(e) = entry.email.decrypt(key) { pii.emails.push(e); }
     }
 
     #[allow(deprecated)]
     if let Some(phone) = &profile.phone {
-        if let Ok(p) = phone.decrypt(key_array) {
-            pii.phones.push(p);
-        }
+        if let Ok(p) = phone.decrypt(key) { pii.phones.push(p); }
     }
     for entry in &profile.phone_numbers {
-        if let Ok(p) = entry.number.decrypt(key_array) {
-            pii.phones.push(p);
-        }
+        if let Ok(p) = entry.number.decrypt(key) { pii.phones.push(p); }
     }
 
     if let Some(ssn) = &profile.ssn {
-        if let Ok(s) = ssn.decrypt(key_array) {
-            pii.ssn = Some(s);
-        }
+        if let Ok(s) = ssn.decrypt(key) { pii.ssn = Some(s); }
     }
 
-    let mut addr = AddressInfo {
-        street: None,
-        city: None,
-        state: None,
-        zip: None,
-    };
-    if let Some(a) = &profile.address {
-        addr.street = a.decrypt(key_array).ok();
-    }
-    if let Some(c) = &profile.city {
-        addr.city = c.decrypt(key_array).ok();
-    }
-    if let Some(s) = &profile.state {
-        addr.state = s.decrypt(key_array).ok();
-    }
-    if let Some(z) = &profile.zip_code {
-        addr.zip = z.decrypt(key_array).ok();
-    }
-    if addr.street.is_some() || addr.zip.is_some() {
-        pii.addresses.push(addr);
-    }
+    let mut addr = AddressInfo { street: None, city: None, state: None, zip: None };
+    if let Some(a) = &profile.address { addr.street = a.decrypt(key).ok(); }
+    if let Some(c) = &profile.city { addr.city = c.decrypt(key).ok(); }
+    if let Some(s) = &profile.state { addr.state = s.decrypt(key).ok(); }
+    if let Some(z) = &profile.zip_code { addr.zip = z.decrypt(key).ok(); }
+    if addr.street.is_some() || addr.zip.is_some() { pii.addresses.push(addr); }
 
     if let Some(name) = &profile.full_name {
-        if let Ok(n) = name.decrypt(key_array) {
-            pii.names.push(n);
-        }
+        if let Ok(n) = name.decrypt(key) { pii.names.push(n); }
     }
     if let Some(first) = &profile.first_name {
-        if let Ok(n) = first.decrypt(key_array) {
-            pii.names.push(n);
-        }
+        if let Ok(n) = first.decrypt(key) { pii.names.push(n); }
     }
     if let Some(last) = &profile.last_name {
-        if let Ok(n) = last.decrypt(key_array) {
-            pii.names.push(n);
-        }
+        if let Ok(n) = last.decrypt(key) { pii.names.push(n); }
     }
 
     if let Some(dob) = &profile.date_of_birth {
-        if let Ok(d) = dob.decrypt(key_array) {
-            pii.date_of_birth = Some(d);
-        }
+        if let Ok(d) = dob.decrypt(key) { pii.date_of_birth = Some(d); }
     }
 
     pii
 }
 
-fn is_pii_empty(pii: &UserPii) -> bool {
-    pii.emails.is_empty()
-        && pii.phones.is_empty()
-        && pii.ssn.is_none()
-        && pii.addresses.is_empty()
-        && pii.names.is_empty()
-        && pii.date_of_birth.is_none()
+impl UserPii {
+    fn is_empty(&self) -> bool {
+        self.emails.is_empty() && self.phones.is_empty() && self.ssn.is_none()
+            && self.addresses.is_empty() && self.names.is_empty() && self.date_of_birth.is_none()
+    }
 }
 
 async fn get_ignored_paths(pool: &sqlx::SqlitePool, vault_id: &str) -> HashSet<String> {
@@ -541,16 +476,8 @@ async fn insert_pii_finding(
     path: &std::path::Path,
     pii_match: &spectral_discovery::PiiMatch,
 ) -> Result<(), sqlx::Error> {
-    let file_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("Unknown");
-    let description = format!(
-        "{} found in {} (line {})",
-        pii_match.pii_type.description(),
-        file_name,
-        pii_match.line_number
-    );
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Unknown");
+    let description = format!("{} found in {} (line {})", pii_match.pii_type.description(), file_name, pii_match.line_number);
 
     spectral_db::discovery_findings::insert_discovery_finding(
         pool,

@@ -63,7 +63,7 @@ pub struct CreateDiscoveryFinding {
     /// The actual matched value
     pub matched_value: Option<String>,
     /// Line number where found
-    pub line_number: Option<usize>,
+    pub line_number: Option<i64>,
 }
 
 /// Check if a finding already exists (to prevent duplicates)
@@ -165,7 +165,7 @@ pub async fn insert_discovery_finding(
     .bind(&params.pii_type)
     .bind(&found_at)
     .bind(&params.matched_value)
-    .bind(params.line_number.map(|n| i64::try_from(n).unwrap_or(0)))
+    .bind(params.line_number)
     .execute(pool)
     .await?;
 
@@ -184,7 +184,7 @@ pub async fn insert_discovery_finding(
         still_present_after_remediation: false,
         found_at,
         matched_value: params.matched_value,
-        line_number: params.line_number.map(|n| i64::try_from(n).unwrap_or(0)),
+        line_number: params.line_number,
     })
 }
 

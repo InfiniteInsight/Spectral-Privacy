@@ -18,8 +18,8 @@ function isTauriAvailable(): boolean {
 	return (
 		'__TAURI__' in window ||
 		'__TAURI_INTERNALS__' in window ||
-		!!(window as any).__TAURI__ ||
-		!!(window as any).__TAURI_INTERNALS__
+		!!(window as unknown as Record<string, unknown>).__TAURI__ ||
+		!!(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__
 	);
 }
 

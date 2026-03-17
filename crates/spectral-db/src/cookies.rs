@@ -301,19 +301,26 @@ pub async fn mark_cookies_removed(
     Ok(())
 }
 
-/// Get recent cookie scans.
+/// Get recent cookie scans with removal counts.
+///
+/// Returns scan history with counts of how many cookies from each scan
+/// have been removed, providing accurate state representation.
 pub async fn get_recent_cookie_scans(
     pool: &Pool<Sqlite>,
     vault_id: &str,
     limit: i32,
-) -> Result<Vec<CookieScan>, sqlx::Error> {
+) -> Result<Vec<(CookieScan, i32)>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, vault_id, scan_timestamp, browsers_scanned,
-                total_cookies_found, matched_cookies, brokers_matched,
-                scan_status, error_message, completed_at
-         FROM cookie_scans
-         WHERE vault_id = ?
-         ORDER BY scan_timestamp DESC
+        "SELECT cs.id, cs.vault_id, cs.scan_timestamp, cs.browsers_scanned,
+                cs.total_cookies_found, cs.matched_cookies, cs.brokers_matched,
+                cs.scan_status, cs.error_message, cs.completed_at,
+                (SELECT COUNT(*) FROM browser_cookies bc
+                 WHERE bc.vault_id = cs.vault_id
+                 AND bc.scan_timestamp = cs.scan_timestamp
+                 AND bc.removal_status = 'Removed') as removed_count
+         FROM cookie_scans cs
+         WHERE cs.vault_id = ?
+         ORDER BY cs.scan_timestamp DESC
          LIMIT ?",
     )
     .bind(vault_id)
@@ -321,7 +328,7 @@ pub async fn get_recent_cookie_scans(
     .fetch_all(pool)
     .await?;
 
-    let scans: Vec<CookieScan> = rows
+    let scans: Vec<(CookieScan, i32)> = rows
         .into_iter()
         .filter_map(|row| {
             // nosemgrep: use-zeroize-for-secrets
@@ -347,18 +354,23 @@ pub async fn get_recent_cookie_scans(
                     .map(|dt| dt.with_timezone(&Utc))
             });
 
-            Some(CookieScan {
-                id: row.get("id"),
-                vault_id: row.get("vault_id"),
-                scan_timestamp,
-                browsers_scanned,
-                total_cookies_found: row.get("total_cookies_found"),
-                matched_cookies: row.get("matched_cookies"),
-                brokers_matched,
-                scan_status: row.get("scan_status"),
-                error_message: row.get("error_message"),
-                completed_at,
-            })
+            let removed_count: i32 = row.get("removed_count");
+
+            Some((
+                CookieScan {
+                    id: row.get("id"),
+                    vault_id: row.get("vault_id"),
+                    scan_timestamp,
+                    browsers_scanned,
+                    total_cookies_found: row.get("total_cookies_found"),
+                    matched_cookies: row.get("matched_cookies"),
+                    brokers_matched,
+                    scan_status: row.get("scan_status"),
+                    error_message: row.get("error_message"),
+                    completed_at,
+                },
+                removed_count,
+            ))
         })
         .collect();
 

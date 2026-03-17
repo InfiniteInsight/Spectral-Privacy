@@ -14,12 +14,15 @@
 //!
 //! ```ignore
 //! use spectral_vault::Vault;
+//! use zeroize::Zeroizing;
 //!
-//! // Create a new vault
-//! let vault = Vault::create("strong_password", "/path/to/vault.db").await?;
+//! // Create a new vault with a zeroizing password
+//! let password = Zeroizing::new("strong_password".to_string());
+//! let vault = Vault::create(&password, "/path/to/vault.db").await?;
 //!
 //! // Later, unlock the vault
-//! let vault = Vault::unlock("strong_password", "/path/to/vault.db").await?;
+//! let password = Zeroizing::new("strong_password".to_string());
+//! let vault = Vault::unlock(&password, "/path/to/vault.db").await?;
 //!
 //! // Use the vault...
 //! let profile_id = vault.create_profile().await?;
@@ -80,7 +83,7 @@ impl Vault {
     /// 4. Stores salt in a separate file
     ///
     /// # Arguments
-    /// * `password` - Master password for the vault
+    /// * `password` - Master password for the vault (zeroized on drop)
     /// * `db_path` - Path where the vault database should be created
     ///
     /// # Returns
@@ -92,7 +95,11 @@ impl Vault {
     /// - Key derivation fails
     /// - Database creation fails
     /// - File system operations fail
-    pub async fn create(password: &str, db_path: impl AsRef<Path>) -> Result<Self> {
+    ///
+    /// # Security
+    /// The password parameter is accepted as `&Zeroizing<String>` to ensure it's
+    /// securely wiped from memory after use, reducing the window for memory dump attacks.
+    pub async fn create(password: &Zeroizing<String>, db_path: impl AsRef<Path>) -> Result<Self> {
         let db_path = db_path.as_ref();
         let salt_path = get_salt_path(db_path);
 
@@ -142,7 +149,7 @@ impl Vault {
     /// 4. Verifies the key is correct
     ///
     /// # Arguments
-    /// * `password` - Master password for the vault
+    /// * `password` - Master password for the vault (zeroized on drop)
     /// * `db_path` - Path to the vault database
     ///
     /// # Returns
@@ -154,7 +161,11 @@ impl Vault {
     /// - Password is incorrect
     /// - Key derivation fails
     /// - Database cannot be opened
-    pub async fn unlock(password: &str, db_path: impl AsRef<Path>) -> Result<Self> {
+    ///
+    /// # Security
+    /// The password parameter is accepted as `&Zeroizing<String>` to ensure it's
+    /// securely wiped from memory after use, reducing the window for memory dump attacks.
+    pub async fn unlock(password: &Zeroizing<String>, db_path: impl AsRef<Path>) -> Result<Self> {
         let db_path = db_path.as_ref();
         let salt_path = get_salt_path(db_path);
 
@@ -402,9 +413,9 @@ mod tests {
     #[tokio::test]
     async fn test_vault_create() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -417,16 +428,16 @@ mod tests {
     #[tokio::test]
     async fn test_vault_unlock_correct_password() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
         // Create vault
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
         vault.lock();
 
         // Unlock with correct password
-        let vault = Vault::unlock(password, &db_path)
+        let vault = Vault::unlock(&password, &db_path)
             .await
             .expect("unlock vault");
 
@@ -436,17 +447,17 @@ mod tests {
     #[tokio::test]
     async fn test_vault_unlock_wrong_password() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "correct_password";
-        let wrong_password = "wrong_password";
+        let password = Zeroizing::new("correct_password".to_string());
+        let wrong_password = Zeroizing::new("wrong_password".to_string());
 
         // Create vault
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
         vault.lock();
 
         // Try to unlock with wrong password
-        let result = Vault::unlock(wrong_password, &db_path).await;
+        let result = Vault::unlock(&wrong_password, &db_path).await;
 
         assert!(result.is_err());
         match result {
@@ -458,8 +469,9 @@ mod tests {
     #[tokio::test]
     async fn test_vault_unlock_nonexistent() {
         let (_temp_dir, db_path) = test_vault_path();
+        let password = Zeroizing::new("password".to_string());
 
-        let result = Vault::unlock("password", &db_path).await;
+        let result = Vault::unlock(&password, &db_path).await;
 
         assert!(result.is_err());
         match result {
@@ -471,16 +483,16 @@ mod tests {
     #[tokio::test]
     async fn test_vault_create_duplicate() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
         // Create vault
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
         vault.lock();
 
         // Try to create again
-        let result = Vault::create(password, &db_path).await;
+        let result = Vault::create(&password, &db_path).await;
 
         assert!(result.is_err());
         match result {
@@ -494,9 +506,9 @@ mod tests {
     #[tokio::test]
     async fn test_vault_lock() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -509,15 +521,15 @@ mod tests {
     #[tokio::test]
     async fn test_vault_locked_operations_fail() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
         vault.lock();
 
         // Recreate to test locked state
-        let vault = Vault::unlock(password, &db_path)
+        let vault = Vault::unlock(&password, &db_path)
             .await
             .expect("unlock vault");
 
@@ -528,7 +540,7 @@ mod tests {
         vault.lock();
 
         // Unlock again to test operations
-        let vault = Vault::unlock(password, &db_path)
+        let vault = Vault::unlock(&password, &db_path)
             .await
             .expect("unlock vault");
 
@@ -539,9 +551,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_and_load_profile() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -555,9 +567,9 @@ mod tests {
     #[allow(deprecated)]
     async fn test_save_and_load_profile() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -587,9 +599,9 @@ mod tests {
     #[tokio::test]
     async fn test_delete_profile() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -606,9 +618,9 @@ mod tests {
     #[tokio::test]
     async fn test_list_profiles() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
 
@@ -625,17 +637,17 @@ mod tests {
     #[tokio::test]
     async fn test_profile_persists_across_lock_unlock() {
         let (_temp_dir, db_path) = test_vault_path();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
         // Create vault and profile
-        let vault = Vault::create(password, &db_path)
+        let vault = Vault::create(&password, &db_path)
             .await
             .expect("create vault");
         let profile_id = vault.create_profile().await.expect("create profile");
         vault.lock();
 
         // Unlock and verify profile exists
-        let vault = Vault::unlock(password, &db_path)
+        let vault = Vault::unlock(&password, &db_path)
             .await
             .expect("unlock vault");
         let profile = vault.load_profile(&profile_id).await.expect("load profile");

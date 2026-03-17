@@ -46,7 +46,7 @@ pub fn generate_salt() -> [u8; SALT_LENGTH] {
 /// Derive a 256-bit encryption key from a password using Argon2id.
 ///
 /// # Arguments
-/// * `password` - The user's master password
+/// * `password` - The user's master password (zeroized on drop)
 /// * `salt` - A 32-byte salt (should be generated once and stored)
 ///
 /// # Returns
@@ -55,16 +55,25 @@ pub fn generate_salt() -> [u8; SALT_LENGTH] {
 /// # Errors
 /// Returns `VaultError::KeyDerivation` if the derivation fails.
 ///
+/// # Security
+/// The password is accepted as `&Zeroizing<String>` to ensure it's securely
+/// wiped from memory after use, reducing the window for memory dump attacks.
+///
 /// # Example
 /// ```ignore
 /// use spectral_vault::kdf::{generate_salt, derive_key};
+/// use zeroize::Zeroizing;
 ///
 /// let salt = generate_salt();
-/// let key = derive_key("my_strong_password", &salt)?;
+/// let password = Zeroizing::new("my_strong_password".to_string());
+/// let key = derive_key(&password, &salt)?;
 /// // Use key for encryption...
-/// // Key is automatically zeroized when dropped
+/// // Both key and password are automatically zeroized when dropped
 /// ```
-pub fn derive_key(password: &str, salt: &[u8]) -> Result<Zeroizing<[u8; KEY_LENGTH]>> {
+pub fn derive_key(
+    password: &Zeroizing<String>,
+    salt: &[u8],
+) -> Result<Zeroizing<[u8; KEY_LENGTH]>> {
     // Validate salt length
     if salt.len() != SALT_LENGTH {
         return Err(VaultError::KeyDerivation(format!(
@@ -112,10 +121,10 @@ mod tests {
     #[test]
     fn test_derive_key_deterministic() {
         let salt = generate_salt();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let key1 = derive_key(password, &salt).expect("derive key 1");
-        let key2 = derive_key(password, &salt).expect("derive key 2");
+        let key1 = derive_key(&password, &salt).expect("derive key 1");
+        let key2 = derive_key(&password, &salt).expect("derive key 2");
 
         // Same password and salt should produce same key
         assert_eq!(key1.as_ref(), key2.as_ref());
@@ -125,8 +134,10 @@ mod tests {
     fn test_derive_key_different_passwords() {
         let salt = generate_salt();
 
-        let key1 = derive_key("password1", &salt).expect("derive key 1");
-        let key2 = derive_key("password2", &salt).expect("derive key 2");
+        let key1 =
+            derive_key(&Zeroizing::new("password1".to_string()), &salt).expect("derive key 1");
+        let key2 =
+            derive_key(&Zeroizing::new("password2".to_string()), &salt).expect("derive key 2");
 
         // Different passwords should produce different keys
         assert_ne!(key1.as_ref(), key2.as_ref());
@@ -136,10 +147,10 @@ mod tests {
     fn test_derive_key_different_salts() {
         let salt1 = generate_salt();
         let salt2 = generate_salt();
-        let password = "test_password";
+        let password = Zeroizing::new("test_password".to_string());
 
-        let key1 = derive_key(password, &salt1).expect("derive key 1");
-        let key2 = derive_key(password, &salt2).expect("derive key 2");
+        let key1 = derive_key(&password, &salt1).expect("derive key 1");
+        let key2 = derive_key(&password, &salt2).expect("derive key 2");
 
         // Different salts should produce different keys
         assert_ne!(key1.as_ref(), key2.as_ref());
@@ -148,7 +159,8 @@ mod tests {
     #[test]
     fn test_derive_key_invalid_salt_length() {
         let invalid_salt = [0u8; 16]; // Wrong length
-        let result = derive_key("password", &invalid_salt);
+        let password = Zeroizing::new("password".to_string());
+        let result = derive_key(&password, &invalid_salt);
 
         assert!(result.is_err());
         match result {
@@ -162,7 +174,8 @@ mod tests {
     #[test]
     fn test_key_length() {
         let salt = generate_salt();
-        let key = derive_key("password", &salt).expect("derive key");
+        let password = Zeroizing::new("password".to_string());
+        let key = derive_key(&password, &salt).expect("derive key");
 
         assert_eq!(key.len(), KEY_LENGTH);
     }
@@ -170,7 +183,8 @@ mod tests {
     #[test]
     fn test_empty_password() {
         let salt = generate_salt();
-        let key = derive_key("", &salt).expect("derive key from empty password");
+        let password = Zeroizing::new(String::new());
+        let key = derive_key(&password, &salt).expect("derive key from empty password");
 
         // Should still work, just not recommended
         assert_eq!(key.len(), KEY_LENGTH);

@@ -8,6 +8,7 @@ use spectral_vault::Vault;
 use std::sync::Arc;
 use tauri::State;
 use tracing::{info, warn};
+use zeroize::Zeroizing;
 
 /// Response for `vault_status` command.
 #[derive(Debug, Serialize)]
@@ -55,6 +56,7 @@ pub async fn vault_create(
     // Create encrypted vault database
     // If this fails, we need to clean up the directory
     let db_path = state.vault_db_path(&vault_id);
+    let password = Zeroizing::new(password);
     let vault = match Vault::create(&password, &db_path).await {
         Ok(v) => v,
         Err(e) => {
@@ -108,6 +110,7 @@ pub async fn vault_unlock(
 
     // Unlock vault
     let db_path = state.vault_db_path(&vault_id);
+    let password = Zeroizing::new(password);
     let vault = Vault::unlock(&password, &db_path).await?;
 
     // Update last_accessed in metadata
@@ -313,6 +316,7 @@ pub async fn change_vault_password(
 
     // Verify old password by deriving key and comparing to current vault key
     use spectral_vault::kdf;
+    let old_password = Zeroizing::new(old_password);
     let old_key = kdf::derive_key(&old_password, &current_salt).map_err(|e| {
         CommandError::new(
             "KEY_DERIVATION_ERROR",
@@ -337,6 +341,7 @@ pub async fn change_vault_password(
 
     // Generate new salt and derive new key
     let new_salt = kdf::generate_salt();
+    let new_password = Zeroizing::new(new_password);
     let new_key = kdf::derive_key(&new_password, &new_salt).map_err(|e| {
         CommandError::new(
             "KEY_DERIVATION_ERROR",
@@ -432,6 +437,7 @@ pub async fn delete_vault(
 
     // Verify password by attempting to unlock
     let db_path = state.vault_db_path(&vault_id);
+    let password = Zeroizing::new(password);
     Vault::unlock(&password, &db_path).await?;
 
     // Remove from unlocked vaults (Drop impl zeroizes key)

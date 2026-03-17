@@ -15,12 +15,12 @@ scan_priority = "AutoScanTier2"
 region_relevance = ["Global"]
 
 [search]
-method = "account-required"
+method = "manual"
 url = "https://www.snapchat.com"
 instructions = "Snapchat profiles require friendship to view. Data collected: snaps, chats, stories, location (Snap Map), face data (lenses), interests, friends, device info, advertising ID."
 
 [removal]
-method = "account-required"
+method = "manual"
 url = "https://accounts.snapchat.com/accounts/settings"
 confirmation = "automatic"
 notes = """

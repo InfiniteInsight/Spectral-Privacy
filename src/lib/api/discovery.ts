@@ -6,13 +6,13 @@ import { invoke } from '@tauri-apps/api/core';
 
 export interface DiscoveryFinding {
 	id: string;
-	source: 'filesystem' | 'browser' | 'email';
+	source: string;
 	source_detail: string;
-	finding_type: 'pii_exposure' | 'broker_contact' | 'broker_account';
-	risk_level: 'critical' | 'medium' | 'informational';
+	finding_type: string;
+	risk_level: 'critical' | 'high' | 'medium' | 'low';
 	description: string;
 	recommended_action: string | null;
-	pii_type?: 'email' | 'phone' | 'ssn';
+	pii_type: 'email' | 'phone' | 'ssn' | 'address' | 'name' | 'dob';
 	remediated: boolean;
 	ignored: boolean;
 	still_present_after_remediation: boolean;
@@ -21,18 +21,50 @@ export interface DiscoveryFinding {
 	line_number?: number | null;
 }
 
+export interface ScanConfig {
+	scan_emails: boolean;
+	scan_phones: boolean;
+	scan_ssn: boolean;
+	scan_addresses: boolean;
+	scan_names: boolean;
+	scan_dob: boolean;
+}
+
+export interface ScanProgress {
+	session_id: string;
+	files_scanned: number;
+	files_with_findings: number;
+	current_directory: string;
+	is_complete: boolean;
+	was_stopped: boolean;
+}
+
 /**
- * Start a discovery scan of local files
- * Scans entire user profile by default, or custom directories if specified
+ * Start a discovery scan with PII type configuration
  */
-export async function startDiscoveryScan(
-	vaultId: string,
-	customDirectories?: string[]
-): Promise<string> {
-	return invoke('start_discovery_scan', {
-		vaultId,
-		customDirectories: customDirectories ?? null
-	});
+export async function startDiscoveryScan(vaultId: string, config: ScanConfig): Promise<string> {
+	return invoke('start_discovery_scan', { vaultId, config });
+}
+
+/**
+ * Stop the current discovery scan
+ */
+export async function stopDiscoveryScan(): Promise<void> {
+	return invoke('stop_discovery_scan');
+}
+
+/**
+ * Pause the current discovery scan
+ */
+export async function pauseDiscoveryScan(): Promise<void> {
+	return invoke('pause_discovery_scan');
+}
+
+/**
+ * Resume a paused discovery scan
+ */
+export async function resumeDiscoveryScan(): Promise<void> {
+	return invoke('resume_discovery_scan');
 }
 
 /**
@@ -65,24 +97,10 @@ export async function markFindingIgnored(
 }
 
 /**
- * Pause the current discovery scan
+ * Delete a file from the filesystem
  */
-export async function pauseDiscoveryScan(): Promise<void> {
-	return invoke('pause_discovery_scan');
-}
-
-/**
- * Resume a paused discovery scan
- */
-export async function resumeDiscoveryScan(): Promise<void> {
-	return invoke('resume_discovery_scan');
-}
-
-/**
- * Stop the current discovery scan
- */
-export async function stopDiscoveryScan(): Promise<void> {
-	return invoke('stop_discovery_scan');
+export async function deleteFile(filePath: string): Promise<void> {
+	return invoke('delete_file', { filePath });
 }
 
 /**
@@ -90,4 +108,11 @@ export async function stopDiscoveryScan(): Promise<void> {
  */
 export async function openFileLocation(filePath: string): Promise<void> {
 	return invoke('open_file_location', { filePath });
+}
+
+/**
+ * Get the scan log for a session
+ */
+export async function getScanLog(vaultId: string, sessionId: string): Promise<string> {
+	return invoke('get_scan_log', { vaultId, sessionId });
 }
