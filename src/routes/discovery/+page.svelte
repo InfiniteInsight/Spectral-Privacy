@@ -144,7 +144,8 @@
 		if (!vid) return;
 		try {
 			await markFindingRemediated(vid, id);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			findings = findings.map((f) => (f.id === id ? { ...f, remediated: true } : f));
 			showSuccess('Marked as fixed');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -156,7 +157,8 @@
 		if (!vid) return;
 		try {
 			await markFindingIgnored(vid, id, true);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			findings = findings.map((f) => (f.id === id ? { ...f, ignored: true } : f));
 			showSuccess('Ignored');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -169,7 +171,8 @@
 		try {
 			await deleteFile(path);
 			await markFindingRemediated(vid, id);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			findings = findings.map((f) => (f.id === id ? { ...f, remediated: true } : f));
 			showSuccess('File deleted');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
