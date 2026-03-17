@@ -81,12 +81,16 @@ impl PiiPatterns {
                 let (area, prefix, line) =
                     (&normalized[0..3], &normalized[3..6], &normalized[6..10]);
 
-                for pattern in [
+                let patterns = [
                     format!(r"\({area}\)\s*{prefix}-{line}"),
                     format!(r"{area}-{prefix}-{line}"),
                     format!(r"{area}\.{prefix}\.{line}"),
                     normalized.clone(),
-                ] {
+                ];
+
+                tracing::debug!("Compiling phone patterns for {}: {:?}", phone, patterns);
+
+                for pattern in patterns {
                     if let Ok(regex) = Regex::new(&pattern) {
                         regexes.push(regex);
                     }
@@ -203,7 +207,13 @@ impl PiiPatterns {
             }
 
             for (original, regexes) in &self.phone_patterns {
-                if regexes.iter().any(|r| r.is_match(line)) {
+                if let Some(matched_regex) = regexes.iter().find(|r| r.is_match(line)) {
+                    tracing::debug!(
+                        "Phone match on line {}: user_phone='{}', matched_pattern='{:?}'",
+                        line_number,
+                        original,
+                        matched_regex.as_str()
+                    );
                     matches.push(PiiMatch {
                         pii_type: PiiType::Phone,
                         matched_value: original.clone(),

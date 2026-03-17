@@ -96,6 +96,16 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 
     let user_pii = extract_user_pii(&profile, vault_key);
 
+    tracing::info!(
+        "Extracted user PII: emails={}, phones={}, ssn={}, addresses={}, names={}, dob={}",
+        user_pii.emails.len(),
+        user_pii.phones.len(),
+        user_pii.ssn.is_some(),
+        user_pii.addresses.len(),
+        user_pii.names.len(),
+        user_pii.date_of_birth.is_some()
+    );
+
     if is_pii_empty(&user_pii) {
         return Err("No PII configured in your profile".to_string());
     }
@@ -138,13 +148,23 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
     }
 
     let scan_dirs = if let Some(custom) = scan_config.custom_directories.clone() {
+        tracing::info!("Using custom scan directories: {:?}", custom);
         custom
     } else {
         match directories::UserDirs::new() {
-            Some(dirs) => vec![dirs.home_dir().to_path_buf()],
+            Some(dirs) => {
+                let home = dirs.home_dir().to_path_buf();
+                tracing::info!("Using home directory for scan: {:?}", home);
+                vec![home]
+            }
             None => return Err("Failed to get home directory".to_string()),
         }
     };
+
+    tracing::info!(
+        "Starting scanner thread with {} directories to scan",
+        scan_dirs.len()
+    );
 
     let pool = db.pool().clone();
     let vault_id_clone = vault_id.clone();

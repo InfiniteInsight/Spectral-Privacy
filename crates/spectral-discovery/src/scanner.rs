@@ -82,7 +82,10 @@ impl Scanner {
 
     /// Run the scan on the given directories
     pub fn scan(self, directories: Vec<PathBuf>) -> ScanResult {
+        tracing::info!("Scanner starting with {} directories", directories.len());
+
         if self.patterns.is_empty() {
+            tracing::warn!("No patterns configured - scan will not find anything");
             return ScanResult {
                 files_scanned: 0,
                 findings: Vec::new(),
@@ -90,7 +93,9 @@ impl Scanner {
             };
         }
 
+        tracing::info!("Collecting scannable files from directories...");
         let files = self.collect_files(&directories);
+        tracing::info!("Found {} scannable files", files.len());
 
         let findings: Vec<FileScanResult> = files
             .par_iter()
