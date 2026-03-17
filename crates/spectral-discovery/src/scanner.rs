@@ -145,12 +145,7 @@ impl Scanner {
                         let _ = self.progress_tx.try_send(ScanProgress {
                             files_scanned: count,
                             files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
-                            current_directory: path
-                                .parent()
-                                .and_then(|p| p.file_name())
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("")
-                                .to_string(),
+                            current_directory: path.to_string_lossy().to_string(),
                             is_complete: false,
                             was_stopped: false,
                         });
