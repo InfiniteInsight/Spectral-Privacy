@@ -95,54 +95,75 @@ impl Scanner {
             };
         }
 
-        tracing::info!("Collecting scannable files from directories...");
-        let files = self.collect_files(&directories);
-        tracing::info!("Found {} scannable files", files.len());
+        tracing::info!("Starting scan - files will be scanned as discovered");
 
-        // Notify that collection is complete and scanning is starting
-        let _ = self.progress_tx.try_send(ScanProgress {
-            files_scanned: 0,
-            files_with_findings: 0,
-            current_directory: format!("Starting scan of {} files...", files.len()),
-            is_complete: false,
-            was_stopped: false,
-        });
+        let mut all_findings = Vec::new();
 
-        let findings: Vec<FileScanResult> = files
-            .par_iter()
-            .filter_map(|path| {
-                if self.stop_flag.load(Ordering::Relaxed) {
-                    return None;
-                }
-                self.check_commands();
-                self.wait_if_paused();
+        // Process each directory's files immediately without collecting them all first
+        for dir in directories {
+            if !dir.exists() {
+                continue;
+            }
 
-                let result = self.scan_file(path);
-                // nosemgrep: llm-prompt-injection-risk
-                let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
+            if self.stop_flag.load(Ordering::Relaxed) {
+                break;
+            }
 
-                if result.is_some() {
-                    self.files_with_findings.fetch_add(1, Ordering::Relaxed);
-                }
+            // Scan files from this directory in parallel as they're discovered
+            let dir_findings: Vec<FileScanResult> = WalkDir::new(&dir)
+                .max_depth(MAX_SCAN_DEPTH)
+                .follow_links(false)
+                .into_iter()
+                .filter_entry(|e| !self.should_skip(e.path()))
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| {
+                    let path = entry.path();
+                    !self
+                        .ignored_paths
+                        .contains(&path.to_string_lossy().to_string())
+                        && path.is_file()
+                        && self.is_scannable(path)
+                })
+                .map(|e| e.path().to_path_buf())
+                .par_bridge()
+                .filter_map(|path| {
+                    if self.stop_flag.load(Ordering::Relaxed) {
+                        return None;
+                    }
+                    self.check_commands();
+                    self.wait_if_paused();
 
-                if count % 100 == 0 {
-                    let _ = self.progress_tx.try_send(ScanProgress {
-                        files_scanned: count,
-                        files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
-                        current_directory: path
-                            .parent()
-                            .and_then(|p| p.file_name())
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        is_complete: false,
-                        was_stopped: false,
-                    });
-                }
+                    let result = self.scan_file(&path);
+                    // nosemgrep: llm-prompt-injection-risk
+                    let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
 
-                result
-            })
-            .collect();
+                    if result.is_some() {
+                        self.files_with_findings.fetch_add(1, Ordering::Relaxed);
+                    }
+
+                    if count % 100 == 0 {
+                        let _ = self.progress_tx.try_send(ScanProgress {
+                            files_scanned: count,
+                            files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
+                            current_directory: path
+                                .parent()
+                                .and_then(|p| p.file_name())
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            is_complete: false,
+                            was_stopped: false,
+                        });
+                    }
+
+                    result
+                })
+                .collect();
+
+            all_findings.extend(dir_findings);
+        }
+
+        let findings = all_findings;
 
         let was_stopped = self.stop_flag.load(Ordering::Relaxed);
         let files_scanned = self.files_scanned.load(Ordering::Relaxed);
@@ -160,59 +181,6 @@ impl Scanner {
             findings,
             was_stopped,
         }
-    }
-
-    fn collect_files(&self, directories: &[PathBuf]) -> Vec<PathBuf> {
-        let mut files = Vec::new();
-        let mut last_progress_report = 0;
-
-        for dir in directories {
-            if !dir.exists() {
-                continue;
-            }
-
-            for entry in WalkDir::new(dir)
-                .max_depth(MAX_SCAN_DEPTH)
-                .follow_links(false)
-                .into_iter()
-                .filter_entry(|e| !self.should_skip(e.path()))
-            {
-                if self.stop_flag.load(Ordering::Relaxed) {
-                    break;
-                }
-                self.check_commands();
-                self.wait_if_paused();
-
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if self
-                        .ignored_paths
-                        .contains(&path.to_string_lossy().to_string())
-                    {
-                        continue;
-                    }
-                    if path.is_file() && self.is_scannable(path) {
-                        files.push(path.to_path_buf());
-
-                        // Report progress every 1000 files during collection
-                        if files.len() % 1000 == 0 && files.len() != last_progress_report {
-                            last_progress_report = files.len();
-                            let _ = self.progress_tx.try_send(ScanProgress {
-                                files_scanned: 0,
-                                files_with_findings: 0,
-                                current_directory: format!(
-                                    "Collecting files... found {} scannable files",
-                                    files.len()
-                                ),
-                                is_complete: false,
-                                was_stopped: false,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-        files
     }
 
     fn should_skip(&self, path: &Path) -> bool {
