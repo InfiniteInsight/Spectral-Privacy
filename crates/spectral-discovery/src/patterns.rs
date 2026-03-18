@@ -65,8 +65,10 @@ impl PiiPatterns {
 
     fn compile_emails(&mut self, emails: &[String]) {
         for email in emails {
-            // Add word boundaries to prevent matching email as substring
-            let pattern = format!(r"\b{}\b", regex::escape(&email.to_lowercase()));
+            // Match exact email - can't use \b with @ symbol
+            // Use negative lookahead/lookbehind to prevent matching as substring
+            let escaped = regex::escape(&email.to_lowercase());
+            let pattern = format!(r"(?<![a-zA-Z0-9@.]){}(?![a-zA-Z0-9@.])", escaped);
             if let Ok(regex) = RegexBuilder::new(&pattern)
                 .case_insensitive(true)
                 .build()
@@ -87,7 +89,7 @@ impl PiiPatterns {
 
                 // Add word boundaries to prevent matching phone as part of longer number
                 let patterns = [
-                    format!(r"\({area}\)\s*{prefix}-{line}"),
+                    format!(r"\({area}\)\s*{prefix}-{line}\b"),  // Added end boundary
                     format!(r"\b{area}-{prefix}-{line}\b"),
                     format!(r"\b{area}\.{prefix}\.{line}\b"),
                     format!(r"\b{}\b", normalized),
@@ -129,7 +131,10 @@ impl PiiPatterns {
         for addr in addresses {
             let street_regex = addr.street.as_ref().and_then(|s| {
                 if s.len() >= 5 {
-                    RegexBuilder::new(&regex::escape(s))
+                    // Add word boundary at start to prevent matching in middle of text
+                    // End boundary not added as street addresses often have suffixes
+                    let pattern = format!(r"\b{}", regex::escape(s));
+                    RegexBuilder::new(&pattern)
                         .case_insensitive(true)
                         .build()
                         .ok()
@@ -164,7 +169,9 @@ impl PiiPatterns {
                 // nosemgrep: use-zeroize-for-secrets
                 let normalized: String = z.chars().filter(|c| c.is_ascii_digit()).collect();
                 if normalized.len() >= 5 {
-                    Regex::new(&normalized).ok()
+                    // Add word boundaries to prevent matching zip as part of longer number
+                    let pattern = format!(r"\b{}\b", normalized);
+                    Regex::new(&pattern).ok()
                 } else {
                     None
                 }
@@ -349,11 +356,13 @@ impl PiiPatterns {
                         // Valid match if:
                         // 1. Street + any other component
                         // 2. City + State (both specific)
-                        // 3. Any component + zip (if street exists in profile)
+                        // 3. City + Zip (fairly specific)
+                        // 4. State + Zip is NOT matched (too generic - many people share state+zip)
                         let has_street = comp1 == "street" || comp2 == "street";
                         let has_city_state = (comp1 == "city" && comp2 == "state") || (comp1 == "state" && comp2 == "city");
+                        let has_city_zip = (comp1 == "city" && comp2 == "zip") || (comp1 == "zip" && comp2 == "city");
 
-                        if has_street || has_city_state {
+                        if has_street || has_city_state || has_city_zip {
                             // Use the most informative line (prefer street, then city, then zip)
                             let report_line = if comp1 == "street" {
                                 line1
