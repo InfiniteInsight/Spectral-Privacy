@@ -65,7 +65,9 @@ impl PiiPatterns {
 
     fn compile_emails(&mut self, emails: &[String]) {
         for email in emails {
-            if let Ok(regex) = RegexBuilder::new(&regex::escape(&email.to_lowercase()))
+            // Add word boundaries to prevent matching email as substring
+            let pattern = format!(r"\b{}\b", regex::escape(&email.to_lowercase()));
+            if let Ok(regex) = RegexBuilder::new(&pattern)
                 .case_insensitive(true)
                 .build()
             {
@@ -83,11 +85,12 @@ impl PiiPatterns {
                 let (area, prefix, line) =
                     (&normalized[0..3], &normalized[3..6], &normalized[6..10]);
 
+                // Add word boundaries to prevent matching phone as part of longer number
                 let patterns = [
                     format!(r"\({area}\)\s*{prefix}-{line}"),
-                    format!(r"{area}-{prefix}-{line}"),
-                    format!(r"{area}\.{prefix}\.{line}"),
-                    normalized.clone(),
+                    format!(r"\b{area}-{prefix}-{line}\b"),
+                    format!(r"\b{area}\.{prefix}\.{line}\b"),
+                    format!(r"\b{}\b", normalized),
                 ];
 
                 tracing::debug!("Compiling phone patterns for {}: {:?}", phone, patterns);
@@ -109,8 +112,9 @@ impl PiiPatterns {
         // nosemgrep: use-zeroize-for-secrets
         let normalized: String = ssn.chars().filter(|c| c.is_ascii_digit()).collect();
         if normalized.len() == 9 {
+            // Add word boundaries to prevent matching SSN as part of longer number sequence
             let pattern = format!(
-                r"{}[-\s]?{}[-\s]?{}",
+                r"\b{}[-\s]?{}[-\s]?{}\b",
                 &normalized[0..3],
                 &normalized[3..5],
                 &normalized[5..9]
@@ -193,8 +197,9 @@ impl PiiPatterns {
 
     fn compile_dob(&mut self, dob: &str) {
         if let Some((month, day, year)) = parse_date(dob) {
+            // Add word boundaries to prevent matching date as part of longer string
             let pattern = format!(
-                r"{month:02}/{day:02}/{year}|{month:02}-{day:02}-{year}|{year}-{month:02}-{day:02}"
+                r"\b{month:02}/{day:02}/{year}\b|\b{month:02}-{day:02}-{year}\b|\b{year}-{month:02}-{day:02}\b"
             );
             if let Ok(regex) = Regex::new(&pattern) {
                 self.dob_pattern = Some((dob.to_string(), regex));
