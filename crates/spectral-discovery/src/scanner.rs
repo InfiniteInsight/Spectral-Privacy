@@ -35,27 +35,6 @@ const EXCLUDED_DIRS: &[&str] = &[
     "Games",
     "Videos",
     ".docker",
-    // Python package managers
-    ".conda",
-    "site-packages",
-    "__pycache__",
-    ".pytest_cache",
-    // Ruby/gem directories
-    ".gem",
-    ".bundle",
-    // Java/Maven/Gradle
-    ".m2",
-    ".gradle",
-    // Go modules
-    "pkg",
-    // Test/fixture directories (common naming)
-    "test-data",
-    "test_data",
-    "fixtures",
-    "mock-data",
-    "mock_data",
-    "sample-data",
-    "sample_data",
 ];
 
 /// Results from a completed scan
@@ -204,30 +183,6 @@ impl Scanner {
             // Check exact matches against excluded list
             if EXCLUDED_DIRS.iter().any(|d| d.eq_ignore_ascii_case(name)) {
                 return true;
-            }
-
-            // Skip test/sample directories (common in packages)
-            let name_lower = name.to_lowercase();
-            if name_lower.contains("test")
-                || name_lower.contains("mock")
-                || name_lower.contains("sample")
-                || name_lower.contains("demo")
-                || name_lower.contains("example")
-                || name_lower.contains("fixture")
-            {
-                // Only skip if we're in a package/library context
-                if let Some(path_str) = path.to_str() {
-                    let path_lower = path_str.to_lowercase();
-                    if path_lower.contains("site-packages")
-                        || path_lower.contains("node_modules")
-                        || path_lower.contains(".conda")
-                        || path_lower.contains(".cargo")
-                        || path_lower.contains(".gem")
-                        || path_lower.contains("pkg")
-                    {
-                        return true;
-                    }
-                }
             }
         }
         false

@@ -69,10 +69,7 @@ impl PiiPatterns {
             // Use negative lookahead/lookbehind to prevent matching as substring
             let escaped = regex::escape(&email.to_lowercase());
             let pattern = format!(r"(?<![a-zA-Z0-9@.]){}(?![a-zA-Z0-9@.])", escaped);
-            if let Ok(regex) = RegexBuilder::new(&pattern)
-                .case_insensitive(true)
-                .build()
-            {
+            if let Ok(regex) = RegexBuilder::new(&pattern).case_insensitive(true).build() {
                 self.email_patterns.push((email.clone(), regex));
             }
         }
@@ -89,7 +86,7 @@ impl PiiPatterns {
 
                 // Add word boundaries to prevent matching phone as part of longer number
                 let patterns = [
-                    format!(r"\({area}\)\s*{prefix}-{line}\b"),  // Added end boundary
+                    format!(r"\({area}\)\s*{prefix}-{line}\b"), // Added end boundary
                     format!(r"\b{area}-{prefix}-{line}\b"),
                     format!(r"\b{area}\.{prefix}\.{line}\b"),
                     format!(r"\b{}\b", normalized),
@@ -177,7 +174,11 @@ impl PiiPatterns {
                 }
             });
 
-            if street_regex.is_some() || city_regex.is_some() || state_regex.is_some() || zip_regex.is_some() {
+            if street_regex.is_some()
+                || city_regex.is_some()
+                || state_regex.is_some()
+                || zip_regex.is_some()
+            {
                 self.address_patterns.push(AddressPattern {
                     original: addr.clone(),
                     street_regex,
@@ -325,19 +326,32 @@ impl PiiPatterns {
 
         // Group all component matches by address
         use std::collections::{HashMap, HashSet};
-        let mut address_components: HashMap<*const AddressInfo, Vec<(usize, &'static str)>> = HashMap::new();
+        let mut address_components: HashMap<*const AddressInfo, Vec<(usize, &'static str)>> =
+            HashMap::new();
 
         for (line, addr) in &street_matches {
-            address_components.entry(*addr as *const AddressInfo).or_default().push((*line, "street"));
+            address_components
+                .entry(*addr as *const AddressInfo)
+                .or_default()
+                .push((*line, "street"));
         }
         for (line, addr) in &city_matches {
-            address_components.entry(*addr as *const AddressInfo).or_default().push((*line, "city"));
+            address_components
+                .entry(*addr as *const AddressInfo)
+                .or_default()
+                .push((*line, "city"));
         }
         for (line, addr) in &state_matches {
-            address_components.entry(*addr as *const AddressInfo).or_default().push((*line, "state"));
+            address_components
+                .entry(*addr as *const AddressInfo)
+                .or_default()
+                .push((*line, "state"));
         }
         for (line, addr) in &zip_matches {
-            address_components.entry(*addr as *const AddressInfo).or_default().push((*line, "zip"));
+            address_components
+                .entry(*addr as *const AddressInfo)
+                .or_default()
+                .push((*line, "zip"));
         }
 
         let mut matched_addresses: HashSet<(*const AddressInfo, usize)> = HashSet::new();
@@ -350,7 +364,7 @@ impl PiiPatterns {
                     let (line1, comp1) = components[i];
                     let (line2, comp2) = components[j];
 
-                    let distance = if line1 > line2 { line1 - line2 } else { line2 - line1 };
+                    let distance = line1.abs_diff(line2);
 
                     if distance <= PROXIMITY_LINES {
                         // Valid match if:
@@ -359,8 +373,10 @@ impl PiiPatterns {
                         // 3. City + Zip (fairly specific)
                         // 4. State + Zip is NOT matched (too generic - many people share state+zip)
                         let has_street = comp1 == "street" || comp2 == "street";
-                        let has_city_state = (comp1 == "city" && comp2 == "state") || (comp1 == "state" && comp2 == "city");
-                        let has_city_zip = (comp1 == "city" && comp2 == "zip") || (comp1 == "zip" && comp2 == "city");
+                        let has_city_state = (comp1 == "city" && comp2 == "state")
+                            || (comp1 == "state" && comp2 == "city");
+                        let has_city_zip = (comp1 == "city" && comp2 == "zip")
+                            || (comp1 == "zip" && comp2 == "city");
 
                         if has_street || has_city_state || has_city_zip {
                             // Use the most informative line (prefer street, then city, then zip)
@@ -406,27 +422,31 @@ impl PiiPatterns {
 
         // Handle street-only addresses (when address has no other components in profile)
         for (street_line, street_addr) in &street_matches {
-            let addr_pattern = self.address_patterns.iter()
+            let addr_pattern = self
+                .address_patterns
+                .iter()
                 .find(|p| std::ptr::eq(&p.original, *street_addr));
 
             if let Some(pattern) = addr_pattern {
                 // If address has only street (no city/state/zip patterns), match it
-                if pattern.city_regex.is_none() && pattern.state_regex.is_none() && pattern.zip_regex.is_none() {
-                    if matched_addresses.insert((*street_addr as *const AddressInfo, *street_line)) {
-                        let line_number = street_line + 1;
-                        let line_content = if *street_line < lines.len() {
-                            lines[*street_line]
-                        } else {
-                            ""
-                        };
+                if pattern.city_regex.is_none()
+                    && pattern.state_regex.is_none()
+                    && pattern.zip_regex.is_none()
+                    && matched_addresses.insert((*street_addr as *const AddressInfo, *street_line))
+                {
+                    let line_number = street_line + 1;
+                    let line_content = if *street_line < lines.len() {
+                        lines[*street_line]
+                    } else {
+                        ""
+                    };
 
-                        matches.push(PiiMatch {
-                            pii_type: PiiType::Address,
-                            matched_value: format_address(street_addr),
-                            line_number,
-                            line_content: truncate(line_content, 200),
-                        });
-                    }
+                    matches.push(PiiMatch {
+                        pii_type: PiiType::Address,
+                        matched_value: format_address(street_addr),
+                        line_number,
+                        line_content: truncate(line_content, 200),
+                    });
                 }
             }
         }
