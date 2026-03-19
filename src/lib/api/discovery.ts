@@ -97,7 +97,14 @@ export async function markFindingIgnored(
 }
 
 /**
- * Open the scan log for a session in the OS default text editor
+ * Open a findings report (PII matches only) in the OS default text editor
+ */
+export async function openFindingsLog(vaultId: string, sessionId: string): Promise<void> {
+	return invoke('open_findings_log', { vaultId, sessionId });
+}
+
+/**
+ * Open the full scan log (every file checked) in the OS default text editor
  */
 export async function openScanLog(vaultId: string, sessionId: string): Promise<void> {
 	return invoke('open_scan_log', { vaultId, sessionId });

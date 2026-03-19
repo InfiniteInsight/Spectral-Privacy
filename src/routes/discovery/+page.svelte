@@ -6,6 +6,7 @@
 		markFindingRemediated,
 		markFindingIgnored,
 		clearDiscoveryResults,
+		openFindingsLog,
 		openScanLog,
 		startDiscoveryScan,
 		stopDiscoveryScan,
@@ -208,7 +209,17 @@
 		}
 	}
 
-	async function handleDownloadLog() {
+	async function handleDownloadFindingsLog() {
+		const vid = vaultStore.currentVaultId;
+		if (!vid || !sessionId) return;
+		try {
+			await openFindingsLog(vid, sessionId);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function handleDownloadScanLog() {
 		const vid = vaultStore.currentVaultId;
 		if (!vid || !sessionId) return;
 		try {
@@ -301,9 +312,14 @@
 		{:else}
 			{#if sessionId}
 				<button
-					onclick={handleDownloadLog}
+					onclick={handleDownloadFindingsLog}
 					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-					>Download Log</button
+					>Download Findings Log</button
+				>
+				<button
+					onclick={handleDownloadScanLog}
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+					>Download Scan Log</button
 				>
 			{/if}
 			{#if findings.length > 0}

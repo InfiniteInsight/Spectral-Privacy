@@ -405,6 +405,67 @@ pub async fn get_scan_log(
 }
 
 #[tauri::command]
+pub async fn open_findings_log(
+    state: State<'_, AppState>,
+    vault_id: String,
+    session_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+
+    let findings =
+        spectral_db::discovery_findings::get_discovery_findings(db.pool(), &vault_id, true)
+            .await
+            .map_err(|e| format!("{e}"))?;
+
+    let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let mut output = format!(
+        "PII Findings Report\nSession:   {session_id}\nGenerated: {now}\nTotal:     {} finding(s)\n\n",
+        findings.len()
+    );
+
+    for f in &findings {
+        if f.remediated && !f.still_present_after_remediation {
+            continue;
+        }
+        output.push_str(&format!(
+            "[{}] {} — {}\n  File: {}\n  Line: {}\n  Value: {}\n\n",
+            f.risk_level.to_uppercase(),
+            f.pii_type,
+            f.description,
+            f.source_detail,
+            f.line_number
+                .map_or("unknown".to_string(), |n| n.to_string()),
+            f.matched_value.as_deref().unwrap_or("(not captured)"),
+        ));
+    }
+
+    let tmp_path = std::env::temp_dir().join(format!("pii-findings-{session_id}.txt"));
+    std::fs::write(&tmp_path, output).map_err(|e| format!("Failed to write findings log: {e}"))?;
+
+    use std::process::Command;
+    #[cfg(target_os = "windows")]
+    Command::new("notepad")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "linux")]
+    Command::new("xdg-open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn open_scan_log(
     state: State<'_, AppState>,
     vault_id: String,
@@ -417,14 +478,14 @@ pub async fn open_scan_log(
         .await
         .map_err(|e| format!("{e}"))?;
 
+    let total = logs.len();
+    let with_findings = logs.iter().filter(|(_, _, had)| *had).count();
     let mut output = format!(
-        "PII Scan Log\nSession: {}\nFiles with findings: {}\n\n",
-        session_id,
-        logs.len()
+        "PII Scan Log\nSession:       {session_id}\nFiles scanned: {total}\nWith findings: {with_findings}\n\n",
     );
-    for (path, ts, had) in logs {
+    for (path, _ts, had) in logs {
         let marker = if had { "[FINDING]" } else { "[OK]" };
-        output.push_str(&format!("{} {} {}\n", marker, ts, path));
+        output.push_str(&format!("{marker} {path}\n"));
     }
 
     let tmp_path = std::env::temp_dir().join(format!("scan-log-{session_id}.txt"));
@@ -474,12 +535,15 @@ async fn persist_scan_results<R: tauri::Runtime>(
     result: spectral_discovery::ScanResult,
 ) {
     let mut findings_count = 0;
-    let mut files_logged = Vec::new();
+
+    // Build a set of paths that had findings for O(1) lookup
+    let finding_paths: std::collections::HashSet<String> = result
+        .findings
+        .iter()
+        .map(|f| f.path.to_string_lossy().to_string())
+        .collect();
 
     for file_result in &result.findings {
-        let path = file_result.path.to_string_lossy().to_string();
-        files_logged.push((path.clone(), true));
-
         for pii_match in &file_result.matches {
             if insert_pii_finding(pool, vault_id, &file_result.path, pii_match)
                 .await
@@ -489,6 +553,16 @@ async fn persist_scan_results<R: tauri::Runtime>(
             }
         }
     }
+
+    // Log every scanned file with had_findings flag
+    let files_logged: Vec<(String, bool)> = result
+        .all_files_scanned
+        .into_iter()
+        .map(|path| {
+            let had = finding_paths.contains(&path);
+            (path, had)
+        })
+        .collect();
 
     if !files_logged.is_empty() {
         let _ = scan_logs::log_scanned_files_batch(pool, session_id, &files_logged).await;

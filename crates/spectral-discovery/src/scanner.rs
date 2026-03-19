@@ -47,6 +47,8 @@ pub struct ScanResult {
     pub files_scanned: usize,
     /// All findings from the scan
     pub findings: Vec<FileScanResult>,
+    /// Paths of all files that were scanned (with and without findings)
+    pub all_files_scanned: Vec<String>,
     /// Whether the scan was stopped early
     pub was_stopped: bool,
 }
@@ -94,6 +96,7 @@ impl Scanner {
             return ScanResult {
                 files_scanned: 0,
                 findings: Vec::new(),
+                all_files_scanned: Vec::new(),
                 was_stopped: false,
             };
         }
@@ -101,6 +104,7 @@ impl Scanner {
         tracing::info!("Starting scan - files will be scanned as discovered");
 
         let mut all_findings = Vec::new();
+        let mut all_files = Vec::new();
 
         // Process each directory's files immediately without collecting them all first
         for dir in directories {
@@ -112,8 +116,9 @@ impl Scanner {
                 break;
             }
 
-            let dir_findings = self.scan_directory(&dir);
+            let (dir_findings, dir_files) = self.scan_directory(&dir);
             all_findings.extend(dir_findings);
+            all_files.extend(dir_files);
         }
 
         let findings = all_findings;
@@ -132,13 +137,15 @@ impl Scanner {
         ScanResult {
             files_scanned,
             findings,
+            all_files_scanned: all_files,
             was_stopped,
         }
     }
 
-    /// Scan all eligible files in a single directory in parallel
-    fn scan_directory(&self, dir: &Path) -> Vec<FileScanResult> {
-        WalkDir::new(dir)
+    /// Scan all eligible files in a single directory in parallel.
+    /// Returns `(findings, all_scanned_paths)`.
+    fn scan_directory(&self, dir: &Path) -> (Vec<FileScanResult>, Vec<String>) {
+        let scanned: Vec<(String, Option<FileScanResult>)> = WalkDir::new(dir)
             .max_depth(MAX_SCAN_DEPTH)
             .follow_links(false)
             .into_iter()
@@ -161,6 +168,7 @@ impl Scanner {
                 self.check_commands();
                 self.wait_if_paused();
 
+                let path_str = path.to_string_lossy().to_string();
                 let result = self.scan_file(&path);
                 // nosemgrep: llm-prompt-injection-risk
                 let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
@@ -173,15 +181,25 @@ impl Scanner {
                     let _ = self.progress_tx.try_send(ScanProgress {
                         files_scanned: count,
                         files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
-                        current_directory: path.to_string_lossy().to_string(),
+                        current_directory: path_str.clone(),
                         is_complete: false,
                         was_stopped: false,
                     });
                 }
 
-                result
+                Some((path_str, result))
             })
-            .collect()
+            .collect();
+
+        let mut findings = Vec::new();
+        let mut all_paths = Vec::with_capacity(scanned.len());
+        for (path_str, result) in scanned {
+            all_paths.push(path_str);
+            if let Some(r) = result {
+                findings.push(r);
+            }
+        }
+        (findings, all_paths)
     }
 
     fn should_skip(&self, path: &Path) -> bool {
