@@ -4,7 +4,7 @@ use crate::types::{AddressInfo, PiiMatch, PiiType, ScanConfig, UserPii};
 use regex::{Regex, RegexBuilder};
 
 /// Pattern matcher for finding user-specific PII in text
-pub struct PiiPatterns {
+pub struct Matcher {
     email_patterns: Vec<(String, Regex)>,
     phone_patterns: Vec<(String, Vec<Regex>)>,
     ssn_pattern: Option<(String, Regex)>,
@@ -23,7 +23,7 @@ struct AddressPattern {
     zip_regex: Option<Regex>,
 }
 
-impl PiiPatterns {
+impl Matcher {
     /// Create a new pattern matcher from user PII and scan configuration
     #[must_use]
     pub fn new(user_pii: &UserPii, config: &ScanConfig) -> Self {
@@ -65,11 +65,9 @@ impl PiiPatterns {
 
     fn compile_emails(&mut self, emails: &[String]) {
         for email in emails {
-            // Match exact email - can't use \b with @ symbol
-            // Use negative lookahead/lookbehind to prevent matching as substring
+            // Match exact email - escape special chars and match case-insensitively
             let escaped = regex::escape(&email.to_lowercase());
-            let pattern = format!(r"(?<![a-zA-Z0-9@.]){}(?![a-zA-Z0-9@.])", escaped);
-            if let Ok(regex) = RegexBuilder::new(&pattern).case_insensitive(true).build() {
+            if let Ok(regex) = RegexBuilder::new(&escaped).case_insensitive(true).build() {
                 self.email_patterns.push((email.clone(), regex));
             }
         }
@@ -227,6 +225,102 @@ impl PiiPatterns {
     }
 
     /// Find all PII matches in the given text
+    /// Scan for simple PII patterns (email, phone, SSN, name, DOB)
+    fn scan_simple_patterns(&self, line: &str, line_number: usize, matches: &mut Vec<PiiMatch>) {
+        // Email matches
+        for (original, regex) in &self.email_patterns {
+            if regex.is_match(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Email,
+                    matched_value: original.clone(),
+                    line_number,
+                    line_content: truncate(line, 200),
+                });
+            }
+        }
+
+        // Phone matches
+        for (original, regexes) in &self.phone_patterns {
+            if let Some(matched_regex) = regexes.iter().find(|r| r.is_match(line)) {
+                tracing::debug!(
+                    "Phone match on line {}: user_phone='{}', matched_pattern='{:?}'",
+                    line_number,
+                    original,
+                    matched_regex.as_str()
+                );
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Phone,
+                    matched_value: original.clone(),
+                    line_number,
+                    line_content: truncate(line, 200),
+                });
+                break;
+            }
+        }
+
+        // SSN matches
+        if let Some((original, regex)) = &self.ssn_pattern {
+            if regex.is_match(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Ssn,
+                    matched_value: mask_ssn(original),
+                    line_number,
+                    line_content: truncate(line, 200),
+                });
+            }
+        }
+
+        // Name matches
+        for (original, regex) in &self.name_patterns {
+            if regex.is_match(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Name,
+                    matched_value: original.clone(),
+                    line_number,
+                    line_content: truncate(line, 200),
+                });
+            }
+        }
+
+        // DOB matches
+        if let Some((original, regex)) = &self.dob_pattern {
+            if regex.is_match(line) {
+                matches.push(PiiMatch {
+                    pii_type: PiiType::DateOfBirth,
+                    matched_value: original.clone(),
+                    line_number,
+                    line_content: truncate(line, 200),
+                });
+            }
+        }
+    }
+
+    /// Collect address component matches for proximity checking
+    fn collect_address_components<'a>(
+        &'a self,
+        line: &str,
+        line_num: usize,
+        street_matches: &mut Vec<(usize, &'a AddressInfo)>,
+        city_matches: &mut Vec<(usize, &'a AddressInfo)>,
+        state_matches: &mut Vec<(usize, &'a AddressInfo)>,
+        zip_matches: &mut Vec<(usize, &'a AddressInfo)>,
+    ) {
+        for addr in &self.address_patterns {
+            if addr.street_regex.as_ref().is_some_and(|r| r.is_match(line)) {
+                street_matches.push((line_num, &addr.original));
+            }
+            if addr.city_regex.as_ref().is_some_and(|r| r.is_match(line)) {
+                city_matches.push((line_num, &addr.original));
+            }
+            if addr.state_regex.as_ref().is_some_and(|r| r.is_match(line)) {
+                state_matches.push((line_num, &addr.original));
+            }
+            if addr.zip_regex.as_ref().is_some_and(|r| r.is_match(line)) {
+                zip_matches.push((line_num, &addr.original));
+            }
+        }
+    }
+
     pub fn find_all(&self, text: &str) -> Vec<PiiMatch> {
         let mut matches = Vec::new();
         let lines: Vec<&str> = text.lines().collect();
@@ -241,83 +335,18 @@ impl PiiPatterns {
             // nosemgrep: llm-prompt-injection-risk
             let line_number = line_num + 1;
 
-            for (original, regex) in &self.email_patterns {
-                if regex.is_match(line) {
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Email,
-                        matched_value: original.clone(),
-                        line_number,
-                        line_content: truncate(line, 200),
-                    });
-                }
-            }
+            // Scan for simple patterns
+            self.scan_simple_patterns(line, line_number, &mut matches);
 
-            for (original, regexes) in &self.phone_patterns {
-                if let Some(matched_regex) = regexes.iter().find(|r| r.is_match(line)) {
-                    tracing::debug!(
-                        "Phone match on line {}: user_phone='{}', matched_pattern='{:?}'",
-                        line_number,
-                        original,
-                        matched_regex.as_str()
-                    );
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Phone,
-                        matched_value: original.clone(),
-                        line_number,
-                        line_content: truncate(line, 200),
-                    });
-                    break;
-                }
-            }
-
-            if let Some((original, regex)) = &self.ssn_pattern {
-                if regex.is_match(line) {
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Ssn,
-                        matched_value: mask_ssn(original),
-                        line_number,
-                        line_content: truncate(line, 200),
-                    });
-                }
-            }
-
-            // Collect address component matches for proximity checking
-            for addr in &self.address_patterns {
-                if addr.street_regex.as_ref().is_some_and(|r| r.is_match(line)) {
-                    street_matches.push((line_num, &addr.original));
-                }
-                if addr.city_regex.as_ref().is_some_and(|r| r.is_match(line)) {
-                    city_matches.push((line_num, &addr.original));
-                }
-                if addr.state_regex.as_ref().is_some_and(|r| r.is_match(line)) {
-                    state_matches.push((line_num, &addr.original));
-                }
-                if addr.zip_regex.as_ref().is_some_and(|r| r.is_match(line)) {
-                    zip_matches.push((line_num, &addr.original));
-                }
-            }
-
-            for (original, regex) in &self.name_patterns {
-                if regex.is_match(line) {
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Name,
-                        matched_value: original.clone(),
-                        line_number,
-                        line_content: truncate(line, 200),
-                    });
-                }
-            }
-
-            if let Some((original, regex)) = &self.dob_pattern {
-                if regex.is_match(line) {
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::DateOfBirth,
-                        matched_value: original.clone(),
-                        line_number,
-                        line_content: truncate(line, 200),
-                    });
-                }
-            }
+            // Collect address components for proximity checking
+            self.collect_address_components(
+                line,
+                line_num,
+                &mut street_matches,
+                &mut city_matches,
+                &mut state_matches,
+                &mut zip_matches,
+            );
         }
 
         // Second pass: find valid address matches
@@ -524,7 +553,7 @@ mod tests {
             emails: vec!["test@example.com".into()],
             ..Default::default()
         };
-        let patterns = PiiPatterns::new(&pii, &ScanConfig::default());
+        let patterns = Matcher::new(&pii, &ScanConfig::default());
         let matches = patterns.find_all("Contact: test@example.com");
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].pii_type, PiiType::Email);
@@ -536,7 +565,7 @@ mod tests {
             phones: vec!["555-123-4567".into()],
             ..Default::default()
         };
-        let patterns = PiiPatterns::new(&pii, &ScanConfig::default());
+        let patterns = Matcher::new(&pii, &ScanConfig::default());
         let matches = patterns.find_all("Call (555) 123-4567");
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].pii_type, PiiType::Phone);

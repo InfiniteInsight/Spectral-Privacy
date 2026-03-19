@@ -1,6 +1,6 @@
 //! Thread-pool based PII scanner
 
-use crate::patterns::PiiPatterns;
+use crate::patterns::Matcher;
 use crate::types::*;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use rayon::prelude::*;
@@ -50,7 +50,7 @@ pub struct ScanResult {
 
 /// Scanner that runs on a thread pool
 pub struct Scanner {
-    patterns: PiiPatterns,
+    patterns: Matcher,
     ignored_paths: HashSet<String>,
     command_rx: Receiver<ScanCommand>,
     progress_tx: Sender<ScanProgress>,
@@ -71,7 +71,7 @@ impl Scanner {
         progress_tx: Sender<ScanProgress>,
     ) -> Self {
         Self {
-            patterns: PiiPatterns::new(&user_pii, &config),
+            patterns: Matcher::new(&user_pii, &config),
             ignored_paths,
             command_rx,
             progress_tx,
