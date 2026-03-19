@@ -460,6 +460,23 @@ fn is_valid_address_pair(comp1: &str, comp2: &str) -> bool {
     has_street || has_city_state || has_city_zip
 }
 
+/// Find the first valid component pair within proximity, returning (line1, comp1, line2, comp2).
+fn find_first_valid_pair<'a>(
+    components: &[(usize, &'a str)],
+    proximity: usize,
+) -> Option<(usize, &'a str, usize, &'a str)> {
+    for i in 0..components.len() {
+        for j in (i + 1)..components.len() {
+            let (line1, comp1) = components[i];
+            let (line2, comp2) = components[j];
+            if line1.abs_diff(line2) <= proximity && is_valid_address_pair(comp1, comp2) {
+                return Some((line1, comp1, line2, comp2));
+            }
+        }
+    }
+    None
+}
+
 /// Check all addresses in the component map for valid pairs within proximity and
 /// push matches into `matches`. Updates `matched_addresses` to avoid duplicates.
 fn check_address_proximity(
@@ -471,32 +488,21 @@ fn check_address_proximity(
     const PROXIMITY_LINES: usize = 5;
 
     for (addr_ptr, components) in address_components {
-        'outer: for i in 0..components.len() {
-            for j in (i + 1)..components.len() {
-                let (line1, comp1) = components[i];
-                let (line2, comp2) = components[j];
-
-                if line1.abs_diff(line2) > PROXIMITY_LINES {
-                    continue;
-                }
-
-                if is_valid_address_pair(comp1, comp2) {
-                    let report_line = pick_report_line(line1, comp1, line2, comp2);
-
-                    if matched_addresses.insert((*addr_ptr, report_line)) {
-                        let line_content = lines.get(report_line).copied().unwrap_or("");
-                        // SAFETY: addr_ptr was derived from a reference in address_components
-                        // which itself was built from references valid for the duration of find_all.
-                        unsafe {
-                            matches.push(PiiMatch {
-                                pii_type: PiiType::Address,
-                                matched_value: format_address(&**addr_ptr),
-                                line_number: report_line + 1,
-                                line_content: truncate(line_content, 200),
-                            });
-                        }
-                    }
-                    break 'outer; // Found a valid match for this address
+        if let Some((line1, comp1, line2, comp2)) =
+            find_first_valid_pair(components, PROXIMITY_LINES)
+        {
+            let report_line = pick_report_line(line1, comp1, line2, comp2);
+            if matched_addresses.insert((*addr_ptr, report_line)) {
+                let line_content = lines.get(report_line).copied().unwrap_or("");
+                // SAFETY: addr_ptr was derived from a reference in address_components
+                // which itself was built from references valid for the duration of find_all.
+                unsafe {
+                    matches.push(PiiMatch {
+                        pii_type: PiiType::Address,
+                        matched_value: format_address(&**addr_ptr),
+                        line_number: report_line + 1,
+                        line_content: truncate(line_content, 200),
+                    });
                 }
             }
         }
