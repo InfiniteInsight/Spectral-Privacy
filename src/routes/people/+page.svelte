@@ -244,7 +244,7 @@
 						<div class="flex gap-2" onclick={(e) => e.stopPropagation()}>
 							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
 								<a
-									href="/settings?tab=profile"
+									href="/profile/edit"
 									onclick={async () => {
 										await vaultStore.setCurrentVault(vault.vault_id);
 									}}
