@@ -50,6 +50,62 @@ fn apply_basic_fields(
 
 // ── Helper: encrypt Phase-2 array fields ────────────────────────────────────
 
+fn apply_phone_numbers(
+    profile: &mut UserProfile,
+    phones: &[crate::types::profile::PhoneNumberInput],
+    key: &[u8; 32],
+) -> Result<(), CommandError> {
+    for phone_input in phones {
+        let phone_type = match phone_input.phone_type {
+            crate::types::profile::PhoneTypeInput::Mobile => {
+                spectral_vault::profile::PhoneType::Mobile
+            }
+            crate::types::profile::PhoneTypeInput::Home => {
+                spectral_vault::profile::PhoneType::Home
+            }
+            crate::types::profile::PhoneTypeInput::Work => {
+                spectral_vault::profile::PhoneType::Work
+            }
+        };
+        profile
+            .phone_numbers
+            .push(spectral_vault::profile::PhoneNumber::new(
+                &phone_input.number,
+                phone_type,
+                key,
+            )?);
+    }
+    Ok(())
+}
+
+fn apply_email_addresses(
+    profile: &mut UserProfile,
+    emails: &[crate::types::profile::EmailAddressInput],
+    key: &[u8; 32],
+) -> Result<(), CommandError> {
+    for email_input in emails {
+        let email_type = match email_input.email_type {
+            crate::types::profile::EmailTypeInput::Personal => {
+                spectral_vault::profile::EmailType::Personal
+            }
+            crate::types::profile::EmailTypeInput::Work => {
+                spectral_vault::profile::EmailType::Work
+            }
+            crate::types::profile::EmailTypeInput::Other => {
+                spectral_vault::profile::EmailType::Other
+            }
+        };
+        profile
+            .email_addresses
+            .push(spectral_vault::profile::EmailAddress::new(
+                &email_input.email,
+                email_type,
+                key,
+            )?);
+    }
+    Ok(())
+}
+
 /// Encrypts the array fields (phones, emails, addresses, aliases, relatives)
 /// from `input` into `profile`.
 ///
@@ -60,49 +116,11 @@ fn apply_phase2_fields(
     key: &[u8; 32],
 ) -> Result<(), CommandError> {
     if let Some(ref phones) = input.phone_numbers {
-        for phone_input in phones {
-            let phone_type = match phone_input.phone_type {
-                crate::types::profile::PhoneTypeInput::Mobile => {
-                    spectral_vault::profile::PhoneType::Mobile
-                }
-                crate::types::profile::PhoneTypeInput::Home => {
-                    spectral_vault::profile::PhoneType::Home
-                }
-                crate::types::profile::PhoneTypeInput::Work => {
-                    spectral_vault::profile::PhoneType::Work
-                }
-            };
-            profile
-                .phone_numbers
-                .push(spectral_vault::profile::PhoneNumber::new(
-                    &phone_input.number,
-                    phone_type,
-                    key,
-                )?);
-        }
+        apply_phone_numbers(profile, phones, key)?;
     }
 
     if let Some(ref emails) = input.email_addresses {
-        for email_input in emails {
-            let email_type = match email_input.email_type {
-                crate::types::profile::EmailTypeInput::Personal => {
-                    spectral_vault::profile::EmailType::Personal
-                }
-                crate::types::profile::EmailTypeInput::Work => {
-                    spectral_vault::profile::EmailType::Work
-                }
-                crate::types::profile::EmailTypeInput::Other => {
-                    spectral_vault::profile::EmailType::Other
-                }
-            };
-            profile
-                .email_addresses
-                .push(spectral_vault::profile::EmailAddress::new(
-                    &email_input.email,
-                    email_type,
-                    key,
-                )?);
-        }
+        apply_email_addresses(profile, emails, key)?;
     }
 
     if let Some(ref addrs) = input.previous_addresses {

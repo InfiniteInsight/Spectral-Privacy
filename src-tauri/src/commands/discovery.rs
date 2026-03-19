@@ -497,55 +497,70 @@ fn decrypt_names(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) ->
     names
 }
 
-fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
-    let mut pii = UserPii::default();
-
-    // Convert slice to array reference
-    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
-
-    #[allow(deprecated)]
+#[allow(deprecated)]
+fn decrypt_emails(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut emails = Vec::new();
     if let Some(email) = &profile.email {
         if let Ok(e) = email.decrypt(key_array) {
-            pii.emails.push(e);
+            emails.push(e);
         }
     }
     for entry in &profile.email_addresses {
         if let Ok(e) = entry.email.decrypt(key_array) {
-            pii.emails.push(e);
+            emails.push(e);
         }
     }
+    emails
+}
 
-    #[allow(deprecated)]
+#[allow(deprecated)]
+fn decrypt_phones(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut phones = Vec::new();
     if let Some(phone) = &profile.phone {
         if let Ok(p) = phone.decrypt(key_array) {
-            pii.phones.push(p);
+            phones.push(p);
         }
     }
     for entry in &profile.phone_numbers {
         if let Ok(p) = entry.number.decrypt(key_array) {
-            pii.phones.push(p);
+            phones.push(p);
         }
     }
+    phones
+}
 
-    if let Some(ssn) = &profile.ssn {
-        if let Ok(s) = ssn.decrypt(key_array) {
-            pii.ssn = Some(s);
-        }
-    }
+fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
+    // Convert slice to array reference
+    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
 
+    let emails = decrypt_emails(profile, key_array);
+    let phones = decrypt_phones(profile, key_array);
+
+    let ssn = profile
+        .ssn
+        .as_ref()
+        .and_then(|s| s.decrypt(key_array).ok());
+
+    let mut addresses = Vec::new();
     if let Some(addr) = decrypt_address_fields(profile, key_array) {
-        pii.addresses.push(addr);
+        addresses.push(addr);
     }
 
-    pii.names = decrypt_names(profile, key_array);
+    let names = decrypt_names(profile, key_array);
 
-    if let Some(dob) = &profile.date_of_birth {
-        if let Ok(d) = dob.decrypt(key_array) {
-            pii.date_of_birth = Some(d);
-        }
+    let date_of_birth = profile
+        .date_of_birth
+        .as_ref()
+        .and_then(|d| d.decrypt(key_array).ok());
+
+    UserPii {
+        emails,
+        phones,
+        ssn,
+        addresses,
+        names,
+        date_of_birth,
     }
-
-    pii
 }
 
 fn is_pii_empty(pii: &UserPii) -> bool {

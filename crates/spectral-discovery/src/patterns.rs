@@ -444,6 +444,22 @@ fn pick_report_line(line1: usize, comp1: &str, line2: usize, comp2: &str) -> usi
     }
 }
 
+/// Returns true if the two address component types form a valid matchable pair.
+///
+/// Valid combinations:
+/// 1. Street + any other component
+/// 2. City + State
+/// 3. City + Zip
+/// State + Zip alone is NOT matched (too generic)
+fn is_valid_address_pair(comp1: &str, comp2: &str) -> bool {
+    let has_street = comp1 == "street" || comp2 == "street";
+    let has_city_state = (comp1 == "city" && comp2 == "state")
+        || (comp1 == "state" && comp2 == "city");
+    let has_city_zip = (comp1 == "city" && comp2 == "zip")
+        || (comp1 == "zip" && comp2 == "city");
+    has_street || has_city_state || has_city_zip
+}
+
 /// Check all addresses in the component map for valid pairs within proximity and
 /// push matches into `matches`. Updates `matched_addresses` to avoid duplicates.
 fn check_address_proximity(
@@ -464,18 +480,7 @@ fn check_address_proximity(
                     continue;
                 }
 
-                // Valid combinations:
-                // 1. Street + any other component
-                // 2. City + State
-                // 3. City + Zip
-                // State + Zip alone is NOT matched (too generic)
-                let has_street = comp1 == "street" || comp2 == "street";
-                let has_city_state = (comp1 == "city" && comp2 == "state")
-                    || (comp1 == "state" && comp2 == "city");
-                let has_city_zip = (comp1 == "city" && comp2 == "zip")
-                    || (comp1 == "zip" && comp2 == "city");
-
-                if has_street || has_city_state || has_city_zip {
+                if is_valid_address_pair(comp1, comp2) {
                     let report_line = pick_report_line(line1, comp1, line2, comp2);
 
                     if matched_addresses.insert((*addr_ptr, report_line)) {
