@@ -330,6 +330,12 @@
 													<span class="ml-2 text-gray-900">{profile.email}</span>
 												</div>
 											{/if}
+											{#if profile.ssn_last4}
+												<div>
+													<span class="text-gray-500">SSN:</span>
+													<span class="ml-2 text-gray-900">***-**-{profile.ssn_last4}</span>
+												</div>
+											{/if}
 											{#if profile.address_line1}
 												<div>
 													<span class="text-gray-500">Address:</span>

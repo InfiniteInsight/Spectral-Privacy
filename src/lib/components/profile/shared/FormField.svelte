@@ -3,7 +3,7 @@
 	interface Props {
 		label: string;
 		id: string;
-		type?: 'text' | 'email' | 'date';
+		type?: 'text' | 'email' | 'date' | 'password';
 		value: string;
 		error?: string;
 		required?: boolean;

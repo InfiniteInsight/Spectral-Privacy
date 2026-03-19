@@ -78,6 +78,19 @@
 		onchange(data);
 	}
 
+	function validateSsn(value: string): string {
+		if (!value) return ''; // Optional
+		const digits = value.replace(/\D/g, '');
+		if (digits.length !== 9) return 'SSN must be 9 digits (e.g. 123-45-6789)';
+		return '';
+	}
+
+	function handleSsnChange(value: string) {
+		data.ssn = value || undefined;
+		errors.ssn = validateSsn(value);
+		onchange(data);
+	}
+
 	// Expose validation function for parent
 	export function validate(): boolean {
 		const newErrors: Record<string, string> = {};
@@ -86,6 +99,7 @@
 		newErrors.last_name = validateLastName(data.last_name || '');
 		newErrors.middle_name = validateMiddleName(data.middle_name || '');
 		newErrors.date_of_birth = validateDateOfBirth(data.date_of_birth || '');
+		newErrors.ssn = validateSsn(data.ssn || '');
 
 		errors = newErrors;
 
@@ -143,6 +157,17 @@
 		error={errors.date_of_birth}
 		required={false}
 		onchange={handleDateOfBirthChange}
+	/>
+
+	<FormField
+		label="Social Security Number"
+		id="ssn"
+		type="password"
+		value={data.ssn || ''}
+		error={errors.ssn}
+		required={false}
+		placeholder="123-45-6789 (optional)"
+		onchange={handleSsnChange}
 	/>
 
 	<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">

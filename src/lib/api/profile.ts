@@ -80,6 +80,7 @@ export interface ProfileInput {
 	last_name: string;
 	email: string;
 	date_of_birth?: string; // ISO 8601 date string (YYYY-MM-DD)
+	ssn?: string; // Full SSN for matching (NNN-NN-NNNN or 9 digits); stored encrypted
 	address_line1: string;
 	address_line2?: string;
 	city: string;
@@ -104,6 +105,7 @@ export interface ProfileOutput {
 	last_name: string;
 	email: string;
 	date_of_birth?: string; // ISO 8601 date string (YYYY-MM-DD)
+	ssn_last4?: string; // Last 4 digits only (never the full SSN)
 	address_line1: string;
 	address_line2?: string;
 	city: string;

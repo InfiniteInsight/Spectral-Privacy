@@ -3,8 +3,8 @@
 use crate::error::CommandError;
 use crate::state::AppState;
 use crate::types::profile::{
-    AliasOutput, EmailAddressOutput, PhoneNumberOutput, PreviousAddressOutput, ProfileInput,
-    ProfileOutput, ProfileSummary, RelativeOutput,
+    ssn_last4, AliasOutput, EmailAddressOutput, PhoneNumberOutput, PreviousAddressOutput,
+    ProfileInput, ProfileOutput, ProfileSummary, RelativeOutput,
 };
 use spectral_core::types::ProfileId;
 use spectral_vault::cipher::encrypt_string;
@@ -34,6 +34,12 @@ fn apply_basic_fields(
     profile.date_of_birth = input
         .date_of_birth
         .map(|d| encrypt_string(&d.to_string(), key))
+        .transpose()?;
+    profile.ssn = input
+        .ssn
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(|s| encrypt_string(s, key))
         .transpose()?;
 
     // Combine address lines if address_line2 exists
@@ -504,6 +510,12 @@ pub async fn profile_get(
         .map(|f| f.decrypt(key))
         .transpose()?
         .and_then(|s: String| s.parse().ok());
+    let ssn_last4_val = profile
+        .ssn
+        .as_ref()
+        .map(|f| f.decrypt(key))
+        .transpose()?
+        .map(|s: String| ssn_last4(&s));
 
     // Decrypt and split address into two lines
     let (address_line1, address_line2) = profile
@@ -560,6 +572,7 @@ pub async fn profile_get(
         last_name,
         email,
         date_of_birth,
+        ssn_last4: ssn_last4_val,
         address_line1,
         address_line2,
         city,
@@ -609,8 +622,15 @@ pub async fn profile_update(
     // Get encryption key
     let key = vault.encryption_key()?;
 
+    // Preserve existing SSN if the update doesn't supply a new one
+    let existing_ssn = profile.ssn.clone();
+
     // Update encrypted fields
     apply_basic_fields(&mut profile, &input, key)?;
+
+    if input.ssn.as_deref().map_or(true, |s| s.is_empty()) {
+        profile.ssn = existing_ssn;
+    }
 
     // Clear existing Phase 2 arrays before re-populating
     profile.phone_numbers.clear();
@@ -758,6 +778,7 @@ mod tests {
             last_name: "Doe".to_string(),
             email: "john@example.com".to_string(),
             date_of_birth: None,
+            ssn: None,
             address_line1: "123 Main St".to_string(),
             address_line2: None,
             city: "San Francisco".to_string(),
@@ -781,6 +802,7 @@ mod tests {
             date_of_birth: Some(
                 chrono::Local::now().date_naive() - chrono::Duration::days(365 * 30),
             ),
+            ssn: None,
             address_line1: "123 Main St".to_string(),
             address_line2: Some("Apt 4B".to_string()),
             city: "San Francisco".to_string(),
