@@ -5,6 +5,7 @@
 		getDiscoveryFindings,
 		markFindingRemediated,
 		markFindingIgnored,
+		clearDiscoveryResults,
 		startDiscoveryScan,
 		stopDiscoveryScan,
 		pauseDiscoveryScan,
@@ -191,6 +192,22 @@
 		}
 	}
 
+	async function handleClearResults() {
+		const vid = vaultStore.currentVaultId;
+		if (!vid) return;
+		if (!confirm('Clear all scan results? This cannot be undone.')) return;
+		try {
+			await clearDiscoveryResults(vid);
+			findings = [];
+			sessionId = null;
+			filesScanned = 0;
+			filesWithFindings = 0;
+			showSuccess('Scan results cleared');
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
 	async function handleDownloadLog() {
 		const vid = vaultStore.currentVaultId;
 		if (!vid || !sessionId) return;
@@ -296,6 +313,11 @@
 					onclick={handleDownloadLog}
 					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
 					>Download Log</button
+				>
+				<button
+					onclick={handleClearResults}
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+					>Clear Results</button
 				>
 			{/if}
 			<button

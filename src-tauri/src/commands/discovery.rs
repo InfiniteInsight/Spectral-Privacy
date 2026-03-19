@@ -311,6 +311,18 @@ pub async fn mark_finding_ignored(
 }
 
 #[tauri::command]
+pub async fn clear_discovery_results(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+    spectral_db::discovery_findings::clear_discovery_results(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("{e}"))
+}
+
+#[tauri::command]
 pub async fn delete_file(file_path: String) -> Result<(), String> {
     std::fs::remove_file(&file_path).map_err(|e| format!("Delete failed: {e}"))
 }
