@@ -1,7 +1,10 @@
 //! Thread-pool based PII scanner
 
 use crate::patterns::Matcher;
-use crate::types::*;
+use crate::types::{
+    FileScanResult, ScanCommand, ScanConfig, ScanProgress, UserPii, SCANNABLE_EXTENSIONS,
+    MAX_FILE_SIZE, MAX_SCAN_DEPTH,
+};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -109,52 +112,7 @@ impl Scanner {
                 break;
             }
 
-            // Scan files from this directory in parallel as they're discovered
-            let dir_findings: Vec<FileScanResult> = WalkDir::new(&dir)
-                .max_depth(MAX_SCAN_DEPTH)
-                .follow_links(false)
-                .into_iter()
-                .filter_entry(|e| !self.should_skip(e.path()))
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| {
-                    let path = entry.path();
-                    !self
-                        .ignored_paths
-                        .contains(&path.to_string_lossy().to_string())
-                        && path.is_file()
-                        && self.is_scannable(path)
-                })
-                .map(|e| e.path().to_path_buf())
-                .par_bridge()
-                .filter_map(|path| {
-                    if self.stop_flag.load(Ordering::Relaxed) {
-                        return None;
-                    }
-                    self.check_commands();
-                    self.wait_if_paused();
-
-                    let result = self.scan_file(&path);
-                    // nosemgrep: llm-prompt-injection-risk
-                    let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
-
-                    if result.is_some() {
-                        self.files_with_findings.fetch_add(1, Ordering::Relaxed);
-                    }
-
-                    if count % 100 == 0 {
-                        let _ = self.progress_tx.try_send(ScanProgress {
-                            files_scanned: count,
-                            files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
-                            current_directory: path.to_string_lossy().to_string(),
-                            is_complete: false,
-                            was_stopped: false,
-                        });
-                    }
-
-                    result
-                })
-                .collect();
-
+            let dir_findings = self.scan_directory(&dir);
             all_findings.extend(dir_findings);
         }
 
@@ -176,6 +134,54 @@ impl Scanner {
             findings,
             was_stopped,
         }
+    }
+
+    /// Scan all eligible files in a single directory in parallel
+    fn scan_directory(&self, dir: &Path) -> Vec<FileScanResult> {
+        WalkDir::new(dir)
+            .max_depth(MAX_SCAN_DEPTH)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| !self.should_skip(e.path()))
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                let path = entry.path();
+                !self
+                    .ignored_paths
+                    .contains(&path.to_string_lossy().to_string())
+                    && path.is_file()
+                    && self.is_scannable(path)
+            })
+            .map(|e| e.path().to_path_buf())
+            .par_bridge()
+            .filter_map(|path| {
+                if self.stop_flag.load(Ordering::Relaxed) {
+                    return None;
+                }
+                self.check_commands();
+                self.wait_if_paused();
+
+                let result = self.scan_file(&path);
+                // nosemgrep: llm-prompt-injection-risk
+                let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
+
+                if result.is_some() {
+                    self.files_with_findings.fetch_add(1, Ordering::Relaxed);
+                }
+
+                if count % 100 == 0 {
+                    let _ = self.progress_tx.try_send(ScanProgress {
+                        files_scanned: count,
+                        files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
+                        current_directory: path.to_string_lossy().to_string(),
+                        is_complete: false,
+                        was_stopped: false,
+                    });
+                }
+
+                result
+            })
+            .collect()
     }
 
     fn should_skip(&self, path: &Path) -> bool {

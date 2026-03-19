@@ -2,46 +2,27 @@
 
 use crate::error::CommandError;
 use crate::state::AppState;
-use crate::types::profile::{ProfileInput, ProfileOutput, ProfileSummary};
+use crate::types::profile::{
+    AliasOutput, EmailAddressOutput, PhoneNumberOutput, PreviousAddressOutput, ProfileInput,
+    ProfileOutput, ProfileSummary, RelativeOutput,
+};
 use spectral_core::types::ProfileId;
 use spectral_vault::cipher::encrypt_string;
 use spectral_vault::UserProfile;
 use tauri::State;
 use tracing::info;
 
-/// Create a new profile in the vault.
+// ── Helper: encrypt basic (non-array) profile fields ────────────────────────
+
+/// Encrypts the scalar fields of `input` into `profile`.
 ///
-/// Creates a profile with validated input and returns the profile with generated ID.
+/// Shared by `profile_create` and `profile_update`.
 #[allow(deprecated)]
-#[tauri::command]
-pub async fn profile_create(
-    state: State<'_, AppState>,
-    vault_id: String,
-    input: ProfileInput,
-) -> Result<ProfileOutput, CommandError> {
-    info!("Creating profile in vault: {}", vault_id);
-
-    // Validate input
-    input.validate()?;
-
-    // Get vault
-    let vault = state.get_vault(&vault_id).ok_or_else(|| {
-        CommandError::new(
-            "VAULT_NOT_UNLOCKED",
-            format!("Vault '{vault_id}' is not unlocked"),
-        )
-    })?;
-
-    // Get the encryption key for field-level encryption
-    let key = vault.encryption_key()?;
-
-    // Create profile ID
-    let profile_id = ProfileId::generate();
-
-    // Build user profile with encrypted fields
-    let mut profile = UserProfile::new(profile_id.clone());
-
-    // Encrypt and store fields
+fn apply_basic_fields(
+    profile: &mut UserProfile,
+    input: &ProfileInput,
+    key: &[u8; 32],
+) -> Result<(), CommandError> {
     profile.first_name = Some(encrypt_string(&input.first_name, key)?);
     profile.middle_name = input
         .middle_name
@@ -54,19 +35,30 @@ pub async fn profile_create(
         .date_of_birth
         .map(|d| encrypt_string(&d.to_string(), key))
         .transpose()?;
+
     // Combine address lines if address_line2 exists
-    let full_address = if let Some(ref line2) = input.address_line2 {
-        format!("{}\n{}", input.address_line1, line2)
-    } else {
-        input.address_line1.clone()
+    let full_address = match &input.address_line2 {
+        Some(line2) => format!("{}\n{}", input.address_line1, line2),
+        None => input.address_line1.clone(),
     };
     profile.address = Some(encrypt_string(&full_address, key)?);
     profile.city = Some(encrypt_string(&input.city, key)?);
     profile.state = Some(encrypt_string(&input.state, key)?);
     profile.zip_code = Some(encrypt_string(&input.zip_code, key)?);
+    Ok(())
+}
 
-    // Add Phase 2 fields
-    // Add phone numbers
+// ── Helper: encrypt Phase-2 array fields ────────────────────────────────────
+
+/// Encrypts the array fields (phones, emails, addresses, aliases, relatives)
+/// from `input` into `profile`.
+///
+/// Shared by `profile_create` and `profile_update`.
+fn apply_phase2_fields(
+    profile: &mut UserProfile,
+    input: &ProfileInput,
+    key: &[u8; 32],
+) -> Result<(), CommandError> {
     if let Some(ref phones) = input.phone_numbers {
         for phone_input in phones {
             let phone_type = match phone_input.phone_type {
@@ -90,7 +82,6 @@ pub async fn profile_create(
         }
     }
 
-    // Add email addresses
     if let Some(ref emails) = input.email_addresses {
         for email_input in emails {
             let email_type = match email_input.email_type {
@@ -114,7 +105,6 @@ pub async fn profile_create(
         }
     }
 
-    // Add previous addresses
     if let Some(ref addrs) = input.previous_addresses {
         for addr_input in addrs {
             profile
@@ -135,7 +125,6 @@ pub async fn profile_create(
         }
     }
 
-    // Add aliases
     if let Some(ref alias_list) = input.aliases {
         for alias_input in alias_list {
             profile.aliases.push(spectral_vault::profile::Alias {
@@ -163,7 +152,6 @@ pub async fn profile_create(
         }
     }
 
-    // Add relatives
     if let Some(ref relative_list) = input.relatives {
         for relative_input in relative_list {
             let relationship = match relative_input.relationship {
@@ -212,6 +200,230 @@ pub async fn profile_create(
         }
     }
 
+    Ok(())
+}
+
+// ── Helpers: decrypt Phase-2 array fields ───────────────────────────────────
+
+/// Decrypts phone numbers, migrating from the legacy `phone` field when needed.
+#[allow(deprecated)]
+fn decrypt_phone_numbers(
+    profile: &UserProfile,
+    key: &[u8; 32],
+) -> Result<Option<Vec<PhoneNumberOutput>>, CommandError> {
+    if !profile.phone_numbers.is_empty() {
+        let mut phones = Vec::new();
+        for phone in &profile.phone_numbers {
+            let number = phone.number.decrypt(key)?;
+            let phone_type = match phone.phone_type {
+                spectral_vault::profile::PhoneType::Mobile => "Mobile",
+                spectral_vault::profile::PhoneType::Home => "Home",
+                spectral_vault::profile::PhoneType::Work => "Work",
+            };
+            phones.push(PhoneNumberOutput {
+                number,
+                phone_type: phone_type.to_string(),
+            });
+        }
+        return Ok(Some(phones));
+    }
+
+    // Migration: convert legacy phone field to new format
+    if let Some(ref old_phone) = profile.phone {
+        let number = old_phone.decrypt(key)?;
+        if !number.is_empty() {
+            return Ok(Some(vec![PhoneNumberOutput {
+                number,
+                phone_type: "Mobile".to_string(),
+            }]));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Decrypts email addresses, migrating from the legacy `email` field when needed.
+fn decrypt_email_addresses(
+    profile: &UserProfile,
+    legacy_email: &str,
+    key: &[u8; 32],
+) -> Result<Option<Vec<EmailAddressOutput>>, CommandError> {
+    if !profile.email_addresses.is_empty() {
+        let mut emails = Vec::new();
+        for email_addr in &profile.email_addresses {
+            let email = email_addr.email.decrypt(key)?;
+            let email_type = match email_addr.email_type {
+                spectral_vault::profile::EmailType::Personal => "Personal",
+                spectral_vault::profile::EmailType::Work => "Work",
+                spectral_vault::profile::EmailType::Other => "Other",
+            };
+            emails.push(EmailAddressOutput {
+                email,
+                email_type: email_type.to_string(),
+            });
+        }
+        return Ok(Some(emails));
+    }
+
+    // Migration: use the already-decrypted legacy email field
+    if !legacy_email.is_empty() {
+        return Ok(Some(vec![EmailAddressOutput {
+            email: legacy_email.to_string(),
+            email_type: "Personal".to_string(),
+        }]));
+    }
+
+    Ok(None)
+}
+
+/// Decrypts previous addresses.
+fn decrypt_previous_addresses(
+    profile: &UserProfile,
+    key: &[u8; 32],
+) -> Result<Option<Vec<PreviousAddressOutput>>, CommandError> {
+    if profile.previous_addresses_v2.is_empty() {
+        return Ok(None);
+    }
+
+    let mut addrs = Vec::new();
+    for addr in &profile.previous_addresses_v2 {
+        addrs.push(PreviousAddressOutput {
+            address_line1: addr.address_line1.decrypt(key)?,
+            address_line2: addr
+                .address_line2
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            city: addr.city.decrypt(key)?,
+            state: addr.state.decrypt(key)?,
+            zip_code: addr.zip_code.decrypt(key)?,
+            lived_from: addr.lived_from.clone(),
+            lived_to: addr.lived_to.clone(),
+        });
+    }
+    Ok(Some(addrs))
+}
+
+/// Decrypts aliases.
+fn decrypt_aliases(
+    profile: &UserProfile,
+    key: &[u8; 32],
+) -> Result<Option<Vec<AliasOutput>>, CommandError> {
+    if profile.aliases.is_empty() {
+        return Ok(None);
+    }
+
+    let mut alias_list = Vec::new();
+    for alias in &profile.aliases {
+        alias_list.push(AliasOutput {
+            first_name: alias
+                .first_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            middle_name: alias
+                .middle_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            last_name: alias
+                .last_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            nickname: alias
+                .nickname
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+        });
+    }
+    Ok(Some(alias_list))
+}
+
+/// Decrypts relatives.
+fn decrypt_relatives(
+    profile: &UserProfile,
+    key: &[u8; 32],
+) -> Result<Option<Vec<RelativeOutput>>, CommandError> {
+    if profile.relatives.is_empty() {
+        return Ok(None);
+    }
+
+    let mut relative_list = Vec::new();
+    for relative in &profile.relatives {
+        let relationship = match relative.relationship {
+            spectral_vault::profile::RelationshipType::Spouse => "Spouse",
+            spectral_vault::profile::RelationshipType::Partner => "Partner",
+            spectral_vault::profile::RelationshipType::Parent => "Parent",
+            spectral_vault::profile::RelationshipType::Child => "Child",
+            spectral_vault::profile::RelationshipType::Sibling => "Sibling",
+            spectral_vault::profile::RelationshipType::Other => "Other",
+        };
+        relative_list.push(RelativeOutput {
+            first_name: relative
+                .first_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            middle_name: relative
+                .middle_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            last_name: relative
+                .last_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            maiden_name: relative
+                .maiden_name
+                .as_ref()
+                .map(|f| f.decrypt(key))
+                .transpose()?,
+            relationship: relationship.to_string(),
+        });
+    }
+    Ok(Some(relative_list))
+}
+
+// ── Tauri commands ───────────────────────────────────────────────────────────
+
+/// Create a new profile in the vault.
+///
+/// Creates a profile with validated input and returns the profile with generated ID.
+#[allow(deprecated)]
+#[tauri::command]
+pub async fn profile_create(
+    state: State<'_, AppState>,
+    vault_id: String,
+    input: ProfileInput,
+) -> Result<ProfileOutput, CommandError> {
+    info!("Creating profile in vault: {}", vault_id);
+
+    // Validate input
+    input.validate()?;
+
+    // Get vault
+    let vault = state.get_vault(&vault_id).ok_or_else(|| {
+        CommandError::new(
+            "VAULT_NOT_UNLOCKED",
+            format!("Vault '{vault_id}' is not unlocked"),
+        )
+    })?;
+
+    // Get the encryption key for field-level encryption
+    let key = vault.encryption_key()?;
+
+    // Create profile ID
+    let profile_id = ProfileId::generate();
+
+    // Build user profile with encrypted fields
+    let mut profile = UserProfile::new(profile_id.clone());
+
+    apply_basic_fields(&mut profile, &input, key)?;
+    apply_phase2_fields(&mut profile, &input, key)?;
+
     // Save profile
     vault.save_profile(&profile).await?;
 
@@ -250,7 +462,7 @@ pub async fn profile_get(
     // Get encryption key
     let key = vault.encryption_key()?;
 
-    // Decrypt fields
+    // Decrypt scalar fields
     let first_name = profile
         .first_name
         .as_ref()
@@ -280,6 +492,7 @@ pub async fn profile_get(
         .map(|f| f.decrypt(key))
         .transpose()?
         .and_then(|s: String| s.parse().ok());
+
     // Decrypt and split address into two lines
     let (address_line1, address_line2) = profile
         .address
@@ -293,6 +506,7 @@ pub async fn profile_get(
             (line1, line2)
         })
         .unwrap_or((String::new(), None));
+
     let city = profile
         .city
         .as_ref()
@@ -321,169 +535,11 @@ pub async fn profile_get(
     );
 
     // Decrypt Phase 2 fields with migration from old fields
-    let phone_numbers = if !profile.phone_numbers.is_empty() {
-        let mut phones = Vec::new();
-        for phone in &profile.phone_numbers {
-            let number = phone.number.decrypt(key)?;
-            let phone_type = match phone.phone_type {
-                spectral_vault::profile::PhoneType::Mobile => "Mobile",
-                spectral_vault::profile::PhoneType::Home => "Home",
-                spectral_vault::profile::PhoneType::Work => "Work",
-            };
-            phones.push(crate::types::profile::PhoneNumberOutput {
-                number,
-                phone_type: phone_type.to_string(),
-            });
-        }
-        Some(phones)
-    } else if let Some(ref old_phone) = profile.phone {
-        // Migration: convert old phone field to new format
-        let number = old_phone.decrypt(key)?;
-        if !number.is_empty() {
-            Some(vec![crate::types::profile::PhoneNumberOutput {
-                number,
-                phone_type: "Mobile".to_string(), // Default to Mobile for migrated data
-            }])
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    let email_addresses = if !profile.email_addresses.is_empty() {
-        let mut emails = Vec::new();
-        for email_addr in &profile.email_addresses {
-            let email = email_addr.email.decrypt(key)?;
-            let email_type = match email_addr.email_type {
-                spectral_vault::profile::EmailType::Personal => "Personal",
-                spectral_vault::profile::EmailType::Work => "Work",
-                spectral_vault::profile::EmailType::Other => "Other",
-            };
-            emails.push(crate::types::profile::EmailAddressOutput {
-                email,
-                email_type: email_type.to_string(),
-            });
-        }
-        Some(emails)
-    } else {
-        // Migration: The old 'email' field is always populated from Phase 1 data above
-        // We already have it in the 'email' variable, so create an email_addresses array from it
-        if !email.is_empty() {
-            Some(vec![crate::types::profile::EmailAddressOutput {
-                email: email.clone(),
-                email_type: "Personal".to_string(), // Default to Personal for migrated data
-            }])
-        } else {
-            None
-        }
-    };
-
-    let previous_addresses = if profile.previous_addresses_v2.is_empty() {
-        None
-    } else {
-        let mut addrs = Vec::new();
-        for addr in &profile.previous_addresses_v2 {
-            let address_line1 = addr.address_line1.decrypt(key)?;
-            let address_line2 = addr
-                .address_line2
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let city = addr.city.decrypt(key)?;
-            let state = addr.state.decrypt(key)?;
-            let zip_code = addr.zip_code.decrypt(key)?;
-            addrs.push(crate::types::profile::PreviousAddressOutput {
-                address_line1,
-                address_line2,
-                city,
-                state,
-                zip_code,
-                lived_from: addr.lived_from.clone(),
-                lived_to: addr.lived_to.clone(),
-            });
-        }
-        Some(addrs)
-    };
-
-    let aliases = if profile.aliases.is_empty() {
-        None
-    } else {
-        let mut alias_list = Vec::new();
-        for alias in &profile.aliases {
-            let first_name = alias
-                .first_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let middle_name = alias
-                .middle_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let last_name = alias
-                .last_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let nickname = alias
-                .nickname
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            alias_list.push(crate::types::profile::AliasOutput {
-                first_name,
-                middle_name,
-                last_name,
-                nickname,
-            });
-        }
-        Some(alias_list)
-    };
-
-    let relatives = if profile.relatives.is_empty() {
-        None
-    } else {
-        let mut relative_list = Vec::new();
-        for relative in &profile.relatives {
-            let first_name = relative
-                .first_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let middle_name = relative
-                .middle_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let last_name = relative
-                .last_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let maiden_name = relative
-                .maiden_name
-                .as_ref()
-                .map(|f| f.decrypt(key))
-                .transpose()?;
-            let relationship = match relative.relationship {
-                spectral_vault::profile::RelationshipType::Spouse => "Spouse",
-                spectral_vault::profile::RelationshipType::Partner => "Partner",
-                spectral_vault::profile::RelationshipType::Parent => "Parent",
-                spectral_vault::profile::RelationshipType::Child => "Child",
-                spectral_vault::profile::RelationshipType::Sibling => "Sibling",
-                spectral_vault::profile::RelationshipType::Other => "Other",
-            };
-            relative_list.push(crate::types::profile::RelativeOutput {
-                first_name,
-                middle_name,
-                last_name,
-                maiden_name,
-                relationship: relationship.to_string(),
-            });
-        }
-        Some(relative_list)
-    };
+    let phone_numbers = decrypt_phone_numbers(&profile, key)?;
+    let email_addresses = decrypt_email_addresses(&profile, &email, key)?;
+    let previous_addresses = decrypt_previous_addresses(&profile, key)?;
+    let aliases = decrypt_aliases(&profile, key)?;
+    let relatives = decrypt_relatives(&profile, key)?;
 
     Ok(ProfileOutput {
         id: profile_id,
@@ -542,182 +598,16 @@ pub async fn profile_update(
     let key = vault.encryption_key()?;
 
     // Update encrypted fields
-    profile.first_name = Some(encrypt_string(&input.first_name, key)?);
-    profile.middle_name = input
-        .middle_name
-        .as_ref()
-        .map(|s| encrypt_string(s, key))
-        .transpose()?;
-    profile.last_name = Some(encrypt_string(&input.last_name, key)?);
-    profile.email = Some(encrypt_string(&input.email, key)?);
-    profile.date_of_birth = input
-        .date_of_birth
-        .map(|d| encrypt_string(&d.to_string(), key))
-        .transpose()?;
-    // Combine address lines if address_line2 exists
-    let full_address = if let Some(ref line2) = input.address_line2 {
-        format!("{}\n{}", input.address_line1, line2)
-    } else {
-        input.address_line1.clone()
-    };
-    profile.address = Some(encrypt_string(&full_address, key)?);
-    profile.city = Some(encrypt_string(&input.city, key)?);
-    profile.state = Some(encrypt_string(&input.state, key)?);
-    profile.zip_code = Some(encrypt_string(&input.zip_code, key)?);
+    apply_basic_fields(&mut profile, &input, key)?;
 
-    // Update Phase 2 fields
-    // Clear existing arrays
+    // Clear existing Phase 2 arrays before re-populating
     profile.phone_numbers.clear();
     profile.email_addresses.clear();
     profile.previous_addresses_v2.clear();
     profile.aliases.clear();
     profile.relatives.clear();
 
-    // Add phone numbers
-    if let Some(ref phones) = input.phone_numbers {
-        for phone_input in phones {
-            let phone_type = match phone_input.phone_type {
-                crate::types::profile::PhoneTypeInput::Mobile => {
-                    spectral_vault::profile::PhoneType::Mobile
-                }
-                crate::types::profile::PhoneTypeInput::Home => {
-                    spectral_vault::profile::PhoneType::Home
-                }
-                crate::types::profile::PhoneTypeInput::Work => {
-                    spectral_vault::profile::PhoneType::Work
-                }
-            };
-            profile
-                .phone_numbers
-                .push(spectral_vault::profile::PhoneNumber::new(
-                    &phone_input.number,
-                    phone_type,
-                    key,
-                )?);
-        }
-    }
-
-    // Add email addresses
-    if let Some(ref emails) = input.email_addresses {
-        for email_input in emails {
-            let email_type = match email_input.email_type {
-                crate::types::profile::EmailTypeInput::Personal => {
-                    spectral_vault::profile::EmailType::Personal
-                }
-                crate::types::profile::EmailTypeInput::Work => {
-                    spectral_vault::profile::EmailType::Work
-                }
-                crate::types::profile::EmailTypeInput::Other => {
-                    spectral_vault::profile::EmailType::Other
-                }
-            };
-            profile
-                .email_addresses
-                .push(spectral_vault::profile::EmailAddress::new(
-                    &email_input.email,
-                    email_type,
-                    key,
-                )?);
-        }
-    }
-
-    // Add previous addresses
-    if let Some(ref addrs) = input.previous_addresses {
-        for addr_input in addrs {
-            profile
-                .previous_addresses_v2
-                .push(spectral_vault::profile::PreviousAddress {
-                    address_line1: encrypt_string(&addr_input.address_line1, key)?,
-                    address_line2: addr_input
-                        .address_line2
-                        .as_ref()
-                        .map(|s| encrypt_string(s, key))
-                        .transpose()?,
-                    city: encrypt_string(&addr_input.city, key)?,
-                    state: encrypt_string(&addr_input.state, key)?,
-                    zip_code: encrypt_string(&addr_input.zip_code, key)?,
-                    lived_from: addr_input.lived_from.clone(),
-                    lived_to: addr_input.lived_to.clone(),
-                });
-        }
-    }
-
-    // Add aliases
-    if let Some(ref alias_list) = input.aliases {
-        for alias_input in alias_list {
-            profile.aliases.push(spectral_vault::profile::Alias {
-                first_name: alias_input
-                    .first_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                middle_name: alias_input
-                    .middle_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                last_name: alias_input
-                    .last_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                nickname: alias_input
-                    .nickname
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-            });
-        }
-    }
-
-    // Add relatives
-    if let Some(ref relative_list) = input.relatives {
-        for relative_input in relative_list {
-            let relationship = match relative_input.relationship {
-                crate::types::profile::RelationshipTypeInput::Spouse => {
-                    spectral_vault::profile::RelationshipType::Spouse
-                }
-                crate::types::profile::RelationshipTypeInput::Partner => {
-                    spectral_vault::profile::RelationshipType::Partner
-                }
-                crate::types::profile::RelationshipTypeInput::Parent => {
-                    spectral_vault::profile::RelationshipType::Parent
-                }
-                crate::types::profile::RelationshipTypeInput::Child => {
-                    spectral_vault::profile::RelationshipType::Child
-                }
-                crate::types::profile::RelationshipTypeInput::Sibling => {
-                    spectral_vault::profile::RelationshipType::Sibling
-                }
-                crate::types::profile::RelationshipTypeInput::Other => {
-                    spectral_vault::profile::RelationshipType::Other
-                }
-            };
-            profile.relatives.push(spectral_vault::profile::Relative {
-                first_name: relative_input
-                    .first_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                middle_name: relative_input
-                    .middle_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                last_name: relative_input
-                    .last_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                maiden_name: relative_input
-                    .maiden_name
-                    .as_ref()
-                    .map(|s| encrypt_string(s, key))
-                    .transpose()?,
-                relationship,
-            });
-        }
-    }
+    apply_phase2_fields(&mut profile, &input, key)?;
 
     // Update timestamp
     profile.touch();

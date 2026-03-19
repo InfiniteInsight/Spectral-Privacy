@@ -147,19 +147,8 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         });
     }
 
-    let scan_dirs = if let Some(custom) = scan_config.custom_directories.clone() {
-        tracing::info!("Using custom scan directories: {:?}", custom);
-        custom
-    } else {
-        match directories::UserDirs::new() {
-            Some(dirs) => {
-                let home = dirs.home_dir().to_path_buf();
-                tracing::info!("Using home directory for scan: {:?}", home);
-                vec![home]
-            }
-            None => return Err("Failed to get home directory".to_string()),
-        }
-    };
+    let scan_dirs = get_scan_directories(scan_config.custom_directories.clone())
+        .ok_or_else(|| "Failed to get home directory".to_string())?;
 
     tracing::info!(
         "Starting scanner thread with {} directories to scan",
@@ -202,58 +191,13 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             .build()
             .expect("Failed to create runtime");
 
-        rt.block_on(async {
-            let mut findings_count = 0;
-            let mut files_logged = Vec::new();
-
-            for file_result in &result.findings {
-                let path = file_result.path.to_string_lossy().to_string();
-                files_logged.push((path.clone(), true));
-
-                for pii_match in &file_result.matches {
-                    if insert_pii_finding(&pool, &vault_id_clone, &file_result.path, pii_match)
-                        .await
-                        .is_ok()
-                    {
-                        findings_count += 1;
-                    }
-                }
-            }
-
-            if !files_logged.is_empty() {
-                let _ = scan_logs::log_scanned_files_batch(&pool, &session_id_clone, &files_logged)
-                    .await;
-            }
-
-            let status = if result.was_stopped {
-                "stopped"
-            } else {
-                "completed"
-            };
-            let _ = scan_logs::update_scan_session(
-                &pool,
-                &session_id_clone,
-                status,
-                result.files_scanned as i64,
-                findings_count,
-                None,
-            )
-            .await;
-
-            let _ = app.emit(
-                "discovery:complete",
-                serde_json::json!({
-                    "session_id": session_id_clone,
-                    "vault_id": vault_id_clone,
-                    "files_scanned": result.files_scanned,
-                    "findings_count": findings_count,
-                    "was_stopped": result.was_stopped,
-                }),
-            );
-
-            let mut active = ACTIVE_SCAN.lock().await;
-            *active = None;
-        });
+        rt.block_on(persist_scan_results(
+            &pool,
+            &session_id_clone,
+            &vault_id_clone,
+            &app,
+            result,
+        ));
     });
 
     Ok(session_id)
@@ -450,6 +394,109 @@ pub async fn get_scan_log(
 
 // Helper functions
 
+fn get_scan_directories(custom_directories: Option<Vec<PathBuf>>) -> Option<Vec<PathBuf>> {
+    if let Some(custom) = custom_directories {
+        tracing::info!("Using custom scan directories: {:?}", custom);
+        Some(custom)
+    } else {
+        let dirs = directories::UserDirs::new()?;
+        let home = dirs.home_dir().to_path_buf();
+        tracing::info!("Using home directory for scan: {:?}", home);
+        Some(vec![home])
+    }
+}
+
+async fn persist_scan_results<R: tauri::Runtime>(
+    pool: &sqlx::SqlitePool,
+    session_id: &str,
+    vault_id: &str,
+    app: &tauri::AppHandle<R>,
+    result: spectral_discovery::ScanResult,
+) {
+    let mut findings_count = 0;
+    let mut files_logged = Vec::new();
+
+    for file_result in &result.findings {
+        let path = file_result.path.to_string_lossy().to_string();
+        files_logged.push((path.clone(), true));
+
+        for pii_match in &file_result.matches {
+            if insert_pii_finding(pool, vault_id, &file_result.path, pii_match)
+                .await
+                .is_ok()
+            {
+                findings_count += 1;
+            }
+        }
+    }
+
+    if !files_logged.is_empty() {
+        let _ = scan_logs::log_scanned_files_batch(pool, session_id, &files_logged).await;
+    }
+
+    let status = if result.was_stopped { "stopped" } else { "completed" };
+    let _ = scan_logs::update_scan_session(
+        pool,
+        session_id,
+        status,
+        result.files_scanned as i64,
+        findings_count,
+        None,
+    )
+    .await;
+
+    let _ = app.emit(
+        "discovery:complete",
+        serde_json::json!({
+            "session_id": session_id,
+            "vault_id": vault_id,
+            "files_scanned": result.files_scanned,
+            "findings_count": findings_count,
+            "was_stopped": result.was_stopped,
+        }),
+    );
+
+    let mut active = ACTIVE_SCAN.lock().await;
+    *active = None;
+}
+
+fn decrypt_address_fields(
+    profile: &spectral_vault::UserProfile,
+    key_array: &[u8; 32],
+) -> Option<AddressInfo> {
+    let addr = AddressInfo {
+        street: profile.address.as_ref().and_then(|a| a.decrypt(key_array).ok()),
+        city: profile.city.as_ref().and_then(|c| c.decrypt(key_array).ok()),
+        state: profile.state.as_ref().and_then(|s| s.decrypt(key_array).ok()),
+        zip: profile.zip_code.as_ref().and_then(|z| z.decrypt(key_array).ok()),
+    };
+    if addr.street.is_some() || addr.zip.is_some() {
+        Some(addr)
+    } else {
+        None
+    }
+}
+
+fn decrypt_names(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut names = Vec::new();
+    if let Some(name) = &profile.full_name {
+        if let Ok(n) = name.decrypt(key_array) {
+            names.push(n);
+        }
+    }
+    if let Some(first) = &profile.first_name {
+        if let Ok(n) = first.decrypt(key_array) {
+            names.push(n);
+        }
+    }
+    if let Some(last) = &profile.last_name {
+        if let Ok(n) = last.decrypt(key_array) {
+            names.push(n);
+        }
+    }
+    names
+}
+
 fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
     let mut pii = UserPii::default();
 
@@ -486,43 +533,11 @@ fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPi
         }
     }
 
-    let mut addr = AddressInfo {
-        street: None,
-        city: None,
-        state: None,
-        zip: None,
-    };
-    if let Some(a) = &profile.address {
-        addr.street = a.decrypt(key_array).ok();
-    }
-    if let Some(c) = &profile.city {
-        addr.city = c.decrypt(key_array).ok();
-    }
-    if let Some(s) = &profile.state {
-        addr.state = s.decrypt(key_array).ok();
-    }
-    if let Some(z) = &profile.zip_code {
-        addr.zip = z.decrypt(key_array).ok();
-    }
-    if addr.street.is_some() || addr.zip.is_some() {
+    if let Some(addr) = decrypt_address_fields(profile, key_array) {
         pii.addresses.push(addr);
     }
 
-    if let Some(name) = &profile.full_name {
-        if let Ok(n) = name.decrypt(key_array) {
-            pii.names.push(n);
-        }
-    }
-    if let Some(first) = &profile.first_name {
-        if let Ok(n) = first.decrypt(key_array) {
-            pii.names.push(n);
-        }
-    }
-    if let Some(last) = &profile.last_name {
-        if let Ok(n) = last.decrypt(key_array) {
-            pii.names.push(n);
-        }
-    }
+    pii.names = decrypt_names(profile, key_array);
 
     if let Some(dob) = &profile.date_of_birth {
         if let Ok(d) = dob.decrypt(key_array) {

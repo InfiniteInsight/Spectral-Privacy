@@ -124,49 +124,15 @@ impl Matcher {
 
     fn compile_addresses(&mut self, addresses: &[AddressInfo]) {
         for addr in addresses {
-            let street_regex = addr.street.as_ref().and_then(|s| {
-                if s.len() >= 5 {
-                    // Add word boundary at start to prevent matching in middle of text
-                    // End boundary not added as street addresses often have suffixes
-                    let pattern = format!(r"\b{}", regex::escape(s));
-                    RegexBuilder::new(&pattern)
-                        .case_insensitive(true)
-                        .build()
-                        .ok()
-                } else {
-                    None
-                }
-            });
-
-            let city_regex = addr.city.as_ref().and_then(|c| {
-                if c.len() >= 3 {
-                    RegexBuilder::new(&format!(r"\b{}\b", regex::escape(c)))
-                        .case_insensitive(true)
-                        .build()
-                        .ok()
-                } else {
-                    None
-                }
-            });
-
-            let state_regex = addr.state.as_ref().and_then(|s| {
-                if s.len() >= 2 {
-                    RegexBuilder::new(&format!(r"\b{}\b", regex::escape(s)))
-                        .case_insensitive(true)
-                        .build()
-                        .ok()
-                } else {
-                    None
-                }
-            });
-
+            let street_regex = addr.street.as_deref().and_then(compile_street_regex);
+            let city_regex = addr.city.as_deref().and_then(|c| compile_field_regex(c, 3));
+            let state_regex = addr.state.as_deref().and_then(|s| compile_field_regex(s, 2));
             let zip_regex = addr.zip.as_ref().and_then(|z| {
                 // nosemgrep: use-zeroize-for-secrets
                 let normalized: String = z.chars().filter(|c| c.is_ascii_digit()).collect();
                 if normalized.len() >= 5 {
                     // Add word boundaries to prevent matching zip as part of longer number
-                    let pattern = format!(r"\b{}\b", normalized);
-                    Regex::new(&pattern).ok()
+                    Regex::new(&format!(r"\b{}\b", normalized)).ok()
                 } else {
                     None
                 }
@@ -325,7 +291,7 @@ impl Matcher {
         let mut matches = Vec::new();
         let lines: Vec<&str> = text.lines().collect();
 
-        // First pass: collect potential address component matches
+        // First pass: collect simple pattern matches and address component positions
         let mut street_matches: Vec<(usize, &AddressInfo)> = Vec::new();
         let mut city_matches: Vec<(usize, &AddressInfo)> = Vec::new();
         let mut state_matches: Vec<(usize, &AddressInfo)> = Vec::new();
@@ -334,11 +300,7 @@ impl Matcher {
         for (line_num, line) in lines.iter().enumerate() {
             // nosemgrep: llm-prompt-injection-risk
             let line_number = line_num + 1;
-
-            // Scan for simple patterns
             self.scan_simple_patterns(line, line_number, &mut matches);
-
-            // Collect address components for proximity checking
             self.collect_address_components(
                 line,
                 line_num,
@@ -349,136 +311,19 @@ impl Matcher {
             );
         }
 
-        // Second pass: find valid address matches
-        // Require at least 2 components within proximity (street is worth 2 points if present)
-        const PROXIMITY_LINES: usize = 5;
-
-        // Group all component matches by address
-        use std::collections::{HashMap, HashSet};
-        let mut address_components: HashMap<*const AddressInfo, Vec<(usize, &'static str)>> =
-            HashMap::new();
-
-        for (line, addr) in &street_matches {
-            address_components
-                .entry(*addr as *const AddressInfo)
-                .or_default()
-                .push((*line, "street"));
-        }
-        for (line, addr) in &city_matches {
-            address_components
-                .entry(*addr as *const AddressInfo)
-                .or_default()
-                .push((*line, "city"));
-        }
-        for (line, addr) in &state_matches {
-            address_components
-                .entry(*addr as *const AddressInfo)
-                .or_default()
-                .push((*line, "state"));
-        }
-        for (line, addr) in &zip_matches {
-            address_components
-                .entry(*addr as *const AddressInfo)
-                .or_default()
-                .push((*line, "zip"));
-        }
+        // Second pass: find valid address matches using proximity checking
+        use std::collections::HashSet;
+        let address_components = build_address_component_map(
+            &street_matches,
+            &city_matches,
+            &state_matches,
+            &zip_matches,
+        );
 
         let mut matched_addresses: HashSet<(*const AddressInfo, usize)> = HashSet::new();
 
-        // Check each address for valid component combinations within proximity
-        for (addr_ptr, components) in &address_components {
-            // Check all pairs of components for proximity
-            for i in 0..components.len() {
-                for j in (i + 1)..components.len() {
-                    let (line1, comp1) = components[i];
-                    let (line2, comp2) = components[j];
-
-                    let distance = line1.abs_diff(line2);
-
-                    if distance <= PROXIMITY_LINES {
-                        // Valid match if:
-                        // 1. Street + any other component
-                        // 2. City + State (both specific)
-                        // 3. City + Zip (fairly specific)
-                        // 4. State + Zip is NOT matched (too generic - many people share state+zip)
-                        let has_street = comp1 == "street" || comp2 == "street";
-                        let has_city_state = (comp1 == "city" && comp2 == "state")
-                            || (comp1 == "state" && comp2 == "city");
-                        let has_city_zip = (comp1 == "city" && comp2 == "zip")
-                            || (comp1 == "zip" && comp2 == "city");
-
-                        if has_street || has_city_state || has_city_zip {
-                            // Use the most informative line (prefer street, then city, then zip)
-                            let report_line = if comp1 == "street" {
-                                line1
-                            } else if comp2 == "street" {
-                                line2
-                            } else if comp1 == "city" {
-                                line1
-                            } else if comp2 == "city" {
-                                line2
-                            } else {
-                                line1
-                            };
-
-                            // Avoid duplicates
-                            if matched_addresses.insert((*addr_ptr, report_line)) {
-                                let line_number = report_line + 1;
-                                let line_content = if report_line < lines.len() {
-                                    lines[report_line]
-                                } else {
-                                    ""
-                                };
-
-                                unsafe {
-                                    matches.push(PiiMatch {
-                                        pii_type: PiiType::Address,
-                                        matched_value: format_address(&**addr_ptr),
-                                        line_number,
-                                        line_content: truncate(line_content, 200),
-                                    });
-                                }
-                            }
-                            break; // Found a valid match for this address
-                        }
-                    }
-                }
-                if matched_addresses.contains(&(*addr_ptr, components[i].0)) {
-                    break; // Already matched this address
-                }
-            }
-        }
-
-        // Handle street-only addresses (when address has no other components in profile)
-        for (street_line, street_addr) in &street_matches {
-            let addr_pattern = self
-                .address_patterns
-                .iter()
-                .find(|p| std::ptr::eq(&p.original, *street_addr));
-
-            if let Some(pattern) = addr_pattern {
-                // If address has only street (no city/state/zip patterns), match it
-                if pattern.city_regex.is_none()
-                    && pattern.state_regex.is_none()
-                    && pattern.zip_regex.is_none()
-                    && matched_addresses.insert((*street_addr as *const AddressInfo, *street_line))
-                {
-                    let line_number = street_line + 1;
-                    let line_content = if *street_line < lines.len() {
-                        lines[*street_line]
-                    } else {
-                        ""
-                    };
-
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Address,
-                        matched_value: format_address(street_addr),
-                        line_number,
-                        line_content: truncate(line_content, 200),
-                    });
-                }
-            }
-        }
+        check_address_proximity(&address_components, &lines, &mut matched_addresses, &mut matches);
+        self.find_street_only_addresses(&street_matches, &lines, &mut matched_addresses, &mut matches);
 
         // Dedupe same type on same line
         matches.sort_by(|a, b| {
@@ -488,6 +333,168 @@ impl Matcher {
         });
         matches.dedup_by(|a, b| a.line_number == b.line_number && a.pii_type == b.pii_type);
         matches
+    }
+
+    fn find_street_only_addresses(
+        &self,
+        street_matches: &[(usize, &AddressInfo)],
+        lines: &[&str],
+        matched_addresses: &mut std::collections::HashSet<(*const AddressInfo, usize)>,
+        matches: &mut Vec<PiiMatch>,
+    ) {
+        for (street_line, street_addr) in street_matches {
+            let addr_pattern = self
+                .address_patterns
+                .iter()
+                .find(|p| std::ptr::eq(&p.original, *street_addr));
+
+            if let Some(pattern) = addr_pattern {
+                // If address has only street (no city/state/zip patterns), match it directly
+                if pattern.city_regex.is_none()
+                    && pattern.state_regex.is_none()
+                    && pattern.zip_regex.is_none()
+                    && matched_addresses
+                        .insert((*street_addr as *const AddressInfo, *street_line))
+                {
+                    let line_content = lines.get(*street_line).copied().unwrap_or("");
+                    matches.push(PiiMatch {
+                        pii_type: PiiType::Address,
+                        matched_value: format_address(street_addr),
+                        line_number: street_line + 1,
+                        line_content: truncate(line_content, 200),
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// Build a regex for a street address string (word boundary at start only).
+fn compile_street_regex(s: &str) -> Option<Regex> {
+    if s.len() >= 5 {
+        // Add word boundary at start to prevent matching in middle of text.
+        // End boundary not added as street addresses often have suffixes.
+        RegexBuilder::new(&format!(r"\b{}", regex::escape(s)))
+            .case_insensitive(true)
+            .build()
+            .ok()
+    } else {
+        None
+    }
+}
+
+/// Build a word-boundary regex for a generic address field with a minimum length requirement.
+fn compile_field_regex(s: &str, min_len: usize) -> Option<Regex> {
+    if s.len() >= min_len {
+        RegexBuilder::new(&format!(r"\b{}\b", regex::escape(s)))
+            .case_insensitive(true)
+            .build()
+            .ok()
+    } else {
+        None
+    }
+}
+
+/// Group collected address component matches by address pointer into a single map.
+fn build_address_component_map<'a>(
+    street_matches: &[(usize, &'a AddressInfo)],
+    city_matches: &[(usize, &'a AddressInfo)],
+    state_matches: &[(usize, &'a AddressInfo)],
+    zip_matches: &[(usize, &'a AddressInfo)],
+) -> std::collections::HashMap<*const AddressInfo, Vec<(usize, &'static str)>> {
+    use std::collections::HashMap;
+    let mut map: HashMap<*const AddressInfo, Vec<(usize, &'static str)>> = HashMap::new();
+
+    for (line, addr) in street_matches {
+        map.entry(*addr as *const AddressInfo)
+            .or_default()
+            .push((*line, "street"));
+    }
+    for (line, addr) in city_matches {
+        map.entry(*addr as *const AddressInfo)
+            .or_default()
+            .push((*line, "city"));
+    }
+    for (line, addr) in state_matches {
+        map.entry(*addr as *const AddressInfo)
+            .or_default()
+            .push((*line, "state"));
+    }
+    for (line, addr) in zip_matches {
+        map.entry(*addr as *const AddressInfo)
+            .or_default()
+            .push((*line, "zip"));
+    }
+    map
+}
+
+/// Determine the best line to report for a matched component pair.
+/// Prefers street > city > first component.
+fn pick_report_line(line1: usize, comp1: &str, line2: usize, comp2: &str) -> usize {
+    if comp1 == "street" {
+        line1
+    } else if comp2 == "street" {
+        line2
+    } else if comp1 == "city" {
+        line1
+    } else if comp2 == "city" {
+        line2
+    } else {
+        line1
+    }
+}
+
+/// Check all addresses in the component map for valid pairs within proximity and
+/// push matches into `matches`. Updates `matched_addresses` to avoid duplicates.
+fn check_address_proximity(
+    address_components: &std::collections::HashMap<*const AddressInfo, Vec<(usize, &'static str)>>,
+    lines: &[&str],
+    matched_addresses: &mut std::collections::HashSet<(*const AddressInfo, usize)>,
+    matches: &mut Vec<PiiMatch>,
+) {
+    const PROXIMITY_LINES: usize = 5;
+
+    for (addr_ptr, components) in address_components {
+        'outer: for i in 0..components.len() {
+            for j in (i + 1)..components.len() {
+                let (line1, comp1) = components[i];
+                let (line2, comp2) = components[j];
+
+                if line1.abs_diff(line2) > PROXIMITY_LINES {
+                    continue;
+                }
+
+                // Valid combinations:
+                // 1. Street + any other component
+                // 2. City + State
+                // 3. City + Zip
+                // State + Zip alone is NOT matched (too generic)
+                let has_street = comp1 == "street" || comp2 == "street";
+                let has_city_state = (comp1 == "city" && comp2 == "state")
+                    || (comp1 == "state" && comp2 == "city");
+                let has_city_zip = (comp1 == "city" && comp2 == "zip")
+                    || (comp1 == "zip" && comp2 == "city");
+
+                if has_street || has_city_state || has_city_zip {
+                    let report_line = pick_report_line(line1, comp1, line2, comp2);
+
+                    if matched_addresses.insert((*addr_ptr, report_line)) {
+                        let line_content = lines.get(report_line).copied().unwrap_or("");
+                        // SAFETY: addr_ptr was derived from a reference in address_components
+                        // which itself was built from references valid for the duration of find_all.
+                        unsafe {
+                            matches.push(PiiMatch {
+                                pii_type: PiiType::Address,
+                                matched_value: format_address(&**addr_ptr),
+                                line_number: report_line + 1,
+                                line_content: truncate(line_content, 200),
+                            });
+                        }
+                    }
+                    break 'outer; // Found a valid match for this address
+                }
+            }
+        }
     }
 }
 
