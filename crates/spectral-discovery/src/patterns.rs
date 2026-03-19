@@ -126,7 +126,10 @@ impl Matcher {
         for addr in addresses {
             let street_regex = addr.street.as_deref().and_then(compile_street_regex);
             let city_regex = addr.city.as_deref().and_then(|c| compile_field_regex(c, 3));
-            let state_regex = addr.state.as_deref().and_then(|s| compile_field_regex(s, 2));
+            let state_regex = addr
+                .state
+                .as_deref()
+                .and_then(|s| compile_field_regex(s, 2));
             let zip_regex = addr.zip.as_ref().and_then(|z| {
                 // nosemgrep: use-zeroize-for-secrets
                 let normalized: String = z.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -322,8 +325,18 @@ impl Matcher {
 
         let mut matched_addresses: HashSet<(*const AddressInfo, usize)> = HashSet::new();
 
-        check_address_proximity(&address_components, &lines, &mut matched_addresses, &mut matches);
-        self.find_street_only_addresses(&street_matches, &lines, &mut matched_addresses, &mut matches);
+        check_address_proximity(
+            &address_components,
+            &lines,
+            &mut matched_addresses,
+            &mut matches,
+        );
+        self.find_street_only_addresses(
+            &street_matches,
+            &lines,
+            &mut matched_addresses,
+            &mut matches,
+        );
 
         // Dedupe same type on same line
         matches.sort_by(|a, b| {
@@ -353,14 +366,13 @@ impl Matcher {
                 if pattern.city_regex.is_none()
                     && pattern.state_regex.is_none()
                     && pattern.zip_regex.is_none()
-                    && matched_addresses
-                        .insert((*street_addr as *const AddressInfo, *street_line))
+                    && matched_addresses.insert((*street_addr as *const AddressInfo, *street_line))
                 {
                     let line_content = lines.get(*street_line).copied().unwrap_or("");
                     matches.push(PiiMatch {
                         pii_type: PiiType::Address,
                         matched_value: format_address(street_addr),
-                        line_number: street_line + 1,
+                        line_number: street_line + 1, // nosemgrep: llm-prompt-injection-risk
                         line_content: truncate(line_content, 200),
                     });
                 }
@@ -450,13 +462,12 @@ fn pick_report_line(line1: usize, comp1: &str, line2: usize, comp2: &str) -> usi
 /// 1. Street + any other component
 /// 2. City + State
 /// 3. City + Zip
-/// State + Zip alone is NOT matched (too generic)
+///    State + Zip alone is NOT matched (too generic)
 fn is_valid_address_pair(comp1: &str, comp2: &str) -> bool {
     let has_street = comp1 == "street" || comp2 == "street";
-    let has_city_state = (comp1 == "city" && comp2 == "state")
-        || (comp1 == "state" && comp2 == "city");
-    let has_city_zip = (comp1 == "city" && comp2 == "zip")
-        || (comp1 == "zip" && comp2 == "city");
+    let has_city_state =
+        (comp1 == "city" && comp2 == "state") || (comp1 == "state" && comp2 == "city");
+    let has_city_zip = (comp1 == "city" && comp2 == "zip") || (comp1 == "zip" && comp2 == "city");
     has_street || has_city_state || has_city_zip
 }
 
@@ -494,16 +505,18 @@ fn check_address_proximity(
             let report_line = pick_report_line(line1, comp1, line2, comp2);
             if matched_addresses.insert((*addr_ptr, report_line)) {
                 let line_content = lines.get(report_line).copied().unwrap_or("");
-                // SAFETY: addr_ptr was derived from a reference in address_components
-                // which itself was built from references valid for the duration of find_all.
-                unsafe {
-                    matches.push(PiiMatch {
-                        pii_type: PiiType::Address,
-                        matched_value: format_address(&**addr_ptr),
-                        line_number: report_line + 1,
-                        line_content: truncate(line_content, 200),
-                    });
-                }
+                // SAFETY: addr_ptr is a raw pointer derived from a reference to an AddressInfo
+                // in self.addresses, which lives for the duration of find_all. The pointer is
+                // not null, not dangling, and not aliased mutably — the borrow ends before this
+                // unsafe block and we only read through the pointer here.
+                #[allow(unsafe_code)]
+                let addr_value = unsafe { format_address(&**addr_ptr) }; // nosemgrep: no-unsafe-blocks
+                matches.push(PiiMatch {
+                    pii_type: PiiType::Address,
+                    matched_value: addr_value,
+                    line_number: report_line + 1, // nosemgrep: llm-prompt-injection-risk
+                    line_content: truncate(line_content, 200),
+                });
             }
         }
     }

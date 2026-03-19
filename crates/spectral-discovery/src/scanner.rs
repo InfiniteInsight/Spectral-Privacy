@@ -2,8 +2,8 @@
 
 use crate::patterns::Matcher;
 use crate::types::{
-    FileScanResult, ScanCommand, ScanConfig, ScanProgress, UserPii, SCANNABLE_EXTENSIONS,
-    MAX_FILE_SIZE, MAX_SCAN_DEPTH,
+    FileScanResult, ScanCommand, ScanConfig, ScanProgress, UserPii, MAX_FILE_SIZE, MAX_SCAN_DEPTH,
+    SCANNABLE_EXTENSIONS,
 };
 use crossbeam_channel::{bounded, Receiver, Sender};
 use rayon::prelude::*;

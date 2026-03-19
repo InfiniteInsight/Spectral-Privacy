@@ -392,7 +392,7 @@ pub async fn get_scan_log(
         .map_err(|e| format!("{e}"))?;
 
     let mut output = format!(
-        "PII Scan Log\nSession: {}\nFiles: {}\n\n",
+        "PII Scan Log\nSession: {}\nFiles with findings: {}\n\n",
         session_id,
         logs.len()
     );
@@ -402,6 +402,54 @@ pub async fn get_scan_log(
     }
 
     Ok(output)
+}
+
+#[tauri::command]
+pub async fn open_scan_log(
+    state: State<'_, AppState>,
+    vault_id: String,
+    session_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+
+    let logs = scan_logs::get_scan_log(db.pool(), &session_id)
+        .await
+        .map_err(|e| format!("{e}"))?;
+
+    let mut output = format!(
+        "PII Scan Log\nSession: {}\nFiles with findings: {}\n\n",
+        session_id,
+        logs.len()
+    );
+    for (path, ts, had) in logs {
+        let marker = if had { "[FINDING]" } else { "[OK]" };
+        output.push_str(&format!("{} {} {}\n", marker, ts, path));
+    }
+
+    let tmp_path = std::env::temp_dir().join(format!("scan-log-{session_id}.txt"));
+    std::fs::write(&tmp_path, output).map_err(|e| format!("Failed to write log: {e}"))?;
+
+    use std::process::Command;
+    #[cfg(target_os = "windows")]
+    Command::new("notepad")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "linux")]
+    Command::new("xdg-open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    Ok(())
 }
 
 // Helper functions
@@ -446,7 +494,11 @@ async fn persist_scan_results<R: tauri::Runtime>(
         let _ = scan_logs::log_scanned_files_batch(pool, session_id, &files_logged).await;
     }
 
-    let status = if result.was_stopped { "stopped" } else { "completed" };
+    let status = if result.was_stopped {
+        "stopped"
+    } else {
+        "completed"
+    };
     let _ = scan_logs::update_scan_session(
         pool,
         session_id,
@@ -477,10 +529,22 @@ fn decrypt_address_fields(
     key_array: &[u8; 32],
 ) -> Option<AddressInfo> {
     let addr = AddressInfo {
-        street: profile.address.as_ref().and_then(|a| a.decrypt(key_array).ok()),
-        city: profile.city.as_ref().and_then(|c| c.decrypt(key_array).ok()),
-        state: profile.state.as_ref().and_then(|s| s.decrypt(key_array).ok()),
-        zip: profile.zip_code.as_ref().and_then(|z| z.decrypt(key_array).ok()),
+        street: profile
+            .address
+            .as_ref()
+            .and_then(|a| a.decrypt(key_array).ok()),
+        city: profile
+            .city
+            .as_ref()
+            .and_then(|c| c.decrypt(key_array).ok()),
+        state: profile
+            .state
+            .as_ref()
+            .and_then(|s| s.decrypt(key_array).ok()),
+        zip: profile
+            .zip_code
+            .as_ref()
+            .and_then(|z| z.decrypt(key_array).ok()),
     };
     if addr.street.is_some() || addr.zip.is_some() {
         Some(addr)
@@ -548,10 +612,7 @@ fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPi
     let emails = decrypt_emails(profile, key_array);
     let phones = decrypt_phones(profile, key_array);
 
-    let ssn = profile
-        .ssn
-        .as_ref()
-        .and_then(|s| s.decrypt(key_array).ok());
+    let ssn = profile.ssn.as_ref().and_then(|s| s.decrypt(key_array).ok());
 
     let mut addresses = Vec::new();
     if let Some(addr) = decrypt_address_fields(profile, key_array) {

@@ -6,13 +6,13 @@
 		markFindingRemediated,
 		markFindingIgnored,
 		clearDiscoveryResults,
+		openScanLog,
 		startDiscoveryScan,
 		stopDiscoveryScan,
 		pauseDiscoveryScan,
 		resumeDiscoveryScan,
 		deleteFile,
 		openFileLocation,
-		getScanLog,
 		type DiscoveryFinding,
 		type ScanConfig,
 		type ScanProgress
@@ -212,16 +212,7 @@
 		const vid = vaultStore.currentVaultId;
 		if (!vid || !sessionId) return;
 		try {
-			const log = await getScanLog(vid, sessionId);
-			const blob = new Blob([log], { type: 'text/plain' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `scan-log-${sessionId}.txt`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			await openScanLog(vid, sessionId);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}

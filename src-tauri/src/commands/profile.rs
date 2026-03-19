@@ -60,12 +60,8 @@ fn apply_phone_numbers(
             crate::types::profile::PhoneTypeInput::Mobile => {
                 spectral_vault::profile::PhoneType::Mobile
             }
-            crate::types::profile::PhoneTypeInput::Home => {
-                spectral_vault::profile::PhoneType::Home
-            }
-            crate::types::profile::PhoneTypeInput::Work => {
-                spectral_vault::profile::PhoneType::Work
-            }
+            crate::types::profile::PhoneTypeInput::Home => spectral_vault::profile::PhoneType::Home,
+            crate::types::profile::PhoneTypeInput::Work => spectral_vault::profile::PhoneType::Work,
         };
         profile
             .phone_numbers
@@ -88,9 +84,7 @@ fn apply_email_addresses(
             crate::types::profile::EmailTypeInput::Personal => {
                 spectral_vault::profile::EmailType::Personal
             }
-            crate::types::profile::EmailTypeInput::Work => {
-                spectral_vault::profile::EmailType::Work
-            }
+            crate::types::profile::EmailTypeInput::Work => spectral_vault::profile::EmailType::Work,
             crate::types::profile::EmailTypeInput::Other => {
                 spectral_vault::profile::EmailType::Other
             }

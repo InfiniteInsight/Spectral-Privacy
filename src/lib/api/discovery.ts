@@ -97,6 +97,13 @@ export async function markFindingIgnored(
 }
 
 /**
+ * Open the scan log for a session in the OS default text editor
+ */
+export async function openScanLog(vaultId: string, sessionId: string): Promise<void> {
+	return invoke('open_scan_log', { vaultId, sessionId });
+}
+
+/**
  * Clear all discovery findings and scan history for a vault
  */
 export async function clearDiscoveryResults(vaultId: string): Promise<void> {
