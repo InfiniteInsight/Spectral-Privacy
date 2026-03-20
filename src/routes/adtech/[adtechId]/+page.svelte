@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
-	import { vaultStore } from '$lib/stores';
+	import { vaultStore, profileStore } from '$lib/stores';
+	import { startScan, scanAPI, type ScanJobStatus } from '$lib/api/scan';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
 	import {
 		getRemovalMethodDisplay,
@@ -17,6 +19,16 @@
 	let adtech = $state<BrokerDetail | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	// Inline targeted scan state
+	let scanStatus = $state<ScanJobStatus | null>(null);
+	let scanStarting = $state(false);
+	let scanError = $state<string | null>(null);
+	let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+	onDestroy(() => {
+		if (pollingInterval !== null) clearInterval(pollingInterval);
+	});
 
 	// Load adtech detail using $effect
 	$effect(() => {
@@ -47,6 +59,66 @@
 
 		loadAdtechDetail();
 	});
+
+	const scanProgressPercent = $derived(
+		scanStatus && scanStatus.total_brokers > 0
+			? Math.round((scanStatus.completed_brokers / scanStatus.total_brokers) * 100)
+			: 0
+	);
+
+	const scanIsComplete = $derived(scanStatus?.status === 'Completed');
+	const scanIsFailed = $derived(scanStatus?.status === 'Failed');
+	const scanInProgress = $derived(scanStatus?.status === 'InProgress');
+
+	async function handleTargetedScan() {
+		const vaultId = vaultStore.currentVaultId;
+		if (!vaultId || !adtechId) return;
+
+		scanStarting = true;
+		scanError = null;
+		scanStatus = null;
+
+		try {
+			await profileStore.loadProfiles(vaultId);
+			if (profileStore.profiles.length === 0) {
+				scanError = 'No profile found. Please set up a profile first.';
+				return;
+			}
+			const profileId = profileStore.profiles[0].id;
+			const brokerId = adtechId;
+
+			const jobId = await startScan(vaultId, profileId, { brokerIds: [brokerId] });
+
+			// Fetch initial status
+			scanStatus = await scanAPI.getStatus(vaultId, jobId);
+
+			// Poll for updates
+			pollingInterval = setInterval(async () => {
+				try {
+					const status = await scanAPI.getStatus(vaultId, jobId);
+					scanStatus = status;
+					if (
+						status.status === 'Completed' ||
+						status.status === 'Failed' ||
+						status.status === 'Cancelled'
+					) {
+						clearInterval(pollingInterval!);
+						pollingInterval = null;
+						// Reload broker detail to reflect updated findings count
+						if (status.status === 'Completed') {
+							adtech = await brokerAPI.getBrokerDetail(brokerId, vaultId);
+						}
+					}
+				} catch (err) {
+					console.error('Scan polling error:', err);
+				}
+			}, 2000);
+		} catch (err) {
+			scanError = err instanceof Error ? err.message : 'Failed to start scan';
+		} finally {
+			scanStarting = false;
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
@@ -169,8 +241,8 @@
 						<div class="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
 							<h2 class="text-xl font-bold text-gray-900 mb-2">No Scan Data</h2>
 							<p class="text-sm text-gray-700">
-								You haven't scanned this company yet. Start a scan to check if your information
-								appears on this site.
+								You haven't scanned this company yet. Use the buttons below to check if your
+								information appears on this site.
 							</p>
 						</div>
 					{/if}
@@ -205,6 +277,62 @@
 						<EmailFallbackDisplay emailFallback={adtech.email_fallback} />
 					{/if}
 
+					<!-- Inline Scan Progress -->
+					{#if scanStatus || scanStarting}
+						<div class="mb-6 p-6 border-2 border-orange-200 rounded-lg bg-orange-50">
+							<h3 class="text-lg font-semibold text-gray-900 mb-3">
+								{#if scanIsComplete}
+									Scan Complete
+								{:else if scanIsFailed}
+									Scan Failed
+								{:else}
+									Scanning {adtech.name}...
+								{/if}
+							</h3>
+
+							{#if scanInProgress || scanStarting}
+								<div class="mb-3">
+									<div class="flex items-center justify-between mb-1">
+										<span class="text-sm text-gray-600">
+											{#if scanStatus}
+												{scanStatus.completed_brokers} of {scanStatus.total_brokers} brokers
+											{:else}
+												Starting scan...
+											{/if}
+										</span>
+										<span class="text-sm font-medium text-gray-700">{scanProgressPercent}%</span>
+									</div>
+									<div class="w-full bg-gray-200 rounded-full h-2">
+										<div
+											class="h-2 rounded-full transition-all duration-500 bg-orange-500"
+											style="width: {scanProgressPercent}%"
+										></div>
+									</div>
+								</div>
+								<div class="flex items-center gap-2 text-sm text-gray-600">
+									<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+									{scanStatus?.current_broker_name
+										? `Checking ${scanStatus.current_broker_name}...`
+										: 'Initializing...'}
+								</div>
+							{:else if scanIsComplete}
+								<p class="text-sm text-green-700">
+									✓ Done — scan status and findings above have been updated.
+								</p>
+							{:else if scanIsFailed}
+								<p class="text-sm text-red-700">
+									✗ {scanStatus?.error_message || 'Scan failed. Please try again.'}
+								</p>
+							{/if}
+						</div>
+					{/if}
+
+					{#if scanError}
+						<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+							<p class="text-sm text-red-700">{scanError}</p>
+						</div>
+					{/if}
+
 					<!-- Action Buttons -->
 					<div class="flex flex-col sm:flex-row gap-4">
 						<a
@@ -216,10 +344,17 @@
 							Visit Company Website ↗
 						</a>
 						<button
+							onclick={handleTargetedScan}
+							disabled={scanStarting || scanInProgress}
+							class="flex-1 px-6 py-3 border-2 border-orange-600 text-orange-700 rounded-lg font-medium hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{scanStarting || scanInProgress ? 'Scanning...' : 'Scan This Company'}
+						</button>
+						<button
 							onclick={() => goto('/scan')}
 							class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
 						>
-							Scan This Company
+							Full Scan Center
 						</button>
 					</div>
 				</div>
