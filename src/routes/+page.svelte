@@ -29,7 +29,7 @@
 	const isFirstRun = $derived(dashboard !== null && dashboard.last_scan_at === null);
 
 	$effect(() => {
-		if (!vaultId) {
+		if (!vaultId || !vaultStore.isCurrentVaultUnlocked) {
 			dashboard = null;
 			return;
 		}
