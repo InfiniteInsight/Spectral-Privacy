@@ -83,6 +83,7 @@ pub struct ProfileInput {
     pub last_name: String,
     pub email: String,
     pub date_of_birth: Option<NaiveDate>,
+    pub ssn: Option<String>,
     pub address_line1: String,
     pub address_line2: Option<String>,
     pub city: String,
@@ -115,6 +116,11 @@ impl ProfileInput {
         if let Some(dob) = self.date_of_birth {
             validate_date_of_birth(dob)?;
         }
+        if let Some(ref ssn) = self.ssn {
+            if !ssn.is_empty() {
+                validate_ssn(ssn)?;
+            }
+        }
         validate_us_state(&self.state)?;
         validate_zip_code(&self.zip_code)?;
         Ok(())
@@ -130,6 +136,8 @@ pub struct ProfileOutput {
     pub last_name: String,
     pub email: String,
     pub date_of_birth: Option<NaiveDate>,
+    /// Last 4 digits of SSN, e.g. "6789". None if not set.
+    pub ssn_last4: Option<String>,
     pub address_line1: String,
     pub address_line2: Option<String>,
     pub city: String,
@@ -298,6 +306,23 @@ pub fn validate_zip_code(zip: &str) -> Result<(), SpectralError> {
     Ok(())
 }
 
+/// Validate SSN format. Accepts `NNN-NN-NNNN` or `NNNNNNNNN` (9 digits).
+pub fn validate_ssn(ssn: &str) -> Result<(), SpectralError> {
+    let digits: String = ssn.chars().filter(|c| c.is_ascii_digit()).collect(); // nosemgrep: use-zeroize-for-secrets
+    if digits.len() != 9 {
+        return Err(SpectralError::Validation(
+            "SSN must be 9 digits (e.g. 123-45-6789)".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// Return the last 4 digits of an SSN string (which may contain dashes).
+pub fn ssn_last4(ssn: &str) -> String {
+    let digits: String = ssn.chars().filter(|c| c.is_ascii_digit()).collect(); // nosemgrep: use-zeroize-for-secrets
+    digits[digits.len().saturating_sub(4)..].to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,6 +386,7 @@ mod tests {
             date_of_birth: Some(
                 chrono::Local::now().date_naive() - chrono::Duration::days(365 * 30),
             ),
+            ssn: None,
             address_line1: "123 Main St".to_string(),
             address_line2: Some("Apt 4B".to_string()),
             city: "San Francisco".to_string(),

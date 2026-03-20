@@ -1,7 +1,10 @@
 //! Thread-pool based PII scanner
 
-use crate::patterns::PiiPatterns;
-use crate::types::*;
+use crate::patterns::Matcher;
+use crate::types::{
+    FileScanResult, ScanCommand, ScanConfig, ScanProgress, UserPii, MAX_FILE_SIZE, MAX_SCAN_DEPTH,
+    SCANNABLE_EXTENSIONS,
+};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -44,17 +47,20 @@ pub struct ScanResult {
     pub files_scanned: usize,
     /// All findings from the scan
     pub findings: Vec<FileScanResult>,
+    /// Paths of all files that were scanned (with and without findings)
+    pub all_files_scanned: Vec<String>,
     /// Whether the scan was stopped early
     pub was_stopped: bool,
 }
 
 /// Scanner that runs on a thread pool
 pub struct Scanner {
-    patterns: PiiPatterns,
+    patterns: Matcher,
     ignored_paths: HashSet<String>,
     command_rx: Receiver<ScanCommand>,
     progress_tx: Sender<ScanProgress>,
     stop_flag: Arc<AtomicBool>,
+    pause_flag: Arc<AtomicBool>,
     files_scanned: Arc<AtomicUsize>,
     files_with_findings: Arc<AtomicUsize>,
 }
@@ -70,11 +76,12 @@ impl Scanner {
         progress_tx: Sender<ScanProgress>,
     ) -> Self {
         Self {
-            patterns: PiiPatterns::new(&user_pii, &config),
+            patterns: Matcher::new(&user_pii, &config),
             ignored_paths,
             command_rx,
             progress_tx,
             stop_flag: Arc::new(AtomicBool::new(false)),
+            pause_flag: Arc::new(AtomicBool::new(false)),
             files_scanned: Arc::new(AtomicUsize::new(0)),
             files_with_findings: Arc::new(AtomicUsize::new(0)),
         }
@@ -82,50 +89,39 @@ impl Scanner {
 
     /// Run the scan on the given directories
     pub fn scan(self, directories: Vec<PathBuf>) -> ScanResult {
+        tracing::info!("Scanner starting with {} directories", directories.len());
+
         if self.patterns.is_empty() {
+            tracing::warn!("No patterns configured - scan will not find anything");
             return ScanResult {
                 files_scanned: 0,
                 findings: Vec::new(),
+                all_files_scanned: Vec::new(),
                 was_stopped: false,
             };
         }
 
-        let files = self.collect_files(&directories);
+        tracing::info!("Starting scan - files will be scanned as discovered");
 
-        let findings: Vec<FileScanResult> = files
-            .par_iter()
-            .filter_map(|path| {
-                if self.stop_flag.load(Ordering::Relaxed) {
-                    return None;
-                }
-                self.check_commands();
+        let mut all_findings = Vec::new();
+        let mut all_files = Vec::new();
 
-                let result = self.scan_file(path);
-                // nosemgrep: llm-prompt-injection-risk
-                let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
+        // Process each directory's files immediately without collecting them all first
+        for dir in directories {
+            if !dir.exists() {
+                continue;
+            }
 
-                if result.is_some() {
-                    self.files_with_findings.fetch_add(1, Ordering::Relaxed);
-                }
+            if self.stop_flag.load(Ordering::Relaxed) {
+                break;
+            }
 
-                if count % 100 == 0 {
-                    let _ = self.progress_tx.try_send(ScanProgress {
-                        files_scanned: count,
-                        files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
-                        current_directory: path
-                            .parent()
-                            .and_then(|p| p.file_name())
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        is_complete: false,
-                        was_stopped: false,
-                    });
-                }
+            let (dir_findings, dir_files) = self.scan_directory(&dir);
+            all_findings.extend(dir_findings);
+            all_files.extend(dir_files);
+        }
 
-                result
-            })
-            .collect();
+        let findings = all_findings;
 
         let was_stopped = self.stop_flag.load(Ordering::Relaxed);
         let files_scanned = self.files_scanned.load(Ordering::Relaxed);
@@ -141,49 +137,79 @@ impl Scanner {
         ScanResult {
             files_scanned,
             findings,
+            all_files_scanned: all_files,
             was_stopped,
         }
     }
 
-    fn collect_files(&self, directories: &[PathBuf]) -> Vec<PathBuf> {
-        let mut files = Vec::new();
-        for dir in directories {
-            if !dir.exists() {
-                continue;
-            }
-
-            for entry in WalkDir::new(dir)
-                .max_depth(MAX_SCAN_DEPTH)
-                .follow_links(false)
-                .into_iter()
-                .filter_entry(|e| !self.should_skip(e.path()))
-            {
+    /// Scan all eligible files in a single directory in parallel.
+    /// Returns `(findings, all_scanned_paths)`.
+    fn scan_directory(&self, dir: &Path) -> (Vec<FileScanResult>, Vec<String>) {
+        let scanned: Vec<(String, Option<FileScanResult>)> = WalkDir::new(dir)
+            .max_depth(MAX_SCAN_DEPTH)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| !self.should_skip(e.path()))
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| {
+                let path = entry.path();
+                !self
+                    .ignored_paths
+                    .contains(&path.to_string_lossy().to_string())
+                    && path.is_file()
+                    && self.is_scannable(path)
+            })
+            .map(|e| e.path().to_path_buf())
+            .par_bridge()
+            .filter_map(|path| {
                 if self.stop_flag.load(Ordering::Relaxed) {
-                    break;
+                    return None;
                 }
                 self.check_commands();
+                self.wait_if_paused();
 
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if self
-                        .ignored_paths
-                        .contains(&path.to_string_lossy().to_string())
-                    {
-                        continue;
-                    }
-                    if path.is_file() && self.is_scannable(path) {
-                        files.push(path.to_path_buf());
-                    }
+                let path_str = path.to_string_lossy().to_string();
+                let result = self.scan_file(&path);
+                // nosemgrep: llm-prompt-injection-risk
+                let count = self.files_scanned.fetch_add(1, Ordering::Relaxed) + 1;
+
+                if result.is_some() {
+                    self.files_with_findings.fetch_add(1, Ordering::Relaxed);
                 }
+
+                if count % 100 == 0 {
+                    let _ = self.progress_tx.try_send(ScanProgress {
+                        files_scanned: count,
+                        files_with_findings: self.files_with_findings.load(Ordering::Relaxed),
+                        current_directory: path_str.clone(),
+                        is_complete: false,
+                        was_stopped: false,
+                    });
+                }
+
+                Some((path_str, result))
+            })
+            .collect();
+
+        let mut findings = Vec::new();
+        let mut all_paths = Vec::with_capacity(scanned.len());
+        for (path_str, result) in scanned {
+            all_paths.push(path_str);
+            if let Some(r) = result {
+                findings.push(r);
             }
         }
-        files
+        (findings, all_paths)
     }
 
     fn should_skip(&self, path: &Path) -> bool {
-        path.file_name()
-            .and_then(|n| n.to_str())
-            .is_some_and(|name| EXCLUDED_DIRS.iter().any(|d| d.eq_ignore_ascii_case(name)))
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            // Check exact matches against excluded list
+            if EXCLUDED_DIRS.iter().any(|d| d.eq_ignore_ascii_case(name)) {
+                return true;
+            }
+        }
+        false
     }
 
     fn is_scannable(&self, path: &Path) -> bool {
@@ -218,22 +244,19 @@ impl Scanner {
                     self.stop_flag.store(true, Ordering::Relaxed);
                 }
                 ScanCommand::Pause => {
-                    while !self.stop_flag.load(Ordering::Relaxed) {
-                        match self
-                            .command_rx
-                            .recv_timeout(std::time::Duration::from_millis(100))
-                        {
-                            Ok(ScanCommand::Continue) => break,
-                            Ok(ScanCommand::Stop) => {
-                                self.stop_flag.store(true, Ordering::Relaxed);
-                                break;
-                            }
-                            _ => {}
-                        }
-                    }
+                    self.pause_flag.store(true, Ordering::Relaxed);
                 }
-                ScanCommand::Continue => {}
+                ScanCommand::Continue => {
+                    self.pause_flag.store(false, Ordering::Relaxed);
+                }
             }
+        }
+    }
+
+    fn wait_if_paused(&self) {
+        while self.pause_flag.load(Ordering::Relaxed) && !self.stop_flag.load(Ordering::Relaxed) {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            self.check_commands();
         }
     }
 }

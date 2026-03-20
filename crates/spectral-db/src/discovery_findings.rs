@@ -290,3 +290,21 @@ pub async fn mark_finding_ignored(
 
     Ok(())
 }
+
+/// Delete all discovery findings and scan sessions for a vault.
+pub async fn clear_discovery_results(
+    pool: &Pool<Sqlite>,
+    vault_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM discovery_findings WHERE vault_id = ?")
+        .bind(vault_id)
+        .execute(pool)
+        .await?;
+
+    sqlx::query("DELETE FROM scan_sessions WHERE vault_id = ?")
+        .bind(vault_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}

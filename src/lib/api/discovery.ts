@@ -97,6 +97,27 @@ export async function markFindingIgnored(
 }
 
 /**
+ * Open a findings report (PII matches only) in the OS default text editor
+ */
+export async function openFindingsLog(vaultId: string, sessionId: string): Promise<void> {
+	return invoke('open_findings_log', { vaultId, sessionId });
+}
+
+/**
+ * Open the full scan log (every file checked) in the OS default text editor
+ */
+export async function openScanLog(vaultId: string, sessionId: string): Promise<void> {
+	return invoke('open_scan_log', { vaultId, sessionId });
+}
+
+/**
+ * Clear all discovery findings and scan history for a vault
+ */
+export async function clearDiscoveryResults(vaultId: string): Promise<void> {
+	return invoke('clear_discovery_results', { vaultId });
+}
+
+/**
  * Delete a file from the filesystem
  */
 export async function deleteFile(filePath: string): Promise<void> {

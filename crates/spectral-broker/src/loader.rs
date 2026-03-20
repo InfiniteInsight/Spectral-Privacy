@@ -122,40 +122,41 @@ impl BrokerLoader {
             if path.is_dir() {
                 // Recursively process subdirectories
                 Self::walk_and_load_recursive(&path, definitions)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("toml") {
-                // Skip README and schema files
-                if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
-                    if filename == "README.toml" || filename == "schema.toml" {
-                        continue;
-                    }
-                }
-
-                // Load and parse TOML
-                match Self::load_from_path(&path) {
-                    Ok(definition) => {
-                        // Validate before adding
-                        if let Err(e) = definition.validate() {
-                            warn!(
-                                path = %path.display(),
-                                error = %e,
-                                "skipping invalid broker definition"
-                            );
-                            continue;
-                        }
-                        definitions.push(definition);
-                    }
-                    Err(e) => {
-                        warn!(
-                            path = %path.display(),
-                            error = %e,
-                            "failed to load broker definition"
-                        );
-                    }
-                }
+            } else if let Some(definition) = Self::try_load_toml_file(&path) {
+                definitions.push(definition);
             }
         }
 
         Ok(())
+    }
+
+    /// Attempt to load and validate a single TOML file as a broker definition.
+    ///
+    /// Returns `None` if the file should be skipped (wrong extension, reserved name,
+    /// parse failure, or validation failure). Warnings are emitted for recoverable errors.
+    fn try_load_toml_file(path: &Path) -> Option<BrokerDefinition> {
+        if path.extension().and_then(|s| s.to_str()) != Some("toml") {
+            return None;
+        }
+
+        let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+        if filename == "README.toml" || filename == "schema.toml" {
+            return None;
+        }
+
+        match Self::load_from_path(path) {
+            Err(e) => {
+                warn!(path = %path.display(), error = %e, "failed to load broker definition");
+                None
+            }
+            Ok(definition) => match definition.validate() {
+                Err(e) => {
+                    warn!(path = %path.display(), error = %e, "skipping invalid broker definition");
+                    None
+                }
+                Ok(()) => Some(definition),
+            },
+        }
     }
 
     /// Find and load a broker definition file by ID.

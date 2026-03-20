@@ -5,13 +5,15 @@
 		getDiscoveryFindings,
 		markFindingRemediated,
 		markFindingIgnored,
+		clearDiscoveryResults,
+		openFindingsLog,
+		openScanLog,
 		startDiscoveryScan,
 		stopDiscoveryScan,
 		pauseDiscoveryScan,
 		resumeDiscoveryScan,
 		deleteFile,
 		openFileLocation,
-		getScanLog,
 		type DiscoveryFinding,
 		type ScanConfig,
 		type ScanProgress
@@ -89,7 +91,8 @@
 		try {
 			loading = true;
 			error = null;
-			findings = await getDiscoveryFindings(vid, showIgnored);
+			// Always load all findings including ignored ones, filter locally
+			findings = await getDiscoveryFindings(vid, true);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -144,7 +147,11 @@
 		if (!vid) return;
 		try {
 			await markFindingRemediated(vid, id);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			// Clear still_present_after_remediation when marking fixed again
+			findings = findings.map((f) =>
+				f.id === id ? { ...f, remediated: true, still_present_after_remediation: false } : f
+			);
 			showSuccess('Marked as fixed');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -156,7 +163,8 @@
 		if (!vid) return;
 		try {
 			await markFindingIgnored(vid, id, true);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			findings = findings.map((f) => (f.id === id ? { ...f, ignored: true } : f));
 			showSuccess('Ignored');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -169,7 +177,8 @@
 		try {
 			await deleteFile(path);
 			await markFindingRemediated(vid, id);
-			await loadFindings();
+			// Update local state instead of reloading everything
+			findings = findings.map((f) => (f.id === id ? { ...f, remediated: true } : f));
 			showSuccess('File deleted');
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -184,20 +193,37 @@
 		}
 	}
 
-	async function handleDownloadLog() {
+	async function handleClearResults() {
+		const vid = vaultStore.currentVaultId;
+		if (!vid) return;
+		if (!confirm('Clear all scan results? This cannot be undone.')) return;
+		try {
+			await clearDiscoveryResults(vid);
+			findings = [];
+			sessionId = null;
+			filesScanned = 0;
+			filesWithFindings = 0;
+			showSuccess('Scan results cleared');
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function handleDownloadFindingsLog() {
 		const vid = vaultStore.currentVaultId;
 		if (!vid || !sessionId) return;
 		try {
-			const log = await getScanLog(vid, sessionId);
-			const blob = new Blob([log], { type: 'text/plain' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `scan-log-${sessionId}.txt`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			await openFindingsLog(vid, sessionId);
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function handleDownloadScanLog() {
+		const vid = vaultStore.currentVaultId;
+		if (!vid || !sessionId) return;
+		try {
+			await openScanLog(vid, sessionId);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -263,51 +289,53 @@
 		/>
 	</div>
 
-	<div class="mb-6 flex items-center justify-between">
-		<div class="text-sm text-gray-600">
-			{#if scanning}
-				{paused ? 'Paused' : `Scanning ${currentDirectory}`} - {filesScanned.toLocaleString()} files
-			{:else if sessionId}
-				Last scan: {filesScanned.toLocaleString()} files, {filesWithFindings} findings
-			{/if}
-		</div>
-
-		<div class="flex gap-2">
-			{#if scanning}
-				{#if paused}
-					<button
-						onclick={handleResumeScan}
-						class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-						>Resume</button
-					>
-				{:else}
-					<button
-						onclick={handlePauseScan}
-						class="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700"
-						>Pause</button
-					>
-				{/if}
+	<div class="mb-6 flex items-center justify-end gap-2">
+		{#if scanning}
+			{#if paused}
 				<button
-					onclick={handleStopScan}
-					class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-					>Stop</button
+					onclick={handleResumeScan}
+					class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+					>Resume</button
 				>
 			{:else}
-				{#if sessionId}
-					<button
-						onclick={handleDownloadLog}
-						class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-						>Download Log</button
-					>
-				{/if}
 				<button
-					onclick={handleStartScan}
-					disabled={loading || !canStartScan}
-					class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-					>Run PII Scan</button
+					onclick={handlePauseScan}
+					class="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700"
+					>Pause</button
 				>
 			{/if}
-		</div>
+			<button
+				onclick={handleStopScan}
+				class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+				>Stop</button
+			>
+		{:else}
+			{#if sessionId}
+				<button
+					onclick={handleDownloadFindingsLog}
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+					>Download Findings Log</button
+				>
+				<button
+					onclick={handleDownloadScanLog}
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+					>Download Scan Log</button
+				>
+			{/if}
+			{#if findings.length > 0}
+				<button
+					onclick={handleClearResults}
+					class="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+					>Clear Results</button
+				>
+			{/if}
+			<button
+				onclick={handleStartScan}
+				disabled={loading || !canStartScan}
+				class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+				>Run PII Scan</button
+			>
+		{/if}
 	</div>
 
 	{#if scanning}
@@ -322,7 +350,16 @@
 				{/if}
 			</div>
 			<div class="mt-2 text-sm text-indigo-700">
-				{filesScanned.toLocaleString()} files, {filesWithFindings} findings
+				{#if currentDirectory}
+					<div class="mb-1">{currentDirectory}</div>
+				{/if}
+				<div>{filesScanned.toLocaleString()} files, {filesWithFindings} findings</div>
+			</div>
+		</div>
+	{:else if sessionId}
+		<div class="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+			<div class="text-sm text-gray-700">
+				Last scan: {filesScanned.toLocaleString()} files, {filesWithFindings} findings
 			</div>
 		</div>
 	{/if}
@@ -350,10 +387,7 @@
 			{showIgnored}
 			onPiiTypeToggle={togglePiiType}
 			onRiskLevelToggle={toggleRiskLevel}
-			onShowIgnoredChange={(s) => {
-				showIgnored = s;
-				loadFindings();
-			}}
+			onShowIgnoredChange={(s) => (showIgnored = s)}
 			totalCount={findings.filter((f) => !f.remediated || f.still_present_after_remediation).length}
 			filteredCount={filteredFindings.length}
 		/>

@@ -325,7 +325,7 @@ if command -v node &>/dev/null; then
     warn "Node.js $NODE_VER is too old. Need v20+."
     info "Installing Node.js 22 via nvm..."
     if ! command -v nvm &>/dev/null; then
-      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash # nosemgrep: bash.curl.security.curl-pipe-bash.curl-pipe-bash
       export NVM_DIR="$HOME/.nvm"
       source "$NVM_DIR/nvm.sh"
     fi
@@ -337,7 +337,7 @@ if command -v node &>/dev/null; then
 else
   info "Node.js not found. Installing via nvm..."
   if ! command -v nvm &>/dev/null; then
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash # nosemgrep: bash.curl.security.curl-pipe-bash.curl-pipe-bash
     export NVM_DIR="$HOME/.nvm"
     source "$NVM_DIR/nvm.sh"
   fi

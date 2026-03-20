@@ -96,6 +96,16 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
 
     let user_pii = extract_user_pii(&profile, vault_key);
 
+    tracing::info!(
+        "Extracted user PII: emails={}, phones={}, ssn={}, addresses={}, names={}, dob={}",
+        user_pii.emails.len(),
+        user_pii.phones.len(),
+        user_pii.ssn.is_some(),
+        user_pii.addresses.len(),
+        user_pii.names.len(),
+        user_pii.date_of_birth.is_some()
+    );
+
     if is_pii_empty(&user_pii) {
         return Err("No PII configured in your profile".to_string());
     }
@@ -137,14 +147,13 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
         });
     }
 
-    let scan_dirs = if let Some(custom) = scan_config.custom_directories.clone() {
-        custom
-    } else {
-        match directories::UserDirs::new() {
-            Some(dirs) => vec![dirs.home_dir().to_path_buf()],
-            None => return Err("Failed to get home directory".to_string()),
-        }
-    };
+    let scan_dirs = get_scan_directories(scan_config.custom_directories.clone())
+        .ok_or_else(|| "Failed to get home directory".to_string())?;
+
+    tracing::info!(
+        "Starting scanner thread with {} directories to scan",
+        scan_dirs.len()
+    );
 
     let pool = db.pool().clone();
     let vault_id_clone = vault_id.clone();
@@ -182,58 +191,13 @@ pub async fn start_discovery_scan<R: tauri::Runtime>(
             .build()
             .expect("Failed to create runtime");
 
-        rt.block_on(async {
-            let mut findings_count = 0;
-            let mut files_logged = Vec::new();
-
-            for file_result in &result.findings {
-                let path = file_result.path.to_string_lossy().to_string();
-                files_logged.push((path.clone(), true));
-
-                for pii_match in &file_result.matches {
-                    if insert_pii_finding(&pool, &vault_id_clone, &file_result.path, pii_match)
-                        .await
-                        .is_ok()
-                    {
-                        findings_count += 1;
-                    }
-                }
-            }
-
-            if !files_logged.is_empty() {
-                let _ = scan_logs::log_scanned_files_batch(&pool, &session_id_clone, &files_logged)
-                    .await;
-            }
-
-            let status = if result.was_stopped {
-                "stopped"
-            } else {
-                "completed"
-            };
-            let _ = scan_logs::update_scan_session(
-                &pool,
-                &session_id_clone,
-                status,
-                result.files_scanned as i64,
-                findings_count,
-                None,
-            )
-            .await;
-
-            let _ = app.emit(
-                "discovery:complete",
-                serde_json::json!({
-                    "session_id": session_id_clone,
-                    "vault_id": vault_id_clone,
-                    "files_scanned": result.files_scanned,
-                    "findings_count": findings_count,
-                    "was_stopped": result.was_stopped,
-                }),
-            );
-
-            let mut active = ACTIVE_SCAN.lock().await;
-            *active = None;
-        });
+        rt.block_on(persist_scan_results(
+            &pool,
+            &session_id_clone,
+            &vault_id_clone,
+            &app,
+            result,
+        ));
     });
 
     Ok(session_id)
@@ -347,6 +311,18 @@ pub async fn mark_finding_ignored(
 }
 
 #[tauri::command]
+pub async fn clear_discovery_results(
+    state: State<'_, AppState>,
+    vault_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+    spectral_db::discovery_findings::clear_discovery_results(db.pool(), &vault_id)
+        .await
+        .map_err(|e| format!("{e}"))
+}
+
+#[tauri::command]
 pub async fn delete_file(file_path: String) -> Result<(), String> {
     std::fs::remove_file(&file_path).map_err(|e| format!("Delete failed: {e}"))
 }
@@ -416,7 +392,7 @@ pub async fn get_scan_log(
         .map_err(|e| format!("{e}"))?;
 
     let mut output = format!(
-        "PII Scan Log\nSession: {}\nFiles: {}\n\n",
+        "PII Scan Log\nSession: {}\nFiles with findings: {}\n\n",
         session_id,
         logs.len()
     );
@@ -428,89 +404,310 @@ pub async fn get_scan_log(
     Ok(output)
 }
 
+#[tauri::command]
+pub async fn open_findings_log(
+    state: State<'_, AppState>,
+    vault_id: String,
+    session_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+
+    let findings =
+        spectral_db::discovery_findings::get_discovery_findings(db.pool(), &vault_id, true)
+            .await
+            .map_err(|e| format!("{e}"))?;
+
+    let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
+    let mut output = format!(
+        "PII Findings Report\nSession:   {session_id}\nGenerated: {now}\nTotal:     {} finding(s)\n\n",
+        findings.len()
+    );
+
+    for f in &findings {
+        if f.remediated && !f.still_present_after_remediation {
+            continue;
+        }
+        output.push_str(&format!(
+            "[{}] {} — {}\n  File: {}\n  Line: {}\n  Value: {}\n\n",
+            f.risk_level.to_uppercase(),
+            f.pii_type,
+            f.description,
+            f.source_detail,
+            f.line_number
+                .map_or("unknown".to_string(), |n| n.to_string()),
+            f.matched_value.as_deref().unwrap_or("(not captured)"),
+        ));
+    }
+
+    let tmp_path = std::env::temp_dir().join(format!("pii-findings-{session_id}.txt"));
+    std::fs::write(&tmp_path, output).map_err(|e| format!("Failed to write findings log: {e}"))?;
+
+    use std::process::Command;
+    #[cfg(target_os = "windows")]
+    Command::new("notepad")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "linux")]
+    Command::new("xdg-open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn open_scan_log(
+    state: State<'_, AppState>,
+    vault_id: String,
+    session_id: String,
+) -> Result<(), String> {
+    let vault = state.get_vault(&vault_id).ok_or("Vault not unlocked")?;
+    let db = vault.database().map_err(|e| format!("{e}"))?;
+
+    let logs = scan_logs::get_scan_log(db.pool(), &session_id)
+        .await
+        .map_err(|e| format!("{e}"))?;
+
+    let total = logs.len();
+    let with_findings = logs.iter().filter(|(_, _, had)| *had).count();
+    let mut output = format!(
+        "PII Scan Log\nSession:       {session_id}\nFiles scanned: {total}\nWith findings: {with_findings}\n\n",
+    );
+    for (path, _ts, had) in logs {
+        let marker = if had { "[FINDING]" } else { "[OK]" };
+        output.push_str(&format!("{marker} {path}\n"));
+    }
+
+    let tmp_path = std::env::temp_dir().join(format!("scan-log-{session_id}.txt"));
+    std::fs::write(&tmp_path, output).map_err(|e| format!("Failed to write log: {e}"))?;
+
+    use std::process::Command;
+    #[cfg(target_os = "windows")]
+    Command::new("notepad")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    #[cfg(target_os = "linux")]
+    Command::new("xdg-open")
+        .arg(&tmp_path)
+        .spawn()
+        .map_err(|e| format!("{e}"))?;
+
+    Ok(())
+}
+
 // Helper functions
 
-fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
-    let mut pii = UserPii::default();
+fn get_scan_directories(custom_directories: Option<Vec<PathBuf>>) -> Option<Vec<PathBuf>> {
+    if let Some(custom) = custom_directories {
+        tracing::info!("Using custom scan directories: {:?}", custom);
+        Some(custom)
+    } else {
+        let dirs = directories::UserDirs::new()?;
+        let home = dirs.home_dir().to_path_buf();
+        tracing::info!("Using home directory for scan: {:?}", home);
+        Some(vec![home])
+    }
+}
 
-    // Convert slice to array reference
-    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
+async fn persist_scan_results<R: tauri::Runtime>(
+    pool: &sqlx::SqlitePool,
+    session_id: &str,
+    vault_id: &str,
+    app: &tauri::AppHandle<R>,
+    result: spectral_discovery::ScanResult,
+) {
+    let mut findings_count = 0;
 
-    #[allow(deprecated)]
-    if let Some(email) = &profile.email {
-        if let Ok(e) = email.decrypt(key_array) {
-            pii.emails.push(e);
+    // Build a set of paths that had findings for O(1) lookup
+    let finding_paths: std::collections::HashSet<String> = result
+        .findings
+        .iter()
+        .map(|f| f.path.to_string_lossy().to_string())
+        .collect();
+
+    for file_result in &result.findings {
+        for pii_match in &file_result.matches {
+            if insert_pii_finding(pool, vault_id, &file_result.path, pii_match)
+                .await
+                .is_ok()
+            {
+                findings_count += 1;
+            }
         }
     }
-    for entry in &profile.email_addresses {
-        if let Ok(e) = entry.email.decrypt(key_array) {
-            pii.emails.push(e);
-        }
+
+    // Log every scanned file with had_findings flag
+    let files_logged: Vec<(String, bool)> = result
+        .all_files_scanned
+        .into_iter()
+        .map(|path| {
+            let had = finding_paths.contains(&path);
+            (path, had)
+        })
+        .collect();
+
+    if !files_logged.is_empty() {
+        let _ = scan_logs::log_scanned_files_batch(pool, session_id, &files_logged).await;
     }
 
-    #[allow(deprecated)]
-    if let Some(phone) = &profile.phone {
-        if let Ok(p) = phone.decrypt(key_array) {
-            pii.phones.push(p);
-        }
-    }
-    for entry in &profile.phone_numbers {
-        if let Ok(p) = entry.number.decrypt(key_array) {
-            pii.phones.push(p);
-        }
-    }
-
-    if let Some(ssn) = &profile.ssn {
-        if let Ok(s) = ssn.decrypt(key_array) {
-            pii.ssn = Some(s);
-        }
-    }
-
-    let mut addr = AddressInfo {
-        street: None,
-        city: None,
-        state: None,
-        zip: None,
+    let status = if result.was_stopped {
+        "stopped"
+    } else {
+        "completed"
     };
-    if let Some(a) = &profile.address {
-        addr.street = a.decrypt(key_array).ok();
-    }
-    if let Some(c) = &profile.city {
-        addr.city = c.decrypt(key_array).ok();
-    }
-    if let Some(s) = &profile.state {
-        addr.state = s.decrypt(key_array).ok();
-    }
-    if let Some(z) = &profile.zip_code {
-        addr.zip = z.decrypt(key_array).ok();
-    }
-    if addr.street.is_some() || addr.zip.is_some() {
-        pii.addresses.push(addr);
-    }
+    let _ = scan_logs::update_scan_session(
+        pool,
+        session_id,
+        status,
+        result.files_scanned as i64,
+        findings_count,
+        None,
+    )
+    .await;
 
+    let _ = app.emit(
+        "discovery:complete",
+        serde_json::json!({
+            "session_id": session_id,
+            "vault_id": vault_id,
+            "files_scanned": result.files_scanned,
+            "findings_count": findings_count,
+            "was_stopped": result.was_stopped,
+        }),
+    );
+
+    let mut active = ACTIVE_SCAN.lock().await;
+    *active = None;
+}
+
+fn decrypt_address_fields(
+    profile: &spectral_vault::UserProfile,
+    key_array: &[u8; 32],
+) -> Option<AddressInfo> {
+    let addr = AddressInfo {
+        street: profile
+            .address
+            .as_ref()
+            .and_then(|a| a.decrypt(key_array).ok()),
+        city: profile
+            .city
+            .as_ref()
+            .and_then(|c| c.decrypt(key_array).ok()),
+        state: profile
+            .state
+            .as_ref()
+            .and_then(|s| s.decrypt(key_array).ok()),
+        zip: profile
+            .zip_code
+            .as_ref()
+            .and_then(|z| z.decrypt(key_array).ok()),
+    };
+    if addr.street.is_some() || addr.zip.is_some() {
+        Some(addr)
+    } else {
+        None
+    }
+}
+
+fn decrypt_names(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut names = Vec::new();
     if let Some(name) = &profile.full_name {
         if let Ok(n) = name.decrypt(key_array) {
-            pii.names.push(n);
+            names.push(n);
         }
     }
     if let Some(first) = &profile.first_name {
         if let Ok(n) = first.decrypt(key_array) {
-            pii.names.push(n);
+            names.push(n);
         }
     }
     if let Some(last) = &profile.last_name {
         if let Ok(n) = last.decrypt(key_array) {
-            pii.names.push(n);
+            names.push(n);
         }
     }
+    names
+}
 
-    if let Some(dob) = &profile.date_of_birth {
-        if let Ok(d) = dob.decrypt(key_array) {
-            pii.date_of_birth = Some(d);
+#[allow(deprecated)]
+fn decrypt_emails(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut emails = Vec::new();
+    if let Some(email) = &profile.email {
+        if let Ok(e) = email.decrypt(key_array) {
+            emails.push(e);
         }
     }
+    for entry in &profile.email_addresses {
+        if let Ok(e) = entry.email.decrypt(key_array) {
+            emails.push(e);
+        }
+    }
+    emails
+}
 
-    pii
+#[allow(deprecated)]
+fn decrypt_phones(profile: &spectral_vault::UserProfile, key_array: &[u8; 32]) -> Vec<String> {
+    let mut phones = Vec::new();
+    if let Some(phone) = &profile.phone {
+        if let Ok(p) = phone.decrypt(key_array) {
+            phones.push(p);
+        }
+    }
+    for entry in &profile.phone_numbers {
+        if let Ok(p) = entry.number.decrypt(key_array) {
+            phones.push(p);
+        }
+    }
+    phones
+}
+
+fn extract_user_pii(profile: &spectral_vault::UserProfile, key: &[u8]) -> UserPii {
+    // Convert slice to array reference
+    let key_array: &[u8; 32] = key.try_into().expect("Key must be 32 bytes");
+
+    let emails = decrypt_emails(profile, key_array);
+    let phones = decrypt_phones(profile, key_array);
+
+    let ssn = profile.ssn.as_ref().and_then(|s| s.decrypt(key_array).ok());
+
+    let mut addresses = Vec::new();
+    if let Some(addr) = decrypt_address_fields(profile, key_array) {
+        addresses.push(addr);
+    }
+
+    let names = decrypt_names(profile, key_array);
+
+    let date_of_birth = profile
+        .date_of_birth
+        .as_ref()
+        .and_then(|d| d.decrypt(key_array).ok());
+
+    UserPii {
+        emails,
+        phones,
+        ssn,
+        addresses,
+        names,
+        date_of_birth,
+    }
 }
 
 fn is_pii_empty(pii: &UserPii) -> bool {

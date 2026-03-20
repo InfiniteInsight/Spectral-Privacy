@@ -49,21 +49,28 @@
 		{#if finding.ignored}<span
 				class="rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">Ignored</span
 			>{/if}
-		{#if finding.still_present_after_remediation}<span
-				class="rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800"
-				>Still Present</span
-			>{/if}
 	</div>
+
+	{#if finding.still_present_after_remediation}
+		<div class="mb-2 rounded-md bg-orange-50 border border-orange-200 p-2">
+			<p class="text-xs text-orange-800">
+				⚠️ Previously marked fixed, but findings are still found
+			</p>
+		</div>
+	{/if}
 
 	<p class="text-sm font-medium text-gray-900 truncate" title={finding.source_detail}>
 		{finding.source_detail}
 	</p>
 
 	{#if finding.matched_value || finding.line_number}
-		<div class="mt-2 p-2 rounded bg-gray-50 font-mono text-xs">
-			{#if finding.line_number}<span class="text-gray-500">Line {finding.line_number}:</span>{/if}
-			{#if finding.matched_value}<span class="text-gray-900 ml-1">{finding.matched_value}</span
-				>{/if}
+		<div class="mt-2">
+			<p class="text-xs font-semibold text-gray-600 mb-1">Findings:</p>
+			<div class="p-2 rounded bg-gray-50 font-mono text-xs">
+				{#if finding.line_number}<span class="text-gray-500">Line {finding.line_number}:</span>{/if}
+				{#if finding.matched_value}<span class="text-gray-900 ml-1">{finding.matched_value}</span
+					>{/if}
+			</div>
 		</div>
 	{/if}
 

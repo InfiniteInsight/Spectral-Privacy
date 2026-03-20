@@ -244,10 +244,7 @@
 						<div class="flex gap-2" onclick={(e) => e.stopPropagation()}>
 							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
 								<a
-									href="/settings?tab=profile"
-									onclick={async () => {
-										await vaultStore.setCurrentVault(vault.vault_id);
-									}}
+									href="/profile/edit?vault={vault.vault_id}"
 									class="rounded-md border border-primary-200 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50"
 									>Edit Profile</a
 								>
@@ -328,6 +325,12 @@
 												<div>
 													<span class="text-gray-500">Email:</span>
 													<span class="ml-2 text-gray-900">{profile.email}</span>
+												</div>
+											{/if}
+											{#if profile.ssn_last4}
+												<div>
+													<span class="text-gray-500">SSN:</span>
+													<span class="ml-2 text-gray-900">***-**-{profile.ssn_last4}</span>
 												</div>
 											{/if}
 											{#if profile.address_line1}
