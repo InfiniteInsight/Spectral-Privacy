@@ -16,9 +16,11 @@
 		mode?: 'create' | 'edit';
 		profileId?: string;
 		initialData?: Partial<ProfileInput>;
+		onComplete?: () => void;
+		onCancel?: () => void;
 	}
 
-	let { mode = 'create', profileId, initialData }: Props = $props();
+	let { mode = 'create', profileId, initialData, onComplete, onCancel }: Props = $props();
 
 	// Form data - initialize with initialData in edit mode
 	let formData = $state<Partial<ProfileInput>>(
@@ -216,10 +218,12 @@
 				} else {
 					// Edit mode: update completeness and show success
 					await updateCompleteness();
-					alert('Profile updated successfully! Redirecting to People page...');
-					setTimeout(() => {
+					alert('Profile updated successfully!');
+					if (onComplete) {
+						onComplete();
+					} else {
 						goto('/people');
-					}, 2000);
+					}
 				}
 			} else {
 				// Error message is in profileStore.error
@@ -363,7 +367,10 @@
 		{#if mode === 'edit'}
 			<div class="mt-4 text-center">
 				<button
-					onclick={() => goto('/people')}
+					onclick={() => {
+						if (onCancel) onCancel();
+						else goto('/people');
+					}}
 					class="text-sm text-gray-600 hover:text-gray-800 underline"
 				>
 					Cancel and return to People

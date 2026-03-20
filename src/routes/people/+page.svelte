@@ -244,10 +244,7 @@
 						<div class="flex gap-2" onclick={(e) => e.stopPropagation()}>
 							{#if vaultStore.unlockedVaultIds.has(vault.vault_id)}
 								<a
-									href="/profile/edit"
-									onclick={async () => {
-										await vaultStore.setCurrentVault(vault.vault_id);
-									}}
+									href="/profile/edit?vault={vault.vault_id}"
 									class="rounded-md border border-primary-200 px-3 py-1.5 text-xs text-primary-600 hover:bg-primary-50"
 									>Edit Profile</a
 								>
