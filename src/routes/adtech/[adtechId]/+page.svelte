@@ -114,7 +114,8 @@
 				}
 			}, 2000);
 		} catch (err) {
-			scanError = err instanceof Error ? err.message : 'Failed to start scan';
+			console.error('Targeted scan error:', err);
+			scanError = err instanceof Error ? err.message : String(err);
 		} finally {
 			scanStarting = false;
 		}
