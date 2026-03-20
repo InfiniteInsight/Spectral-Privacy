@@ -300,7 +300,14 @@
 		<!-- Step Content -->
 		<div class="mb-8">
 			{#if currentStep === 0}
-				<BasicInfoStep bind:this={basicInfoRef} bind:data={formData} onchange={handleDataChange} />
+				<BasicInfoStep
+					bind:this={basicInfoRef}
+					bind:data={formData}
+					onchange={handleDataChange}
+					ssnLast4={mode === 'edit'
+						? ((initialData as Record<string, unknown>)?.ssn_last4 as string | undefined)
+						: undefined}
+				/>
 			{:else if currentStep === 1}
 				<ContactInfoStep
 					bind:this={contactInfoRef}

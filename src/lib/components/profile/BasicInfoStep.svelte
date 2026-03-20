@@ -6,9 +6,10 @@
 	interface Props {
 		data: Partial<ProfileInput>;
 		onchange: (data: Partial<ProfileInput>) => void;
+		ssnLast4?: string;
 	}
 
-	let { data = $bindable({}), onchange }: Props = $props();
+	let { data = $bindable({}), onchange, ssnLast4 }: Props = $props();
 	/* eslint-enable no-unused-vars */
 
 	// Validation state
@@ -166,9 +167,16 @@
 		value={data.ssn || ''}
 		error={errors.ssn}
 		required={false}
-		placeholder="123-45-6789 (optional)"
+		placeholder={ssnLast4 && !data.ssn
+			? `Leave blank to keep ***-**-${ssnLast4}`
+			: '123-45-6789 (optional)'}
 		onchange={handleSsnChange}
 	/>
+	{#if ssnLast4 && !data.ssn}
+		<p class="text-xs text-gray-500 -mt-3">
+			SSN on file ending in {ssnLast4}. Leave blank to keep it, or enter a new one to replace it.
+		</p>
+	{/if}
 
 	<div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
 		<p class="text-xs text-blue-800">
