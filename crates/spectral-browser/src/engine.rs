@@ -78,7 +78,7 @@ fn is_wsl2() -> bool {
 }
 
 /// Helper: Apply platform-specific browser configuration
-#[allow(unused_mut)] // mut only needed on some platforms
+#[allow(unused_mut)] // mut only needed on Linux/WSL2
 fn apply_platform_config(
     mut config: chromiumoxide::browser::BrowserConfigBuilder,
 ) -> chromiumoxide::browser::BrowserConfigBuilder {
@@ -90,15 +90,6 @@ fn apply_platform_config(
             .arg("--no-zygote")
             .arg("--mute-audio")
             .arg("--disable-software-rasterizer");
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        tracing::info!("Applying Windows Chrome launch flags");
-        config = config
-            .arg("--single-process")
-            .arg("--no-zygote")
-            .arg("--disable-setuid-sandbox");
     }
 
     config
@@ -164,6 +155,12 @@ impl BrowserEngine {
                 config = config.chrome_executable(&path);
             }
         }
+
+        // Use a temp user-data-dir to avoid conflicts with a running Chrome instance.
+        // Without this, headless Chrome may fail with exit status 21 if the default
+        // profile directory is already locked by another Chrome process.
+        let user_data_dir = std::env::temp_dir().join("spectral-chrome-profile");
+        config = config.user_data_dir(&user_data_dir);
 
         // Add essential args
         config = config
