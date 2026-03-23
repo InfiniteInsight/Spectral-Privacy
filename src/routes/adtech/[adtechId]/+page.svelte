@@ -87,16 +87,27 @@
 			const profileId = profileStore.profiles[0].id;
 			const brokerId = adtechId;
 
+			console.log(`[scan] Starting targeted scan for broker: ${brokerId} (profile: ${profileId})`);
+
 			const jobId = await startScan(vaultId, profileId, { brokerIds: [brokerId] });
+			console.log(`[scan] Job created: ${jobId}`);
 
 			// Fetch initial status
 			scanStatus = await scanAPI.getStatus(vaultId, jobId);
+			console.log(`[scan] Initial status:`, scanStatus);
 
 			// Poll for updates
 			pollingInterval = setInterval(async () => {
 				try {
 					const status = await scanAPI.getStatus(vaultId, jobId);
 					scanStatus = status;
+
+					const brokerLabel = status.current_broker_name ?? brokerId;
+					console.log(
+						`[scan] Poll: ${status.status} — ${status.completed_brokers}/${status.total_brokers} brokers` +
+							(status.current_broker_name ? ` (scanning: ${brokerLabel})` : '')
+					);
+
 					if (
 						status.status === 'Completed' ||
 						status.status === 'Failed' ||
@@ -104,17 +115,24 @@
 					) {
 						clearInterval(pollingInterval!);
 						pollingInterval = null;
-						// Reload broker detail to reflect updated findings count
+
 						if (status.status === 'Completed') {
+							console.log(`[scan] Completed — reloading broker detail for updated findings count`);
 							adtech = await brokerAPI.getBrokerDetail(brokerId, vaultId);
+							console.log(`[scan] Broker finding_count now: ${adtech?.finding_count ?? 'unknown'}`);
+						} else {
+							console.warn(
+								`[scan] Ended with status: ${status.status}`,
+								status.error_message ?? ''
+							);
 						}
 					}
 				} catch (err) {
-					console.error('Scan polling error:', err);
+					console.error('[scan] Polling error:', err);
 				}
 			}, 2000);
 		} catch (err) {
-			console.error('Targeted scan error:', err);
+			console.error('[scan] Failed to start:', err);
 			scanError = err instanceof Error ? err.message : String(err);
 		} finally {
 			scanStarting = false;
