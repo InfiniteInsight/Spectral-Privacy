@@ -32,8 +32,13 @@ fn get_version() -> String {
 fn init_tracing() {
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,spectral=debug"));
+    // chromiumoxide logs ERROR for every CDP message it can't deserialize (version skew
+    // between its generated types and the installed Chrome) and WARN when the browser
+    // is dropped without an explicit close().  Both are harmless — suppress them so
+    // they don't flood the terminal during normal scans.
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("info,spectral=debug,chromiumoxide::conn=off,chromiumoxide::handler=warn")
+    });
 
     tracing_subscriber::registry()
         .with(fmt::layer().with_target(true))
