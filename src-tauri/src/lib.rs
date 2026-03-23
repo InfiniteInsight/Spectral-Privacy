@@ -116,6 +116,7 @@ pub fn run() {
             commands::removal::mark_attempt_verified,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
+            commands::scan::get_broker_scan_results,
             commands::scan::get_findings,
             commands::scan::verify_finding,
             commands::scan::submit_removals_for_confirmed,

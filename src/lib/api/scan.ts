@@ -9,6 +9,15 @@ export interface ScanJobStatus {
 	error_message?: string;
 }
 
+export interface BrokerScanResult {
+	broker_id: string;
+	status: string;
+	findings_count: number;
+	error_message?: string;
+	started_at?: string;
+	completed_at?: string;
+}
+
 export interface Finding {
 	id: string;
 	broker_id: string;
@@ -128,6 +137,10 @@ export const scanAPI = {
 			vaultId,
 			scanJobId
 		});
+	},
+
+	async getBrokerScanResults(vaultId: string, jobId: string): Promise<BrokerScanResult[]> {
+		return await invoke<BrokerScanResult[]>('get_broker_scan_results', { vaultId, jobId });
 	},
 
 	/**

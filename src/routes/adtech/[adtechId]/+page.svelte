@@ -116,8 +116,27 @@
 						clearInterval(pollingInterval!);
 						pollingInterval = null;
 
+						// Fetch per-broker results for visibility into what actually happened
+						try {
+							const brokerResults = await scanAPI.getBrokerScanResults(vaultId, jobId);
+							console.group(`[scan] Broker scan results for job ${jobId}`);
+							for (const r of brokerResults) {
+								if (r.status === 'Success') {
+									console.log(
+										`  ✓ ${r.broker_id}: ${r.findings_count} finding(s) | ${r.started_at} → ${r.completed_at}`
+									);
+								} else {
+									console.warn(
+										`  ✗ ${r.broker_id}: ${r.status} — ${r.error_message ?? 'no error details'}`
+									);
+								}
+							}
+							console.groupEnd();
+						} catch (err) {
+							console.warn('[scan] Could not fetch broker scan details:', err);
+						}
+
 						if (status.status === 'Completed') {
-							console.log(`[scan] Completed — reloading broker detail for updated findings count`);
 							adtech = await brokerAPI.getBrokerDetail(brokerId, vaultId);
 							console.log(`[scan] Broker finding_count now: ${adtech?.finding_count ?? 'unknown'}`);
 						} else {

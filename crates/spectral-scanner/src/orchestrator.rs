@@ -337,7 +337,10 @@ impl ScanOrchestrator {
             .build_search_url(&broker_def, &profile_id, &vault_key)
             .await
         {
-            Ok(url) => url,
+            Ok(url) => {
+                tracing::info!("[scan] {} → fetching {}", broker_id, url);
+                url
+            }
             Err(ScanError::MissingRequiredField(field)) => {
                 // Profile missing required field - mark as skipped
                 spectral_db::broker_scans::update_status(
@@ -425,10 +428,18 @@ impl ScanOrchestrator {
             }
         };
 
+        tracing::info!("[scan] {} → page fetched ({} bytes)", broker_id, html.len());
+
         // Parse results using ResultParser with broker-specific selectors
         let findings_count = self
             .parse_and_store_findings(&html, &broker_scan.id, &broker_id, &profile_id)
             .await?;
+
+        tracing::info!(
+            "[scan] {} → parse complete, {} finding(s)",
+            broker_id,
+            findings_count
+        );
 
         // Mark as success
         spectral_db::broker_scans::update_status(self.db.pool(), &broker_scan.id, "Success", None)

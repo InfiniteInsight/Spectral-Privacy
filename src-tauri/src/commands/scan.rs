@@ -1715,3 +1715,44 @@ mod score_tests {
         assert_eq!(score, 0);
     }
 }
+
+/// Per-broker result returned for scan debugging.
+#[derive(Debug, Serialize)]
+pub struct BrokerScanResult {
+    pub broker_id: String,
+    pub status: String,
+    pub findings_count: i64,
+    pub error_message: Option<String>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+/// Return the per-broker scan records for a completed scan job.
+///
+/// Useful for debugging: shows whether each broker scan succeeded or failed,
+/// how many findings were found, and any error details.
+#[tauri::command]
+pub async fn get_broker_scan_results(
+    state: State<'_, AppState>,
+    vault_id: String,
+    job_id: String,
+) -> Result<Vec<BrokerScanResult>, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    let scans = spectral_db::broker_scans::get_by_scan_job(db.pool(), &job_id)
+        .await
+        .map_err(|e| format!("Failed to fetch broker scan results: {e}"))?;
+
+    Ok(scans
+        .into_iter()
+        .map(|s| BrokerScanResult {
+            broker_id: s.broker_id,
+            status: s.status,
+            findings_count: s.findings_count,
+            error_message: s.error_message,
+            started_at: s.started_at,
+            completed_at: s.completed_at,
+        })
+        .collect())
+}
