@@ -328,8 +328,9 @@ impl BrowserActions for BrowserEngine {
 
         let page = self.get_page().await?;
 
-        page.goto(url)
+        tokio::time::timeout(Duration::from_secs(30), page.goto(url))
             .await
+            .map_err(|_| BrowserError::Timeout(format!("Navigation to {url} timed out after 30s")))?
             .map_err(|e| BrowserError::NavigationError(e.to_string()))?;
 
         Ok(())

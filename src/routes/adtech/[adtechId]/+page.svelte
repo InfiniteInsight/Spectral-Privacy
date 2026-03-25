@@ -135,7 +135,7 @@
 							}
 							console.groupEnd();
 							scanBrokerErrors = brokerResults
-								.filter((r) => r.status !== 'Success')
+								.filter((r) => r.status !== 'Success' && r.status !== 'Skipped')
 								.map((r) => ({
 									broker_id: r.broker_id,
 									error_message: r.error_message ?? 'Unknown error'

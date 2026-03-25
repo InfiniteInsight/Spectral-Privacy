@@ -341,6 +341,23 @@ impl ScanOrchestrator {
                 tracing::info!("[scan] {} → fetching {}", broker_id, url);
                 url
             }
+            Err(ScanError::NotScannable { reason, .. }) => {
+                // Broker requires manual search — skip cleanly, don't count as failure
+                tracing::info!("[scan] {} → skipped ({})", broker_id, reason);
+                spectral_db::broker_scans::update_status(
+                    self.db.pool(),
+                    &broker_scan.id,
+                    "Skipped",
+                    Some(reason.clone()),
+                )
+                .await?;
+
+                return Ok(BrokerScanResult {
+                    broker_id,
+                    findings_count: 0,
+                    error: Some(format!("Skipped: {reason}")),
+                });
+            }
             Err(ScanError::MissingRequiredField(field)) => {
                 // Profile missing required field - mark as skipped
                 spectral_db::broker_scans::update_status(
@@ -891,14 +908,15 @@ impl ScanOrchestrator {
 
                 Ok(url)
             }
-            SearchMethod::WebForm { url, .. } => {
-                // For now, just return the form URL - form submission not yet implemented
-                Ok(url.clone())
-            }
-            SearchMethod::Manual { url, .. } => {
-                // Manual search - return the URL for user to visit
-                Ok(url.clone())
-            }
+            SearchMethod::WebForm { .. } => Err(ScanError::NotScannable {
+                broker_id: broker_def.broker.id.clone(),
+                reason: "WebForm search requires browser automation not yet implemented"
+                    .to_string(),
+            }),
+            SearchMethod::Manual { .. } => Err(ScanError::NotScannable {
+                broker_id: broker_def.broker.id.clone(),
+                reason: "Manual search — no automated scan URL available".to_string(),
+            }),
         }
     }
 
