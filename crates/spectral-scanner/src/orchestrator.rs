@@ -463,11 +463,19 @@ impl ScanOrchestrator {
         for attempt in 0..MAX_RETRIES {
             match self.browser_engine.fetch_page_content(url).await {
                 Ok(html) => {
-                    // Check for CAPTCHA in HTML before returning
+                    // If a CAPTCHA is present, open a visible browser window so the
+                    // user can solve it interactively, then resume with the result.
                     if Self::detect_captcha(&html) {
-                        return Err(ScanError::CaptchaRequired {
-                            broker_id: broker_id.clone(),
-                        });
+                        tracing::info!(
+                            "[scan] CAPTCHA detected for {}, opening visible browser",
+                            broker_id
+                        );
+                        return spectral_browser::BrowserEngine::solve_captcha_interactively(
+                            url,
+                            Duration::from_secs(300),
+                        )
+                        .await
+                        .map_err(ScanError::Browser);
                     }
                     return Ok(html);
                 }
