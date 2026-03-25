@@ -22,6 +22,7 @@
 
 	// Inline targeted scan state
 	let scanStatus = $state<ScanJobStatus | null>(null);
+	let scanBrokerErrors = $state<{ broker_id: string; error_message: string }[]>([]);
 	let scanStarting = $state(false);
 	let scanError = $state<string | null>(null);
 	let pollingInterval: ReturnType<typeof setInterval> | null = null;
@@ -77,6 +78,7 @@
 		scanStarting = true;
 		scanError = null;
 		scanStatus = null;
+		scanBrokerErrors = [];
 
 		try {
 			await profileStore.loadProfiles(vaultId);
@@ -116,7 +118,7 @@
 						clearInterval(pollingInterval!);
 						pollingInterval = null;
 
-						// Fetch per-broker results for visibility into what actually happened
+						// Fetch per-broker results to surface failures in the UI
 						try {
 							const brokerResults = await scanAPI.getBrokerScanResults(vaultId, jobId);
 							console.group(`[scan] Broker scan results for job ${jobId}`);
@@ -132,6 +134,12 @@
 								}
 							}
 							console.groupEnd();
+							scanBrokerErrors = brokerResults
+								.filter((r) => r.status !== 'Success')
+								.map((r) => ({
+									broker_id: r.broker_id,
+									error_message: r.error_message ?? 'Unknown error'
+								}));
 						} catch (err) {
 							console.warn('[scan] Could not fetch broker scan details:', err);
 						}
@@ -354,9 +362,17 @@
 										: 'Initializing...'}
 								</div>
 							{:else if scanIsComplete}
-								<p class="text-sm text-green-700">
-									✓ Done — scan status and findings above have been updated.
-								</p>
+								{#if scanBrokerErrors.length > 0}
+									<div class="flex flex-col gap-1">
+										{#each scanBrokerErrors as { error_message }}
+											<p class="text-sm text-amber-700">⚠ {error_message}</p>
+										{/each}
+									</div>
+								{:else}
+									<p class="text-sm text-green-700">
+										✓ Done — scan status and findings above have been updated.
+									</p>
+								{/if}
 							{:else if scanIsFailed}
 								<p class="text-sm text-red-700">
 									✗ {scanStatus?.error_message || 'Scan failed. Please try again.'}
