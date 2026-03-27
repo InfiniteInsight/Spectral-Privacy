@@ -481,14 +481,27 @@ pub async fn submit_removal_task(
         .map_err(|e| format!("Failed to load removal attempt: {e}"))?
         .ok_or_else(|| format!("Removal attempt not found: {removal_attempt_id}"))?;
 
-    // Load associated finding
-    let finding = spectral_db::findings::get_by_id(db.pool(), &removal_attempt.finding_id)
-        .await
-        .map_err(|e| format!("Failed to load finding: {e}"))?
-        .ok_or_else(|| format!("Finding not found: {}", removal_attempt.finding_id))?;
+    // Load associated finding — may be None for standalone (email/form/manual) removals
+    let finding = match &removal_attempt.finding_id {
+        Some(finding_id) => Some(
+            spectral_db::findings::get_by_id(db.pool(), finding_id)
+                .await
+                .map_err(|e| format!("Failed to load finding: {e}"))?
+                .ok_or_else(|| format!("Finding not found: {finding_id}"))?,
+        ),
+        None => None,
+    };
 
-    // Load profile
-    let profile_id = spectral_core::types::ProfileId::new(&finding.profile_id)
+    // Resolve profile ID — from finding if present, otherwise from the attempt itself
+    let profile_id_str = match &finding {
+        Some(f) => f.profile_id.clone(),
+        None => removal_attempt
+            .profile_id
+            .clone()
+            .ok_or_else(|| "Removal attempt has no finding_id and no profile_id".to_string())?,
+    };
+
+    let profile_id = spectral_core::types::ProfileId::new(&profile_id_str)
         .map_err(|e| format!("Invalid profile ID: {e}"))?;
 
     let profile = vault
@@ -501,8 +514,9 @@ pub async fn submit_removal_task(
         .encryption_key()
         .map_err(|e| format!("Failed to get encryption key: {e}"))?;
 
-    // Map fields for submission
-    let field_values = map_fields_for_submission(&profile, &finding.listing_url, key)?;
+    // listing_url is empty for standalone removals (no scan finding)
+    let listing_url = finding.as_ref().map_or("", |f| f.listing_url.as_str());
+    let field_values = map_fields_for_submission(&profile, listing_url, key)?;
 
     // Load broker definition
     let broker_id =

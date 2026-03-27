@@ -625,6 +625,7 @@ pub async fn submit_removals_for_confirmed(
             db.pool(),
             finding.id,
             finding.broker_id,
+            finding.profile_id,
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -1357,8 +1358,12 @@ async fn load_removal_context(
         .map_err(|e| e.to_string())?
         .ok_or("Removal attempt not found")?;
 
-    // Get the finding to retrieve profile_id
-    let finding = spectral_db::findings::get_by_id(db.pool(), &attempt.finding_id)
+    // Get the finding to retrieve profile_id (may be None for standalone removals)
+    let finding_id = attempt
+        .finding_id
+        .as_deref()
+        .ok_or("Removal attempt has no associated finding")?;
+    let finding = spectral_db::findings::get_by_id(db.pool(), finding_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or("Finding not found")?;

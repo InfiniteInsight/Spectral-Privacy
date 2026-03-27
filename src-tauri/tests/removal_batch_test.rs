@@ -126,10 +126,14 @@ async fn setup_test_removal_structure(
         .expect("create finding");
 
         // Create removal attempt for the finding
-        let removal_attempt =
-            create_removal_attempt(pool, finding.id.clone(), "test-broker".to_string())
-                .await
-                .expect("create removal attempt");
+        let removal_attempt = create_removal_attempt(
+            pool,
+            finding.id.clone(),
+            "test-broker".to_string(),
+            profile_id.to_string(),
+        )
+        .await
+        .expect("create removal attempt");
 
         removal_attempt_ids.push(removal_attempt.id);
     }
