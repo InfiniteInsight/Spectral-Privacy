@@ -121,6 +121,8 @@ pub fn run() {
             commands::scan::verify_finding,
             commands::scan::submit_removals_for_confirmed,
             commands::scan::process_removal_batch,
+            commands::scan::initiate_direct_removal,
+            commands::scan::initiate_bulk_removal,
             commands::scan::get_captcha_queue,
             commands::scan::get_failed_queue,
             commands::scan::retry_removal,
