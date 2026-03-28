@@ -13,12 +13,25 @@
 	} from '$lib/utils/broker-display';
 	import EmailTemplatePreview from '$lib/components/broker/EmailTemplatePreview.svelte';
 	import EmailFallbackDisplay from '$lib/components/broker/EmailFallbackDisplay.svelte';
+	import RemovalActionButton from '$lib/components/removals/RemovalActionButton.svelte';
 
 	const adtechId = $derived($page.params.adtechId);
+	const vaultId = $derived(vaultStore.currentVaultId ?? '');
 
 	let adtech = $state<BrokerDetail | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let currentProfileId = $state('');
+
+	// Resolve profile ID for removal actions
+	$effect(() => {
+		if (!vaultId) return;
+		profileStore.loadProfiles(vaultId).then(() => {
+			if (profileStore.profiles.length > 0) {
+				currentProfileId = profileStore.profiles[0].id;
+			}
+		});
+	});
 
 	// Inline targeted scan state
 	let scanStatus = $state<ScanJobStatus | null>(null);
@@ -388,7 +401,7 @@
 					{/if}
 
 					<!-- Action Buttons -->
-					<div class="flex flex-col sm:flex-row gap-4">
+					<div class="flex flex-col sm:flex-row flex-wrap gap-4">
 						<a
 							href={adtech.url}
 							target="_blank"
@@ -397,13 +410,21 @@
 						>
 							Visit Company Website ↗
 						</a>
-						<button
-							onclick={handleTargetedScan}
-							disabled={scanStarting || scanInProgress}
-							class="flex-1 px-6 py-3 border-2 border-orange-600 text-orange-700 rounded-lg font-medium hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{scanStarting || scanInProgress ? 'Scanning...' : 'Scan This Company'}
-						</button>
+						{#if scanStarting || scanInProgress}
+							<button
+								disabled
+								class="flex-1 px-6 py-3 border-2 border-orange-600 text-orange-700 rounded-lg font-medium opacity-50 cursor-not-allowed"
+							>
+								Scanning...
+							</button>
+						{:else}
+							<RemovalActionButton
+								broker={adtech}
+								{vaultId}
+								profileId={currentProfileId}
+								onScanClick={handleTargetedScan}
+							/>
+						{/if}
 						<button
 							onclick={() => goto('/scan')}
 							class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
