@@ -1,11 +1,13 @@
 <script lang="ts">
 	import type { BrokerDetail } from '$lib/api/brokers';
+	import type { ProfileOutput } from '$lib/api/profile';
 	import { removalAPI } from '$lib/api/removal';
 
 	interface Props {
 		broker: BrokerDetail;
 		vaultId: string;
 		profileId: string;
+		profile?: ProfileOutput | null;
 		onScanClick: () => void;
 		disabled?: boolean;
 		class?: string;
@@ -15,6 +17,7 @@
 		broker,
 		vaultId,
 		profileId,
+		profile = null,
 		onScanClick,
 		disabled = false,
 		class: extraClass = ''
@@ -33,10 +36,21 @@
 		broker.removal_method.startsWith('Manual') || broker.removal_method.startsWith('Phone')
 	);
 
+	function substituteTemplateVars(text: string): string {
+		if (!profile) return text;
+		const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+		const email = profile.email_addresses?.[0]?.email ?? profile.email;
+		const phone = profile.phone_numbers?.[0]?.number ?? '';
+		return text
+			.replaceAll('{user_email}', email)
+			.replaceAll('{full_name}', fullName)
+			.replaceAll('{phone_number}', phone);
+	}
+
 	function buildMailtoUrl(): string {
 		if (!broker.email_template) return `mailto:?subject=Data%20Removal%20Request`;
 		const { email, subject, body } = broker.email_template;
-		return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+		return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(substituteTemplateVars(subject))}&body=${encodeURIComponent(substituteTemplateVars(body))}`;
 	}
 
 	async function handleFormSubmit() {

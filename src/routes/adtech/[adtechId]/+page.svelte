@@ -23,12 +23,14 @@
 	let error = $state<string | null>(null);
 	let currentProfileId = $state('');
 
-	// Resolve profile ID for removal actions
+	// Resolve profile ID and full profile for removal actions
 	$effect(() => {
 		if (!vaultId) return;
 		profileStore.loadProfiles(vaultId).then(() => {
 			if (profileStore.profiles.length > 0) {
-				currentProfileId = profileStore.profiles[0].id;
+				const id = profileStore.profiles[0].id;
+				currentProfileId = id;
+				profileStore.loadProfile(vaultId, id);
 			}
 		});
 	});
@@ -422,6 +424,7 @@
 								broker={adtech}
 								{vaultId}
 								profileId={currentProfileId}
+								profile={profileStore.currentProfile}
 								onScanClick={handleTargetedScan}
 							/>
 						{/if}
