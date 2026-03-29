@@ -354,6 +354,7 @@ pub async fn submit_via_email(
     attempt_id: &str,
     field_values: &HashMap<String, String>,
     smtp_config: Option<&spectral_mail::SmtpConfig>,
+    cc: Option<&str>,
     db: &Database,
 ) -> Result<RemovalOutcome, String> {
     let RemovalMethod::Email {
@@ -399,7 +400,7 @@ pub async fn submit_via_email(
             "submit_via_email: sending via SMTP for attempt {}",
             attempt_id
         );
-        spectral_mail::sender::send_smtp(&email_template, user_email, config)
+        spectral_mail::sender::send_smtp(&email_template, user_email, config, cc)
             .await
             .map_err(|e| format!("SMTP send failed: {e}"))?;
     } else {
@@ -550,15 +551,25 @@ pub async fn submit_removal_task(
         }
         RemovalMethod::Email { .. } => {
             info!("Routing removal attempt {} via email", removal_attempt_id);
-            // Note: SMTP config is not available yet (added in Task 15)
-            // For now, we pass None which will store a mailto: URL
+            // Load SMTP config and CC address from vault settings
+            let smtp_config = spectral_mail::settings::get_smtp_config(db.pool())
+                .await
+                .ok()
+                .flatten();
+            let cc_addr = spectral_mail::settings::get_cc_address(db.pool())
+                .await
+                .ok()
+                .flatten();
+            let cc_ref = cc_addr.as_deref();
+            let smtp_ref = smtp_config.as_ref();
             retry_with_backoff(
                 || async {
                     submit_via_email(
                         &broker_def,
                         &removal_attempt_id,
                         &field_values,
-                        None, // SMTP config added in Task 15
+                        smtp_ref,
+                        cc_ref,
                         &db,
                     )
                     .await

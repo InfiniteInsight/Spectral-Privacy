@@ -1342,6 +1342,7 @@ struct RemovalEmailContext {
     subject_template: String,
     body_template: String,
     profile: spectral_vault::UserProfile,
+    broker_id: String,
 }
 
 /// Load and validate removal context (attempt, finding, broker, profile).
@@ -1403,6 +1404,7 @@ async fn load_removal_context(
         subject_template,
         body_template,
         profile,
+        broker_id: attempt.broker_id.clone(),
     })
 }
 
@@ -1439,24 +1441,78 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     let rendered_subject = render_email_template(&context.subject_template, &fields);
     let rendered_body = render_email_template(&context.body_template, &fields);
 
-    // Construct mailto: URL
-    let mailto_url = format!(
-        "mailto:{}?subject={}&body={}",
-        urlencoding::encode(&context.email_address),
-        urlencoding::encode(&rendered_subject),
-        urlencoding::encode(&rendered_body)
-    );
+    let email_template = spectral_mail::EmailTemplate {
+        to: context.email_address.clone(),
+        subject: rendered_subject.clone(),
+        body: rendered_body.clone(),
+    };
 
-    // Open mailto: URL in default email client
-    #[allow(deprecated)]
-    _app.shell()
-        .open(&mailto_url, None)
-        .map_err(|e| format!("Failed to open email client: {e}"))?;
+    let user_email = fields
+        .get("email")
+        .cloned()
+        .unwrap_or_else(|| context.email_address.clone());
 
-    info!(
-        "Opened mailto: for attempt {} to {}",
-        attempt_id, context.email_address
-    );
+    // Load SMTP config from vault settings
+    let db = get_db(&vault)?;
+    let smtp_config = spectral_mail::settings::get_smtp_config(db.pool())
+        .await
+        .map_err(|e| format!("Failed to load SMTP config: {e}"))?;
+    let cc = spectral_mail::settings::get_cc_address(db.pool())
+        .await
+        .map_err(|e| format!("Failed to load CC address: {e}"))?;
+
+    let send_method = if smtp_config.is_some() {
+        "smtp"
+    } else {
+        "mailto"
+    };
+
+    if let Some(ref config) = smtp_config {
+        // Send directly via SMTP
+        spectral_mail::sender::send_smtp(&email_template, &user_email, config, cc.as_deref())
+            .await
+            .map_err(|e| format!("SMTP send failed: {e}"))?;
+        info!(
+            "Sent removal email via SMTP for attempt {} to {}",
+            attempt_id, context.email_address
+        );
+    } else {
+        // Fall back to mailto: link
+        let mailto_url = format!(
+            "mailto:{}?subject={}&body={}",
+            urlencoding::encode(&context.email_address),
+            urlencoding::encode(&rendered_subject),
+            urlencoding::encode(&rendered_body)
+        );
+        #[allow(deprecated)]
+        _app.shell()
+            .open(&mailto_url, None)
+            .map_err(|e| format!("Failed to open email client: {e}"))?;
+        info!(
+            "Opened mailto: for attempt {} to {}",
+            attempt_id, context.email_address
+        );
+    }
+
+    // Log to email_removals table
+    let body_hash = spectral_mail::sender::body_hash(&rendered_body);
+    let email_removal_id = uuid::Uuid::new_v4().to_string();
+    let sent_at = chrono::Utc::now().to_rfc3339();
+    sqlx::query(
+        "INSERT INTO email_removals (id, attempt_id, broker_id, sent_at, method, recipient, subject, body_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&email_removal_id)
+    .bind(&attempt_id)
+    .bind(&context.broker_id)
+    .bind(&sent_at)
+    .bind(send_method)
+    .bind(&context.email_address)
+    .bind(&rendered_subject)
+    .bind(&body_hash)
+    .execute(db.pool())
+    .await
+    .map_err(|e| format!("Failed to log email removal: {e}"))?;
 
     Ok(())
 }

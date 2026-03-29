@@ -17,20 +17,31 @@ pub fn to_mailto_url(email: &EmailTemplate) -> String {
 }
 
 /// Sends via SMTP using lettre.
+///
+/// If `cc` is `Some`, that address is added as a CC recipient.
 pub async fn send_smtp(
     email: &EmailTemplate,
     from: &str,
     config: &SmtpConfig,
+    cc: Option<&str>,
 ) -> Result<(), String> {
     use lettre::transport::smtp::authentication::Credentials;
     use lettre::{Message, SmtpTransport, Transport};
 
-    let msg = Message::builder()
+    let mut builder = Message::builder()
         .from(from.parse().map_err(|e| format!("Bad from address: {e}"))?)
         .to(email
             .to
             .parse()
-            .map_err(|e| format!("Bad to address: {e}"))?)
+            .map_err(|e| format!("Bad to address: {e}"))?);
+
+    if let Some(cc_addr) = cc {
+        builder = builder.cc(cc_addr
+            .parse()
+            .map_err(|e| format!("Bad CC address: {e}"))?);
+    }
+
+    let msg = builder
         .subject(&email.subject)
         .body(email.body.clone())
         .map_err(|e| format!("Failed to build message: {e}"))?;
