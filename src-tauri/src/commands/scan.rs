@@ -1514,6 +1514,24 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     .await
     .map_err(|e| format!("Failed to log email removal: {e}"))?;
 
+    // Schedule a 15-day follow-up reminder
+    let follow_up_at = (chrono::Utc::now() + chrono::Duration::days(15)).to_rfc3339();
+    if let Err(e) = spectral_db::schedule_followup(
+        db.pool(),
+        &attempt_id,
+        &context.broker_id,
+        &context.email_address,
+        &follow_up_at,
+    )
+    .await
+    {
+        tracing::warn!(
+            "Failed to schedule follow-up for attempt {}: {}",
+            attempt_id,
+            e
+        );
+    }
+
     Ok(())
 }
 
