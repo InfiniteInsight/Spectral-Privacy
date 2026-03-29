@@ -117,6 +117,12 @@ pub async fn run_job_now(
             })?;
             run_poll_imap_job(db.pool()).await
         }
+        JobType::FollowUpReminders => {
+            let db = vault.database().map_err(|e| {
+                CommandError::new("DATABASE_ERROR", format!("Failed to get vault database: {e}"))
+            })?;
+            run_followup_reminders_job(db.pool()).await
+        }
     }
 }
 
@@ -312,6 +318,121 @@ async fn run_poll_imap_job(pool: &SqlitePool) -> Result<(), CommandError> {
             }
         }
     }
+
+    Ok(())
+}
+
+async fn run_followup_reminders_job(pool: &SqlitePool) -> Result<(), CommandError> {
+    info!("Executing FollowUpReminders job");
+
+    let due = spectral_db::get_due_followups(pool).await.map_err(|e| {
+        CommandError::new(
+            "DATABASE_ERROR",
+            format!("Failed to fetch due follow-ups: {e}"),
+        )
+    })?;
+
+    if due.is_empty() {
+        info!("No follow-ups due");
+        return Ok(());
+    }
+
+    info!("{} follow-up(s) due", due.len());
+
+    let smtp_config = spectral_mail::settings::get_smtp_config(pool)
+        .await
+        .ok()
+        .flatten();
+    let llm_available = spectral_privacy::get_primary_provider(pool)
+        .await
+        .ok()
+        .flatten()
+        .is_some();
+
+    for followup in &due {
+        if let (Some(ref smtp), true) = (&smtp_config, llm_available) {
+            match send_auto_followup(followup, smtp, pool).await {
+                Ok(()) => {
+                    if let Err(e) =
+                        spectral_db::mark_followup_sent(pool, &followup.id, "smtp_auto").await
+                    {
+                        tracing::warn!("Failed to mark follow-up {} as sent: {}", followup.id, e);
+                    } else {
+                        info!(
+                            "Auto-sent follow-up for attempt {} to {}",
+                            followup.attempt_id, followup.recipient
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to auto-send follow-up for attempt {}: {}",
+                        followup.attempt_id,
+                        e
+                    );
+                }
+            }
+        } else {
+            info!(
+                "Follow-up for attempt {} due but LLM/SMTP not configured — surfacing in UI",
+                followup.attempt_id
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Draft and send an automated follow-up email using the LLM, then log it.
+async fn send_auto_followup(
+    followup: &spectral_db::RemovalFollowup,
+    smtp: &SmtpConfig,
+    pool: &SqlitePool,
+) -> Result<(), String> {
+    let router = PrivacyAwareLlmRouter::new(pool.clone());
+
+    let prompt = format!(
+        "Draft a short, professional follow-up email (3-5 sentences) for a data deletion \
+        request sent 15 days ago to {} that has not yet been confirmed. Reference the original \
+        CCPA/GDPR data deletion request. Ask for a status update and confirmation of deletion. \
+        Provide only the email body — no subject line.",
+        followup.recipient
+    );
+
+    let request = CompletionRequest::new(prompt).with_max_tokens(256);
+    let response = router
+        .route(TaskType::EmailDraft, request)
+        .await
+        .map_err(|e| format!("LLM request failed: {e}"))?;
+
+    let body = response.content.trim().to_string();
+
+    let template = spectral_mail::templates::EmailTemplate {
+        to: followup.recipient.clone(),
+        subject: "Follow-Up: Data Deletion Request".to_string(),
+        body: body.clone(),
+    };
+
+    spectral_mail::sender::send_smtp(&template, &smtp.username, smtp, None)
+        .await
+        .map_err(|e| format!("SMTP send failed: {e}"))?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let body_hash = spectral_mail::sender::body_hash(&body);
+    sqlx::query(
+        "INSERT INTO email_removals \
+         (id, attempt_id, broker_id, recipient, method, subject, body_hash, sent_at) \
+         VALUES (lower(hex(randomblob(16))), ?, ?, ?, 'smtp_followup', \
+                 'Follow-Up: Data Deletion Request', ?, ?)",
+    )
+    .bind(&followup.attempt_id)
+    .bind(&followup.broker_id)
+    .bind(&followup.recipient)
+    .bind(&body_hash)
+    .bind(&now)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Failed to log follow-up to email_removals: {e}"))?;
 
     Ok(())
 }

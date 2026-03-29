@@ -46,6 +46,12 @@ pub mod map_blur;
 pub mod matching;
 pub mod migrations;
 pub mod removal_attempts;
+pub mod removal_followups;
+pub use removal_followups::{
+    dismiss_followup as dismiss_removal_followup, get_due_followups,
+    get_pending_followups as get_pending_removal_followups, mark_followup_sent, schedule_followup,
+    RemovalFollowup,
+};
 /// Scan job management for tracking broker scan operations.
 pub mod scan_jobs;
 pub mod scan_logs;

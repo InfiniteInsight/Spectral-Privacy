@@ -8,6 +8,7 @@ pub enum JobType {
     ScanAll,
     VerifyRemovals,
     PollImap,
+    FollowUpReminders,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
