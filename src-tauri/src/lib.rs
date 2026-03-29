@@ -114,6 +114,8 @@ pub fn run() {
             commands::profile::get_profile_completeness,
             commands::removal::submit_removal,
             commands::removal::mark_attempt_verified,
+            commands::removal::get_pending_followups,
+            commands::removal::dismiss_followup,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
             commands::scan::get_broker_scan_results,
