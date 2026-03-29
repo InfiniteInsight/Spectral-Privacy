@@ -90,7 +90,6 @@ pub async fn run_job_now(
 ) -> Result<(), CommandError> {
     info!("Manual job trigger: {} for vault {}", job_type, vault_id);
 
-    // Parse job type
     let job_type: JobType = serde_json::from_value(serde_json::Value::String(job_type.clone()))
         .map_err(|e| {
             CommandError::new(
@@ -99,7 +98,6 @@ pub async fn run_job_now(
             )
         })?;
 
-    // Get the unlocked vault
     let vault = state.get_vault(&vault_id).ok_or_else(|| {
         CommandError::new(
             "VAULT_NOT_UNLOCKED",
@@ -107,233 +105,215 @@ pub async fn run_job_now(
         )
     })?;
 
-    // Get the vault's database
+    match job_type {
+        JobType::ScanAll => run_scan_all_job(&vault_id, vault, &state).await,
+        JobType::VerifyRemovals => Err(CommandError::new(
+            "NOT_IMPLEMENTED",
+            "VerifyRemovals job type not yet implemented. This feature requires re-scanning brokers with submitted/completed removal attempts to verify removal success.".to_string(),
+        )),
+        JobType::PollImap => {
+            let db = vault.database().map_err(|e| {
+                CommandError::new("DATABASE_ERROR", format!("Failed to get vault database: {e}"))
+            })?;
+            run_poll_imap_job(db.pool()).await
+        }
+    }
+}
+
+async fn run_scan_all_job(
+    vault_id: &str,
+    vault: std::sync::Arc<spectral_vault::Vault>,
+    state: &AppState,
+) -> Result<(), CommandError> {
+    info!("Executing ScanAll job for vault {}", vault_id);
+
     let db = vault.database().map_err(|e| {
         CommandError::new(
             "DATABASE_ERROR",
             format!("Failed to get vault database: {e}"),
         )
     })?;
-
-    // Get the vault's encryption key
     let vault_key = vault
         .encryption_key()
         .map_err(|e| CommandError::new("VAULT_ERROR", format!("Failed to get vault key: {e}")))?;
 
-    match job_type {
-        JobType::ScanAll => {
-            info!("Executing ScanAll job for vault {}", vault_id);
+    let profile_ids = vault.list_profiles().await.map_err(|e| {
+        CommandError::new("DATABASE_ERROR", format!("Failed to list profiles: {e}"))
+    })?;
 
-            // Get all profiles in the vault
-            let profile_ids = vault.list_profiles().await.map_err(|e| {
-                CommandError::new("DATABASE_ERROR", format!("Failed to list profiles: {e}"))
-            })?;
+    if profile_ids.is_empty() {
+        return Err(CommandError::new(
+            "NO_PROFILES",
+            "No profiles found in vault. Create a profile first.".to_string(),
+        ));
+    }
 
-            if profile_ids.is_empty() {
-                return Err(CommandError::new(
-                    "NO_PROFILES",
-                    "No profiles found in vault. Create a profile first.".to_string(),
-                ));
-            }
+    let profile_id = &profile_ids[0];
+    info!("Using profile {} for scheduled scan", profile_id);
 
-            // Use the first profile for scheduled scans
-            let profile_id = &profile_ids[0];
-            info!("Using profile {} for scheduled scan", profile_id);
+    let profile = vault
+        .load_profile(profile_id)
+        .await
+        .map_err(|e| CommandError::new("DATABASE_ERROR", format!("Failed to load profile: {e}")))?;
 
-            // Load the profile data
-            let profile = vault.load_profile(profile_id).await.map_err(|e| {
-                CommandError::new("DATABASE_ERROR", format!("Failed to load profile: {e}"))
-            })?;
+    let browser_engine = state.get_or_init_browser_engine().await.map_err(|e| {
+        CommandError::new(
+            "BROWSER_ERROR",
+            format!("Failed to get browser engine: {e}"),
+        )
+    })?;
 
-            // Get or initialize cached browser engine
-            let browser_engine = state.get_or_init_browser_engine().await.map_err(|e| {
-                CommandError::new(
-                    "BROWSER_ERROR",
-                    format!("Failed to get browser engine: {e}"),
-                )
-            })?;
+    let pool = db.pool().clone();
+    let vault_key_vec = vault_key.to_vec();
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
+    let database = Database::from_encrypted_pool(encrypted_pool);
+    let db_arc = Arc::new(database);
 
-            // Create orchestrator
-            let pool = db.pool().clone();
-            let vault_key_vec = vault_key.to_vec();
-            let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
-            let database = Database::from_encrypted_pool(encrypted_pool);
-            let db_arc = Arc::new(database);
+    let orchestrator = ScanOrchestrator::new(state.broker_registry.clone(), browser_engine, db_arc)
+        .with_max_concurrent_scans(4);
 
-            let orchestrator =
-                ScanOrchestrator::new(state.broker_registry.clone(), browser_engine, db_arc)
-                    .with_max_concurrent_scans(4);
+    info!("Starting scheduled scan with all auto-scan brokers");
 
-            // Scan all brokers except ManualOnly
-            let filter = BrokerFilter::All;
+    let _job_id = orchestrator
+        .start_scan(&profile, BrokerFilter::All, vault_key)
+        .await
+        .map_err(|e| {
+            error!("Scheduled scan failed: {}", e);
+            CommandError::new("SCAN_ERROR", format!("Scan failed: {e}"))
+        })?;
 
-            info!("Starting scheduled scan with all auto-scan brokers");
+    info!("Scheduled scan started successfully");
+    Ok(())
+}
 
-            // Start the scan
-            let _job_id = orchestrator
-                .start_scan(&profile, filter, vault_key)
-                .await
-                .map_err(|e| {
-                    error!("Scheduled scan failed: {}", e);
-                    CommandError::new("SCAN_ERROR", format!("Scan failed: {e}"))
-                })?;
+async fn run_poll_imap_job(pool: &SqlitePool) -> Result<(), CommandError> {
+    info!("Executing PollImap job");
 
-            info!("Scheduled scan started successfully");
-            Ok(())
-        }
-        JobType::VerifyRemovals => {
-            // kept for future implementation
-            // Not yet implemented - requires re-scanning logic
-            Err(CommandError::new(
-                "NOT_IMPLEMENTED",
-                "VerifyRemovals job type not yet implemented. This feature requires re-scanning brokers with submitted/completed removal attempts to verify removal success.".to_string(),
-            ))
-        }
-        JobType::PollImap => {
-            info!("Executing PollImap job for vault {}", vault_id);
-
-            // 1. Load IMAP config — bail early if not configured
-            let imap_config = spectral_mail::settings::get_imap_config(db.pool())
-                .await
-                .map_err(|e| {
-                    CommandError::new(
-                        "EMAIL_SETTINGS_ERROR",
-                        format!("Failed to load IMAP config: {e}"),
-                    )
-                })?;
-
-            let imap_config = match imap_config {
-                Some(c) => c,
-                None => {
-                    info!("IMAP not configured — skipping PollImap job");
-                    return Err(CommandError::new(
-                        "IMAP_NOT_CONFIGURED",
-                        "IMAP is not configured. Enable IMAP in Settings → Email to use this feature.".to_string(),
-                    ));
-                }
-            };
-
-            // 2. Find all pending email-removal attempts (Submitted status)
-            //    We need: broker_email → attempt_id
-            let rows: Vec<(String, String)> = sqlx::query_as(
-                r"
-                SELECT er.recipient, er.attempt_id
-                FROM email_removals er
-                JOIN removal_attempts ra ON ra.id = er.attempt_id
-                WHERE ra.status = 'Submitted'
-                ",
+    let imap_config = spectral_mail::settings::get_imap_config(pool)
+        .await
+        .map_err(|e| {
+            CommandError::new(
+                "EMAIL_SETTINGS_ERROR",
+                format!("Failed to load IMAP config: {e}"),
             )
-            .fetch_all(db.pool())
+        })?
+        .ok_or_else(|| {
+            info!("IMAP not configured — skipping PollImap job");
+            CommandError::new(
+                "IMAP_NOT_CONFIGURED",
+                "IMAP is not configured. Enable IMAP in Settings → Email to use this feature."
+                    .to_string(),
+            )
+        })?;
+
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        r"
+        SELECT er.recipient, er.attempt_id
+        FROM email_removals er
+        JOIN removal_attempts ra ON ra.id = er.attempt_id
+        WHERE ra.status = 'Submitted'
+        ",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        CommandError::new(
+            "DATABASE_ERROR",
+            format!("Failed to query email removals: {e}"),
+        )
+    })?;
+
+    if rows.is_empty() {
+        info!("No submitted email removal attempts — nothing to check");
+        return Ok(());
+    }
+
+    let broker_map: std::collections::HashMap<String, String> = rows
+        .into_iter()
+        .map(|(email, attempt_id)| (email.to_lowercase(), attempt_id))
+        .collect();
+
+    info!(
+        "Polling IMAP for {} pending email removal attempts",
+        broker_map.len()
+    );
+
+    let result = tokio::task::spawn_blocking({
+        let config = imap_config.clone();
+        let map = broker_map.clone();
+        move || spectral_mail::imap::poll_for_verifications(&config, &map)
+    })
+    .await
+    .map_err(|e| CommandError::new("TASK_JOIN_ERROR", format!("IMAP task join error: {e}")))?;
+
+    for err in &result.errors {
+        tracing::warn!("IMAP poll error: {}", err);
+    }
+
+    if result.verified.is_empty() {
+        info!("No new broker confirmations found in inbox");
+        return Ok(());
+    }
+
+    info!(
+        "Found {} broker confirmation(s) in inbox",
+        result.verified.len()
+    );
+
+    let smtp_config = spectral_mail::settings::get_smtp_config(pool)
+        .await
+        .ok()
+        .flatten();
+    let cc_addr = spectral_mail::settings::get_cc_address(pool)
+        .await
+        .ok()
+        .flatten();
+
+    let llm_pool = pool.clone();
+    let llm_available = spectral_privacy::get_primary_provider(&llm_pool)
+        .await
+        .ok()
+        .flatten()
+        .is_some();
+
+    let now = chrono::Utc::now().to_rfc3339();
+    for (broker_email, attempt_id) in &result.verified {
+        sqlx::query(
+            "UPDATE removal_attempts SET status = 'Completed', completed_at = ? WHERE id = ?",
+        )
+        .bind(&now)
+        .bind(attempt_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            CommandError::new(
+                "DATABASE_ERROR",
+                format!("Failed to mark attempt {attempt_id} as completed: {e}"),
+            )
+        })?;
+
+        info!("Marked removal attempt {} as Completed", attempt_id);
+
+        if let (Some(body), Some(ref smtp), true) =
+            (result.bodies.get(broker_email), &smtp_config, llm_available)
+        {
+            if let Err(e) = handle_llm_reply(
+                body,
+                broker_email,
+                smtp,
+                cc_addr.as_deref(),
+                attempt_id,
+                pool,
+                &llm_pool,
+            )
             .await
-            .map_err(|e| {
-                CommandError::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to query email removals: {e}"),
-                )
-            })?;
-
-            if rows.is_empty() {
-                info!("No submitted email removal attempts — nothing to check");
-                return Ok(());
+            {
+                tracing::warn!("LLM reply failed for attempt {}: {}", attempt_id, e);
             }
-
-            let broker_map: std::collections::HashMap<String, String> = rows
-                .into_iter()
-                .map(|(email, attempt_id)| (email.to_lowercase(), attempt_id))
-                .collect();
-
-            info!(
-                "Polling IMAP for {} pending email removal attempts",
-                broker_map.len()
-            );
-
-            // 3. Poll IMAP (synchronous — run in blocking task)
-            let result = tokio::task::spawn_blocking({
-                let config = imap_config.clone();
-                let map = broker_map.clone();
-                move || spectral_mail::imap::poll_for_verifications(&config, &map)
-            })
-            .await
-            .map_err(|e| {
-                CommandError::new("TASK_JOIN_ERROR", format!("IMAP task join error: {e}"))
-            })?;
-
-            // Log any IMAP errors as warnings
-            for err in &result.errors {
-                tracing::warn!("IMAP poll error: {}", err);
-            }
-
-            if result.verified.is_empty() {
-                info!("No new broker confirmations found in inbox");
-                return Ok(());
-            }
-
-            info!(
-                "Found {} broker confirmation(s) in inbox",
-                result.verified.len()
-            );
-
-            // Load SMTP + CC for potential replies
-            let smtp_config = spectral_mail::settings::get_smtp_config(db.pool())
-                .await
-                .ok()
-                .flatten();
-            let cc_addr = spectral_mail::settings::get_cc_address(db.pool())
-                .await
-                .ok()
-                .flatten();
-
-            // Check if LLM is available for reply analysis
-            let llm_pool = db.pool().clone();
-            let llm_available = spectral_privacy::get_primary_provider(&llm_pool)
-                .await
-                .ok()
-                .flatten()
-                .is_some();
-
-            // 4. Process each verified attempt
-            let now = chrono::Utc::now().to_rfc3339();
-            for (broker_email, attempt_id) in &result.verified {
-                // Mark attempt as Completed
-                sqlx::query(
-                    "UPDATE removal_attempts SET status = 'Completed', completed_at = ? WHERE id = ?",
-                )
-                .bind(&now)
-                .bind(attempt_id)
-                .execute(db.pool())
-                .await
-                .map_err(|e| {
-                    CommandError::new(
-                        "DATABASE_ERROR",
-                        format!("Failed to mark attempt {attempt_id} as completed: {e}"),
-                    )
-                })?;
-
-                info!("Marked removal attempt {} as Completed", attempt_id);
-
-                // 5. LLM reply: if body available, SMTP configured, and LLM available
-                if let (Some(body), Some(ref smtp), true) =
-                    (result.bodies.get(broker_email), &smtp_config, llm_available)
-                {
-                    if let Err(e) = handle_llm_reply(
-                        body,
-                        broker_email,
-                        smtp,
-                        cc_addr.as_deref(),
-                        attempt_id,
-                        db.pool(),
-                        &llm_pool,
-                    )
-                    .await
-                    {
-                        tracing::warn!("LLM reply failed for attempt {}: {}", attempt_id, e);
-                    }
-                }
-            }
-
-            Ok(())
         }
     }
+
+    Ok(())
 }
 
 /// Analyze a broker reply email with an LLM and, if a response is warranted, send it via SMTP.
