@@ -48,6 +48,28 @@ pub async fn send_smtp(
     Ok(())
 }
 
+/// Tests SMTP connectivity by attempting to establish a connection without sending.
+///
+/// # Errors
+/// Returns an error if the connection or authentication attempt fails.
+pub async fn test_smtp(config: &SmtpConfig) -> Result<(), String> {
+    use lettre::transport::smtp::authentication::Credentials;
+    use lettre::SmtpTransport;
+
+    let creds = Credentials::new(config.username.clone(), config.password.clone());
+    let transport = SmtpTransport::relay(&config.host)
+        .map_err(|e| format!("SMTP relay error: {e}"))?
+        .port(config.port)
+        .credentials(creds)
+        .build();
+
+    transport
+        .test_connection()
+        .map_err(|e| format!("SMTP connection test failed: {e}"))?;
+
+    Ok(())
+}
+
 /// Returns SHA-256 hex of email body (for logging — never store the body itself).
 #[must_use]
 pub fn body_hash(body: &str) -> String {

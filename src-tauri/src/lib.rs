@@ -141,6 +141,8 @@ pub fn run() {
             commands::scan::get_unified_scan_history,
             commands::settings::test_smtp_connection,
             commands::settings::test_imap_connection,
+            commands::settings::get_email_settings,
+            commands::settings::save_email_settings,
             commands::scheduler::get_scheduled_jobs,
             commands::scheduler::update_scheduled_job,
             commands::scheduler::run_job_now,
