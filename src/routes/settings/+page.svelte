@@ -4,6 +4,8 @@
 	import {
 		testSmtpConnection,
 		testImapConnection,
+		getEmailSettings,
+		saveEmailSettings,
 		getScheduledJobs,
 		updateScheduledJob,
 		runJobNow,
@@ -48,6 +50,11 @@
 	let imapPort = $state(993);
 	let imapUsername = $state('');
 	let imapPassword = $state('');
+	let ccAddress = $state('');
+	let hasSMTPPassword = $state(false);
+	let hasIMAPPassword = $state(false);
+	let emailSaveResult = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+	let emailSaveError = $state('');
 	let smtpTestResult = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
 	let imapTestResult = $state<'idle' | 'testing' | 'success' | 'error'>('idle');
 	let smtpError = $state('');
@@ -128,6 +135,13 @@
 		}
 	}
 
+	// Load email settings when email tab becomes active
+	$effect(() => {
+		if (activeTab === 'email' && vaultStore.currentVaultId) {
+			loadEmailSettings();
+		}
+	});
+
 	// Load scheduled jobs when scheduling tab becomes active
 	$effect(() => {
 		if (activeTab === 'scheduling' && vaultStore.currentVaultId) {
@@ -155,6 +169,58 @@
 			loadAuditLog();
 		}
 	});
+
+	async function loadEmailSettings() {
+		if (!vaultStore.currentVaultId) return;
+		try {
+			const s = await getEmailSettings(vaultStore.currentVaultId);
+			smtpEnabled = s.smtp_enabled;
+			smtpHost = s.smtp_host;
+			smtpPort = s.smtp_port;
+			smtpUsername = s.smtp_username;
+			smtpPassword = ''; // never pre-fill; use hasSMTPPassword placeholder
+			hasSMTPPassword = s.has_smtp_password;
+			imapEnabled = s.imap_enabled;
+			imapHost = s.imap_host;
+			imapPort = s.imap_port;
+			imapUsername = s.imap_username;
+			imapPassword = ''; // never pre-fill
+			hasIMAPPassword = s.has_imap_password;
+			ccAddress = s.cc_address;
+		} catch (err) {
+			console.error('Failed to load email settings:', err);
+		}
+	}
+
+	async function handleSaveEmailSettings() {
+		if (!vaultStore.currentVaultId) return;
+		emailSaveResult = 'saving';
+		emailSaveError = '';
+		try {
+			await saveEmailSettings(vaultStore.currentVaultId, {
+				smtp_enabled: smtpEnabled,
+				smtp_host: smtpHost,
+				smtp_port: smtpPort,
+				smtp_username: smtpUsername,
+				smtp_password: smtpPassword, // empty string = preserve existing
+				imap_enabled: imapEnabled,
+				imap_host: imapHost,
+				imap_port: imapPort,
+				imap_username: imapUsername,
+				imap_password: imapPassword, // empty string = preserve existing
+				cc_address: ccAddress
+			});
+			emailSaveResult = 'saved';
+			// Refresh to get accurate has_*_password flags
+			await loadEmailSettings();
+			setTimeout(() => {
+				emailSaveResult = 'idle';
+			}, 3000);
+		} catch (err) {
+			emailSaveResult = 'error';
+			emailSaveError = err instanceof Error ? err.message : String(err);
+		}
+	}
 
 	async function loadScheduledJobs() {
 		if (!vaultStore.currentVaultId) return;
@@ -1041,7 +1107,8 @@
 								id="smtp-pass"
 								type="password"
 								bind:value={smtpPassword}
-								autocomplete="off"
+								autocomplete="new-password"
+								placeholder={hasSMTPPassword ? '••••••••' : ''}
 								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
 						</div>
@@ -1124,7 +1191,8 @@
 								id="imap-pass"
 								type="password"
 								bind:value={imapPassword}
-								autocomplete="off"
+								autocomplete="new-password"
+								placeholder={hasIMAPPassword ? '••••••••' : ''}
 								class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
 							/>
 						</div>
@@ -1143,6 +1211,38 @@
 							<span class="text-sm text-red-600">{imapError}</span>
 						{/if}
 					</div>
+				{/if}
+			</div>
+
+			<!-- CC Address Card -->
+			<div class="rounded-lg border border-gray-200 bg-white p-4">
+				<h3 class="mb-1 font-medium text-gray-900">CC Me on Removal Emails</h3>
+				<p class="mb-3 text-sm text-gray-500">
+					Spectral will CC this address on every removal email it sends on your behalf, so you
+					always have a copy.
+				</p>
+				<input
+					id="cc-address"
+					type="email"
+					bind:value={ccAddress}
+					placeholder="you@example.com (optional)"
+					class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+				/>
+			</div>
+
+			<!-- Save Email Settings -->
+			<div class="flex items-center gap-4">
+				<button
+					onclick={handleSaveEmailSettings}
+					disabled={emailSaveResult === 'saving'}
+					class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+				>
+					{emailSaveResult === 'saving' ? 'Saving...' : 'Save Email Settings'}
+				</button>
+				{#if emailSaveResult === 'saved'}
+					<span class="text-sm text-green-600">Settings saved</span>
+				{:else if emailSaveResult === 'error'}
+					<span class="text-sm text-red-600">{emailSaveError}</span>
 				{/if}
 			</div>
 

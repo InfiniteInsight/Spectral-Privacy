@@ -1,5 +1,35 @@
 import { invoke } from '@tauri-apps/api/core';
 
+export interface EmailSettings {
+	smtp_enabled: boolean;
+	smtp_host: string;
+	smtp_port: number;
+	smtp_username: string;
+	/** Always empty — never returned from backend. Use `has_smtp_password` instead. */
+	smtp_password: string;
+	has_smtp_password: boolean;
+	imap_enabled: boolean;
+	imap_host: string;
+	imap_port: number;
+	imap_username: string;
+	/** Always empty — never returned from backend. Use `has_imap_password` instead. */
+	imap_password: string;
+	has_imap_password: boolean;
+	/** Email address to CC on all outbound removal emails. Empty = no CC. */
+	cc_address: string;
+}
+
+export async function getEmailSettings(vaultId: string): Promise<EmailSettings> {
+	return invoke('get_email_settings', { vaultId });
+}
+
+export async function saveEmailSettings(
+	vaultId: string,
+	settings: Partial<EmailSettings> & { smtp_password?: string; imap_password?: string }
+): Promise<void> {
+	return invoke('save_email_settings', { vaultId, payload: settings });
+}
+
 export async function testSmtpConnection(
 	host: string,
 	port: number,
