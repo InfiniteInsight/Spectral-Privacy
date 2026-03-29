@@ -438,6 +438,24 @@ pub async fn submit_via_email(
         email_removal_id, attempt_id
     );
 
+    // Schedule a 15-day follow-up reminder
+    let follow_up_at = (chrono::Utc::now() + chrono::Duration::days(15)).to_rfc3339();
+    if let Err(e) = spectral_db::schedule_followup(
+        db.pool(),
+        attempt_id,
+        &broker_def.broker.id.to_string(),
+        to_email,
+        &follow_up_at,
+    )
+    .await
+    {
+        tracing::warn!(
+            "Failed to schedule follow-up for attempt {}: {}",
+            attempt_id,
+            e
+        );
+    }
+
     Ok(RemovalOutcome::Submitted)
 }
 
