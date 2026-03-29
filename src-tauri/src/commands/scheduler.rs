@@ -380,12 +380,14 @@ async fn handle_llm_reply(
     );
 
     let now = chrono::Utc::now().to_rfc3339();
+    let subject_hash = spectral_mail::sender::body_hash("Re: Data Removal Request");
     sqlx::query(
-        "INSERT INTO email_removals (id, attempt_id, broker_id, recipient, send_method, sent_at)
-         VALUES (lower(hex(randomblob(16))), ?, '', ?, 'smtp_reply', ?)",
+        "INSERT INTO email_removals (id, attempt_id, broker_id, recipient, method, subject, body_hash, sent_at)
+         VALUES (lower(hex(randomblob(16))), ?, '', ?, 'smtp_reply', 'Re: Data Removal Request', ?, ?)",
     )
     .bind(attempt_id)
     .bind(broker_email)
+    .bind(&subject_hash)
     .bind(&now)
     .execute(pool)
     .await

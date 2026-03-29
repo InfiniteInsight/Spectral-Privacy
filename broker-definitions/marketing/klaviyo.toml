@@ -26,7 +26,7 @@ subject = "CCPA/GDPR Data Deletion Request - Klaviyo"
 body = """
 I am exercising my privacy rights under CCPA/GDPR.
 
-Request: Delete all personal data held by Klaviyo
+Request: Delete all of my personal data held by Klaviyo
 
 Personal Information:
 - Email: {user_email}
@@ -39,7 +39,7 @@ Please delete from:
 - Email and SMS engagement history
 - Purchase tracking data
 
-Confirm deletion within legally required timeframe.
+Please confirm deletion ASAP. My expectation is that my data will be deleted within the legally required timeframe. I will follow up in 15 days.
 
 Thank you.
 """
