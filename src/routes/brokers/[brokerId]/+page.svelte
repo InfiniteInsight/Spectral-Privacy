@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import { brokerAPI, type BrokerDetail } from '$lib/api/brokers';
-	import { vaultStore } from '$lib/stores';
+	import { vaultStore, profileStore } from '$lib/stores';
+	import { startScan, scanAPI, type ScanJobStatus } from '$lib/api/scan';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
 	import {
 		getRemovalMethodDisplay,
@@ -11,12 +13,38 @@
 	} from '$lib/utils/broker-display';
 	import EmailTemplatePreview from '$lib/components/broker/EmailTemplatePreview.svelte';
 	import EmailFallbackDisplay from '$lib/components/broker/EmailFallbackDisplay.svelte';
+	import RemovalActionButton from '$lib/components/removals/RemovalActionButton.svelte';
 
 	const brokerId = $derived($page.params.brokerId);
+	const vaultId = $derived(vaultStore.currentVaultId ?? '');
 
 	let broker = $state<BrokerDetail | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let currentProfileId = $state('');
+
+	// Resolve profile ID and full profile for removal actions
+	$effect(() => {
+		if (!vaultId) return;
+		profileStore.loadProfiles(vaultId).then(() => {
+			if (profileStore.profiles.length > 0) {
+				const id = profileStore.profiles[0].id;
+				currentProfileId = id;
+				profileStore.loadProfile(vaultId, id);
+			}
+		});
+	});
+
+	// Inline targeted scan state
+	let scanStatus = $state<ScanJobStatus | null>(null);
+	let scanBrokerErrors = $state<{ broker_id: string; error_message: string }[]>([]);
+	let scanStarting = $state(false);
+	let scanError = $state<string | null>(null);
+	let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+	onDestroy(() => {
+		if (pollingInterval !== null) clearInterval(pollingInterval);
+	});
 
 	// Load broker detail using $effect
 	$effect(() => {
@@ -47,6 +75,77 @@
 
 		loadBrokerDetail();
 	});
+
+	const scanProgressPercent = $derived(
+		scanStatus && scanStatus.total_brokers > 0
+			? Math.round((scanStatus.completed_brokers / scanStatus.total_brokers) * 100)
+			: 0
+	);
+
+	const scanIsComplete = $derived(scanStatus?.status === 'Completed');
+	const scanIsFailed = $derived(scanStatus?.status === 'Failed');
+	const scanInProgress = $derived(scanStatus?.status === 'InProgress');
+
+	async function handleTargetedScan() {
+		if (!vaultId || !brokerId) return;
+
+		scanStarting = true;
+		scanError = null;
+		scanStatus = null;
+		scanBrokerErrors = [];
+
+		try {
+			await profileStore.loadProfiles(vaultId);
+			if (profileStore.profiles.length === 0) {
+				scanError = 'No profile found. Please set up a profile first.';
+				return;
+			}
+			const profileId = profileStore.profiles[0].id;
+
+			const jobId = await startScan(vaultId, profileId, { brokerIds: [brokerId] });
+
+			scanStatus = await scanAPI.getStatus(vaultId, jobId);
+
+			pollingInterval = setInterval(async () => {
+				try {
+					const status = await scanAPI.getStatus(vaultId, jobId);
+					scanStatus = status;
+
+					if (
+						status.status === 'Completed' ||
+						status.status === 'Failed' ||
+						status.status === 'Cancelled'
+					) {
+						clearInterval(pollingInterval!);
+						pollingInterval = null;
+
+						try {
+							const brokerResults = await scanAPI.getBrokerScanResults(vaultId, jobId);
+							scanBrokerErrors = brokerResults
+								.filter((r) => r.status !== 'Success' && r.status !== 'Skipped')
+								.map((r) => ({
+									broker_id: r.broker_id,
+									error_message: r.error_message ?? 'Unknown error'
+								}));
+						} catch (err) {
+							console.warn('[scan] Could not fetch broker scan details:', err);
+						}
+
+						if (status.status === 'Completed') {
+							broker = await brokerAPI.getBrokerDetail(brokerId, vaultId);
+						}
+					}
+				} catch (err) {
+					console.error('[scan] Polling error:', err);
+				}
+			}, 2000);
+		} catch (err) {
+			console.error('[scan] Failed to start:', err);
+			scanError = err instanceof Error ? err.message : String(err);
+		} finally {
+			scanStarting = false;
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 p-4">
@@ -205,6 +304,72 @@
 						<EmailFallbackDisplay emailFallback={broker.email_fallback} />
 					{/if}
 
+					<!-- Inline Scan Progress -->
+					{#if scanStatus || scanStarting}
+						<div class="mb-6 p-6 border-2 border-primary-200 rounded-lg bg-primary-50">
+							<h3 class="text-lg font-semibold text-gray-900 mb-3">
+								{#if scanIsComplete}
+									Scan Complete
+								{:else if scanIsFailed}
+									Scan Failed
+								{:else}
+									Scanning {broker.name}...
+								{/if}
+							</h3>
+
+							{#if scanInProgress || scanStarting}
+								<div class="mb-3">
+									<div class="flex items-center justify-between mb-1">
+										<span class="text-sm text-gray-600">
+											{#if scanStatus}
+												{scanStatus.completed_brokers} of {scanStatus.total_brokers} brokers
+											{:else}
+												Starting scan...
+											{/if}
+										</span>
+										<span class="text-sm font-medium text-gray-700">{scanProgressPercent}%</span>
+									</div>
+									<div class="w-full bg-gray-200 rounded-full h-2">
+										<div
+											class="h-2 rounded-full transition-all duration-500 bg-primary-500"
+											style="width: {scanProgressPercent}%"
+										></div>
+									</div>
+								</div>
+								<div class="flex items-center gap-2 text-sm text-gray-600">
+									<div
+										class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"
+									></div>
+									{scanStatus?.current_broker_name
+										? `Checking ${scanStatus.current_broker_name}...`
+										: 'Initializing...'}
+								</div>
+							{:else if scanIsComplete}
+								{#if scanBrokerErrors.length > 0}
+									<div class="flex flex-col gap-1">
+										{#each scanBrokerErrors as { error_message }}
+											<p class="text-sm text-amber-700">⚠ {error_message}</p>
+										{/each}
+									</div>
+								{:else}
+									<p class="text-sm text-green-700">
+										✓ Done — scan status and findings above have been updated.
+									</p>
+								{/if}
+							{:else if scanIsFailed}
+								<p class="text-sm text-red-700">
+									✗ {scanStatus?.error_message || 'Scan failed. Please try again.'}
+								</p>
+							{/if}
+						</div>
+					{/if}
+
+					{#if scanError}
+						<div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+							<p class="text-sm text-red-700">{scanError}</p>
+						</div>
+					{/if}
+
 					<!-- Action Buttons -->
 					<div class="flex flex-col sm:flex-row gap-4">
 						<a
@@ -216,11 +381,27 @@
 						>
 							Visit Broker Website ↗
 						</a>
+						{#if scanStarting || scanInProgress}
+							<button
+								disabled
+								class="flex-1 px-6 py-3 border-2 border-primary-600 text-primary-700 rounded-lg font-medium opacity-50 cursor-not-allowed"
+							>
+								Scanning...
+							</button>
+						{:else}
+							<RemovalActionButton
+								{broker}
+								{vaultId}
+								profileId={currentProfileId}
+								profile={profileStore.currentProfile}
+								onScanClick={handleTargetedScan}
+							/>
+						{/if}
 						<button
-							onclick={() => goto('/scan/start')}
+							onclick={() => goto('/scan')}
 							class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
 						>
-							Scan This Broker
+							Full Scan Center
 						</button>
 					</div>
 				</div>
