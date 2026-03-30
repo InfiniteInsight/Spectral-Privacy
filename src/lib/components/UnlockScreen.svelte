@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { vaultStore } from '$lib/stores';
 	import { onMount } from 'svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -56,6 +57,8 @@
 			showCreateForm = false;
 			// Reload vaults
 			await vaultStore.loadVaults();
+			// New vault is always empty — take the user straight to profile setup
+			goto('/profile/setup');
 		} catch (err) {
 			console.error('Create vault failed:', err);
 		}
