@@ -75,6 +75,15 @@ pub enum ScanError {
         reason: String,
     },
 
+    /// Broker cannot be automatically scanned (manual or web-form search method)
+    #[error("broker {broker_id} is not auto-scannable: {reason}")]
+    NotScannable {
+        /// The broker that cannot be scanned automatically
+        broker_id: BrokerId,
+        /// Reason the broker cannot be auto-scanned
+        reason: String,
+    },
+
     /// Broker site down or unreachable
     #[error("broker site down: {broker_id}, HTTP {http_status}")]
     BrokerSiteDown {

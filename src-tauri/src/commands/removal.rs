@@ -3,6 +3,7 @@
 use crate::error::CommandError;
 use crate::state::AppState;
 use spectral_broker::removal::RemovalOutcome;
+use spectral_db::RemovalFollowup;
 use tauri::{Emitter, State};
 use tracing::{info, warn};
 
@@ -85,4 +86,80 @@ pub async fn mark_attempt_verified(
 
     info!("Marked attempt {} as verified", attempt_id);
     Ok(())
+}
+
+/// Follow-up reminder data returned to the frontend.
+#[derive(serde::Serialize)]
+pub struct FollowupDto {
+    /// Follow-up row ID.
+    pub id: String,
+    /// ID of the associated removal attempt.
+    pub attempt_id: String,
+    /// Broker identifier.
+    pub broker_id: String,
+    /// Broker email address the follow-up targets.
+    pub recipient: String,
+    /// ISO-8601 timestamp when the follow-up is due.
+    pub follow_up_at: String,
+}
+
+impl From<RemovalFollowup> for FollowupDto {
+    fn from(f: RemovalFollowup) -> Self {
+        Self {
+            id: f.id,
+            attempt_id: f.attempt_id,
+            broker_id: f.broker_id,
+            recipient: f.recipient,
+            follow_up_at: f.follow_up_at,
+        }
+    }
+}
+
+/// Return all pending (unsent, undismissed) follow-up reminders for the vault.
+#[tauri::command]
+pub async fn get_pending_followups(
+    vault_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<FollowupDto>, CommandError> {
+    let vault = state.get_vault(&vault_id).ok_or_else(|| {
+        CommandError::new(
+            "VAULT_NOT_UNLOCKED",
+            format!("Vault {vault_id} not unlocked"),
+        )
+    })?;
+    let db = vault.database().map_err(|e| {
+        CommandError::new("DATABASE_ERROR", format!("Failed to access database: {e}"))
+    })?;
+
+    spectral_db::get_pending_removal_followups(db.pool())
+        .await
+        .map(|rows| rows.into_iter().map(FollowupDto::from).collect())
+        .map_err(|e| CommandError::new("DATABASE_ERROR", format!("Failed to get follow-ups: {e}")))
+}
+
+/// Dismiss a follow-up reminder (user handled it manually).
+#[tauri::command]
+pub async fn dismiss_followup(
+    vault_id: String,
+    followup_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    let vault = state.get_vault(&vault_id).ok_or_else(|| {
+        CommandError::new(
+            "VAULT_NOT_UNLOCKED",
+            format!("Vault {vault_id} not unlocked"),
+        )
+    })?;
+    let db = vault.database().map_err(|e| {
+        CommandError::new("DATABASE_ERROR", format!("Failed to access database: {e}"))
+    })?;
+
+    spectral_db::dismiss_removal_followup(db.pool(), &followup_id)
+        .await
+        .map_err(|e| {
+            CommandError::new(
+                "DATABASE_ERROR",
+                format!("Failed to dismiss follow-up: {e}"),
+            )
+        })
 }

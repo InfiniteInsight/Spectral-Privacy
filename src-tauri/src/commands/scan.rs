@@ -625,6 +625,7 @@ pub async fn submit_removals_for_confirmed(
             db.pool(),
             finding.id,
             finding.broker_id,
+            finding.profile_id,
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -1341,6 +1342,7 @@ struct RemovalEmailContext {
     subject_template: String,
     body_template: String,
     profile: spectral_vault::UserProfile,
+    broker_id: String,
 }
 
 /// Load and validate removal context (attempt, finding, broker, profile).
@@ -1357,8 +1359,12 @@ async fn load_removal_context(
         .map_err(|e| e.to_string())?
         .ok_or("Removal attempt not found")?;
 
-    // Get the finding to retrieve profile_id
-    let finding = spectral_db::findings::get_by_id(db.pool(), &attempt.finding_id)
+    // Get the finding to retrieve profile_id (may be None for standalone removals)
+    let finding_id = attempt
+        .finding_id
+        .as_deref()
+        .ok_or("Removal attempt has no associated finding")?;
+    let finding = spectral_db::findings::get_by_id(db.pool(), finding_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or("Finding not found")?;
@@ -1398,6 +1404,7 @@ async fn load_removal_context(
         subject_template,
         body_template,
         profile,
+        broker_id: attempt.broker_id.clone(),
     })
 }
 
@@ -1434,24 +1441,96 @@ pub async fn send_removal_email<R: tauri::Runtime>(
     let rendered_subject = render_email_template(&context.subject_template, &fields);
     let rendered_body = render_email_template(&context.body_template, &fields);
 
-    // Construct mailto: URL
-    let mailto_url = format!(
-        "mailto:{}?subject={}&body={}",
-        urlencoding::encode(&context.email_address),
-        urlencoding::encode(&rendered_subject),
-        urlencoding::encode(&rendered_body)
-    );
+    let email_template = spectral_mail::EmailTemplate {
+        to: context.email_address.clone(),
+        subject: rendered_subject.clone(),
+        body: rendered_body.clone(),
+    };
 
-    // Open mailto: URL in default email client
-    #[allow(deprecated)]
-    _app.shell()
-        .open(&mailto_url, None)
-        .map_err(|e| format!("Failed to open email client: {e}"))?;
+    let user_email = fields
+        .get("email")
+        .cloned()
+        .unwrap_or_else(|| context.email_address.clone());
 
-    info!(
-        "Opened mailto: for attempt {} to {}",
-        attempt_id, context.email_address
-    );
+    // Load SMTP config from vault settings
+    let db = get_db(&vault)?;
+    let smtp_config = spectral_mail::settings::get_smtp_config(db.pool())
+        .await
+        .map_err(|e| format!("Failed to load SMTP config: {e}"))?;
+    let cc = spectral_mail::settings::get_cc_address(db.pool())
+        .await
+        .map_err(|e| format!("Failed to load CC address: {e}"))?;
+
+    let send_method = if smtp_config.is_some() {
+        "smtp"
+    } else {
+        "mailto"
+    };
+
+    if let Some(ref config) = smtp_config {
+        // Send directly via SMTP
+        spectral_mail::sender::send_smtp(&email_template, &user_email, config, cc.as_deref())
+            .await
+            .map_err(|e| format!("SMTP send failed: {e}"))?;
+        info!(
+            "Sent removal email via SMTP for attempt {} to {}",
+            attempt_id, context.email_address
+        );
+    } else {
+        // Fall back to mailto: link
+        let mailto_url = format!(
+            "mailto:{}?subject={}&body={}",
+            urlencoding::encode(&context.email_address),
+            urlencoding::encode(&rendered_subject),
+            urlencoding::encode(&rendered_body)
+        );
+        #[allow(deprecated)]
+        _app.shell()
+            .open(&mailto_url, None)
+            .map_err(|e| format!("Failed to open email client: {e}"))?;
+        info!(
+            "Opened mailto: for attempt {} to {}",
+            attempt_id, context.email_address
+        );
+    }
+
+    // Log to email_removals table
+    let body_hash = spectral_mail::sender::body_hash(&rendered_body);
+    let email_removal_id = uuid::Uuid::new_v4().to_string();
+    let sent_at = chrono::Utc::now().to_rfc3339();
+    sqlx::query(
+        "INSERT INTO email_removals (id, attempt_id, broker_id, sent_at, method, recipient, subject, body_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&email_removal_id)
+    .bind(&attempt_id)
+    .bind(&context.broker_id)
+    .bind(&sent_at)
+    .bind(send_method)
+    .bind(&context.email_address)
+    .bind(&rendered_subject)
+    .bind(&body_hash)
+    .execute(db.pool())
+    .await
+    .map_err(|e| format!("Failed to log email removal: {e}"))?;
+
+    // Schedule a 15-day follow-up reminder
+    let follow_up_at = (chrono::Utc::now() + chrono::Duration::days(15)).to_rfc3339();
+    if let Err(e) = spectral_db::schedule_followup(
+        db.pool(),
+        &attempt_id,
+        &context.broker_id,
+        &context.email_address,
+        &follow_up_at,
+    )
+    .await
+    {
+        tracing::warn!(
+            "Failed to schedule follow-up for attempt {}: {}",
+            attempt_id,
+            e
+        );
+    }
 
     Ok(())
 }
@@ -1714,4 +1793,279 @@ mod score_tests {
         let score = calculate_privacy_score(20, 0, 0, 0);
         assert_eq!(score, 0);
     }
+}
+
+/// Per-broker result returned for scan debugging.
+#[derive(Debug, Serialize)]
+pub struct BrokerScanResult {
+    pub broker_id: String,
+    pub status: String,
+    pub findings_count: i64,
+    pub error_message: Option<String>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+/// Return the per-broker scan records for a completed scan job.
+///
+/// Useful for debugging: shows whether each broker scan succeeded or failed,
+/// how many findings were found, and any error details.
+#[tauri::command]
+pub async fn get_broker_scan_results(
+    state: State<'_, AppState>,
+    vault_id: String,
+    job_id: String,
+) -> Result<Vec<BrokerScanResult>, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    let scans = spectral_db::broker_scans::get_by_scan_job(db.pool(), &job_id)
+        .await
+        .map_err(|e| format!("Failed to fetch broker scan results: {e}"))?;
+
+    Ok(scans
+        .into_iter()
+        .map(|s| BrokerScanResult {
+            broker_id: s.broker_id,
+            status: s.status,
+            findings_count: s.findings_count,
+            error_message: s.error_message,
+            started_at: s.started_at,
+            completed_at: s.completed_at,
+        })
+        .collect())
+}
+
+/// Initiate a removal attempt for a single broker that cannot be auto-scanned.
+///
+/// Creates a standalone removal attempt (not linked to a scan finding),
+/// then processes it immediately via the removal worker.
+/// Use for brokers with email, web-form, or manual search methods.
+///
+/// Returns the removal attempt ID.
+#[tauri::command]
+pub async fn initiate_direct_removal<R: tauri::Runtime>(
+    vault_id: String,
+    broker_id: String,
+    profile_id: String,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle<R>,
+) -> Result<String, String> {
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    // Create standalone removal attempt (no finding_id)
+    let attempt = spectral_db::removal_attempts::create_standalone_removal_attempt(
+        db.pool(),
+        &broker_id,
+        &profile_id,
+    )
+    .await
+    .map_err(|e| format!("Failed to create removal attempt: {e}"))?;
+
+    let attempt_id = attempt.id.clone();
+
+    // Build cloneable Arc<Database> for the worker task
+    use spectral_db::{Database, EncryptedPool};
+    let pool = db.pool().clone();
+    let vault_key = get_vault_key(&vault)?;
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key.to_vec());
+    let db_arc = Arc::new(Database::from_encrypted_pool(encrypted_pool));
+
+    let vault_arc = Arc::clone(&vault);
+    let broker_registry = state.broker_registry.clone();
+    let semaphore = Arc::new(Semaphore::new(1));
+    let browser_engine = state.browser_engine.clone();
+
+    let attempt_id_clone = attempt_id.clone();
+    let app_clone = app.clone();
+
+    tokio::spawn(async move {
+        let _ = app_clone.emit(
+            "removal:started",
+            serde_json::json!({ "attempt_id": attempt_id_clone }),
+        );
+
+        let result = submit_removal_task(
+            db_arc,
+            vault_arc,
+            attempt_id_clone.clone(),
+            broker_registry,
+            semaphore,
+            browser_engine,
+        )
+        .await;
+
+        match result {
+            Ok(worker_result) => match worker_result.outcome {
+                spectral_broker::removal::RemovalOutcome::Submitted
+                | spectral_broker::removal::RemovalOutcome::RequiresEmailVerification { .. } => {
+                    let _ = app_clone.emit(
+                        "removal:success",
+                        serde_json::json!({
+                            "attempt_id": attempt_id_clone,
+                            "outcome": format!("{:?}", worker_result.outcome)
+                        }),
+                    );
+                }
+                spectral_broker::removal::RemovalOutcome::RequiresCaptcha { .. } => {
+                    let _ = app_clone.emit(
+                        "removal:captcha",
+                        serde_json::json!({ "attempt_id": attempt_id_clone }),
+                    );
+                }
+                spectral_broker::removal::RemovalOutcome::Failed { .. }
+                | spectral_broker::removal::RemovalOutcome::RequiresAccountCreation => {
+                    let _ = app_clone.emit(
+                        "removal:failed",
+                        serde_json::json!({
+                            "attempt_id": attempt_id_clone,
+                            "error": format!("{:?}", worker_result.outcome)
+                        }),
+                    );
+                }
+            },
+            Err(error) => {
+                let _ = app_clone.emit(
+                    "removal:failed",
+                    serde_json::json!({ "attempt_id": attempt_id_clone, "error": error }),
+                );
+            }
+        }
+    });
+
+    Ok(attempt_id)
+}
+
+/// Initiate bulk removal for all non-scannable brokers in a given list.
+///
+/// For each broker ID provided that uses a non-`UrlTemplate` search method,
+/// creates a standalone removal attempt and processes it via the removal worker.
+/// Brokers with `UrlTemplate` search (auto-scannable) are skipped.
+///
+/// Returns the list of created removal attempt IDs.
+#[tauri::command]
+pub async fn initiate_bulk_removal<R: tauri::Runtime>(
+    vault_id: String,
+    profile_id: String,
+    broker_ids: Vec<String>,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle<R>,
+) -> Result<Vec<String>, String> {
+    use spectral_broker::definition::SearchMethod;
+
+    let vault = get_vault(&state, &vault_id)?;
+    let db = get_db(&vault)?;
+
+    let mut attempt_ids: Vec<String> = Vec::new();
+
+    // Create standalone removal attempts for all non-scannable brokers
+    for broker_id_str in &broker_ids {
+        let broker_def = match state.get_broker_definition(broker_id_str) {
+            Some(def) => def,
+            None => {
+                tracing::warn!("Skipping unknown broker {broker_id_str} in bulk removal");
+                continue;
+            }
+        };
+
+        // Skip scannable brokers — they need a scan first
+        if matches!(broker_def.search, SearchMethod::UrlTemplate { .. }) {
+            continue;
+        }
+
+        match spectral_db::removal_attempts::create_standalone_removal_attempt(
+            db.pool(),
+            broker_id_str,
+            &profile_id,
+        )
+        .await
+        {
+            Ok(attempt) => attempt_ids.push(attempt.id),
+            Err(e) => {
+                tracing::error!("Failed to create removal attempt for {broker_id_str}: {e}");
+            }
+        }
+    }
+
+    if attempt_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Build cloneable Arc<Database> for worker tasks
+    use spectral_db::{Database, EncryptedPool};
+    let pool = db.pool().clone();
+    let vault_key = get_vault_key(&vault)?;
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key.to_vec());
+    let db_arc = Arc::new(Database::from_encrypted_pool(encrypted_pool));
+
+    let semaphore = Arc::new(Semaphore::new(3));
+    let browser_engine = state.browser_engine.clone();
+    let broker_registry = state.broker_registry.clone();
+
+    // Emit started events and spawn worker tasks
+    for attempt_id in &attempt_ids {
+        let _ = app.emit(
+            "removal:started",
+            serde_json::json!({ "attempt_id": attempt_id }),
+        );
+
+        let db_clone = Arc::clone(&db_arc);
+        let vault_clone = Arc::clone(&vault);
+        let registry_clone = broker_registry.clone();
+        let sem_clone = Arc::clone(&semaphore);
+        let browser_clone = browser_engine.clone();
+        let app_clone = app.clone();
+        let attempt_id_clone = attempt_id.clone();
+
+        tokio::spawn(async move {
+            let result = submit_removal_task(
+                db_clone,
+                vault_clone,
+                attempt_id_clone.clone(),
+                registry_clone,
+                sem_clone,
+                browser_clone,
+            )
+            .await;
+
+            match result {
+                Ok(worker_result) => match worker_result.outcome {
+                    spectral_broker::removal::RemovalOutcome::Submitted
+                    | spectral_broker::removal::RemovalOutcome::RequiresEmailVerification {
+                        ..
+                    } => {
+                        let _ = app_clone.emit(
+                            "removal:success",
+                            serde_json::json!({ "attempt_id": attempt_id_clone }),
+                        );
+                    }
+                    spectral_broker::removal::RemovalOutcome::RequiresCaptcha { .. } => {
+                        let _ = app_clone.emit(
+                            "removal:captcha",
+                            serde_json::json!({ "attempt_id": attempt_id_clone }),
+                        );
+                    }
+                    spectral_broker::removal::RemovalOutcome::Failed { .. }
+                    | spectral_broker::removal::RemovalOutcome::RequiresAccountCreation => {
+                        let _ = app_clone.emit(
+                            "removal:failed",
+                            serde_json::json!({
+                                "attempt_id": attempt_id_clone,
+                                "error": format!("{:?}", worker_result.outcome)
+                            }),
+                        );
+                    }
+                },
+                Err(error) => {
+                    let _ = app_clone.emit(
+                        "removal:failed",
+                        serde_json::json!({ "attempt_id": attempt_id_clone, "error": error }),
+                    );
+                }
+            }
+        });
+    }
+
+    Ok(attempt_ids)
 }

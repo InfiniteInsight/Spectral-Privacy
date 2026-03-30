@@ -46,6 +46,12 @@ pub mod map_blur;
 pub mod matching;
 pub mod migrations;
 pub mod removal_attempts;
+pub mod removal_followups;
+pub use removal_followups::{
+    dismiss_followup as dismiss_removal_followup, get_due_followups,
+    get_pending_followups as get_pending_removal_followups, mark_followup_sent, schedule_followup,
+    RemovalFollowup,
+};
 /// Scan job management for tracking broker scan operations.
 pub mod scan_jobs;
 pub mod scan_logs;
@@ -236,7 +242,7 @@ mod tests {
         db.run_migrations().await.expect("run migrations");
 
         let version_after = db.get_schema_version().await.expect("get version");
-        assert_eq!(version_after, 21);
+        assert_eq!(version_after, 24);
     }
 
     #[tokio::test]
@@ -273,6 +279,7 @@ mod tests {
                 "profiles",
                 "removal_attempts",
                 "removal_evidence",
+                "removal_followups",
                 "scan_jobs",
                 "scan_logs",
                 "scan_sessions",
@@ -352,7 +359,7 @@ mod migration_tests {
 
         // Verify table exists and has default jobs
         let jobs = db.get_scheduled_jobs().await.expect("get scheduled jobs");
-        assert_eq!(jobs.len(), 2);
+        assert_eq!(jobs.len(), 3);
 
         // Verify default jobs
         let scan_all = jobs
@@ -373,6 +380,17 @@ mod migration_tests {
         );
         assert_eq!(verify_removals.interval_days, 3);
         assert!(verify_removals.enabled);
+
+        let followup_reminders = jobs
+            .iter()
+            .find(|j| j.id == "default-followup-reminders")
+            .expect("followup-reminders job");
+        assert_eq!(
+            followup_reminders.job_type,
+            spectral_scheduler::JobType::FollowUpReminders
+        );
+        assert_eq!(followup_reminders.interval_days, 1);
+        assert!(followup_reminders.enabled);
     }
 
     #[tokio::test]

@@ -24,6 +24,8 @@ pub fn render_template(
     }
     // Replace remaining known placeholders
     body = body.replace("{{email}}", email);
+    // Append a consistent follow-up notice to every removal email
+    body.push_str("\n\nPlease note: I will follow up in 15 days if I do not receive a confirmation of deletion.");
     EmailTemplate {
         to: to.to_string(),
         subject,
@@ -47,5 +49,6 @@ mod tests {
         assert!(result.body.contains("Alice Smith"));
         assert!(result.body.contains("123 Main St"));
         assert!(result.body.contains("alice@example.com"));
+        assert!(result.body.contains("I will follow up in 15 days"));
     }
 }

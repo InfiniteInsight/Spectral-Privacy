@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { brokerAPI, type BrokerSummary } from '$lib/api/brokers';
+	import { removalAPI } from '$lib/api/removal';
+	import { vaultStore, profileStore } from '$lib/stores';
 	import { getDifficultyColor, getCategoryDisplay } from '$lib/utils/broker';
 
 	let brokers = $state<BrokerSummary[]>([]);
@@ -8,6 +12,27 @@
 	let error = $state<string | null>(null);
 	let searchQuery = $state('');
 	let difficultyFilter = $state('all');
+
+	// Vault / profile state
+	const vaultId = $derived(vaultStore.currentVaultId ?? '');
+	let profileId = $state('');
+
+	// Bulk removal state
+	let bulkRemoving = $state(false);
+	let bulkTotal = $state(0);
+	let bulkDoneCount = $state(0);
+	let bulkFailCount = $state(0);
+	let bulkError = $state<string | null>(null);
+	let bulkComplete = $state(false);
+	let bulkUnlistenFns: UnlistenFn[] = [];
+
+	// Resolve profile ID from store
+	$effect(() => {
+		const profiles = profileStore.profiles;
+		if (profiles.length > 0 && !profileId) {
+			profileId = profiles[0].id;
+		}
+	});
 
 	// Load adtech brokers (Marketing category) on mount using $effect
 	$effect(() => {
@@ -55,6 +80,66 @@
 	function handleRowClick(brokerId: string) {
 		goto(`/adtech/${brokerId}`);
 	}
+
+	async function handleRemoveAll() {
+		if (!vaultId || !profileId || bulkRemoving) return;
+
+		bulkRemoving = true;
+		bulkComplete = false;
+		bulkError = null;
+		bulkDoneCount = 0;
+		bulkFailCount = 0;
+
+		// Clean up any previous listeners
+		for (const u of bulkUnlistenFns) u();
+		bulkUnlistenFns = [];
+
+		try {
+			const attemptIds = await removalAPI.initiateBulkRemoval(
+				vaultId,
+				profileId,
+				brokers.map((b) => b.id)
+			);
+			bulkTotal = attemptIds.length;
+
+			const attemptIdSet = new Set(attemptIds);
+
+			const unlistenSuccess = await listen<{ removal_attempt_id: string }>(
+				'removal:success',
+				(event) => {
+					if (attemptIdSet.has(event.payload.removal_attempt_id)) {
+						bulkDoneCount++;
+						if (bulkDoneCount + bulkFailCount >= bulkTotal) {
+							bulkRemoving = false;
+							bulkComplete = true;
+						}
+					}
+				}
+			);
+			bulkUnlistenFns.push(unlistenSuccess);
+
+			const unlistenFailed = await listen<{ removal_attempt_id: string }>(
+				'removal:failed',
+				(event) => {
+					if (attemptIdSet.has(event.payload.removal_attempt_id)) {
+						bulkFailCount++;
+						if (bulkDoneCount + bulkFailCount >= bulkTotal) {
+							bulkRemoving = false;
+							bulkComplete = true;
+						}
+					}
+				}
+			);
+			bulkUnlistenFns.push(unlistenFailed);
+		} catch (err) {
+			bulkError = err instanceof Error ? err.message : String(err);
+			bulkRemoving = false;
+		}
+	}
+
+	onDestroy(() => {
+		for (const u of bulkUnlistenFns) u();
+	});
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
@@ -69,12 +154,23 @@
 							Browse all {brokers.length} advertising technology and marketing data companies
 						</p>
 					</div>
-					<button
-						onclick={() => goto('/')}
-						class="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-					>
-						← Back to Dashboard
-					</button>
+					<div class="flex items-center gap-3">
+						{#if vaultId && profileId && !loading}
+							<button
+								onclick={handleRemoveAll}
+								disabled={bulkRemoving}
+								class="px-5 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{bulkRemoving ? 'Removing...' : 'Remove All'}
+							</button>
+						{/if}
+						<button
+							onclick={() => goto('/')}
+							class="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+						>
+							← Back to Dashboard
+						</button>
+					</div>
 				</div>
 
 				<!-- Search and Filters -->
@@ -113,6 +209,44 @@
 					</p>
 				{/if}
 			</div>
+
+			<!-- Bulk Removal Progress -->
+			{#if bulkRemoving || bulkComplete || bulkError}
+				<div
+					class="mb-6 p-4 border rounded-lg {bulkError
+						? 'bg-red-50 border-red-200'
+						: bulkComplete && bulkFailCount === 0
+							? 'bg-green-50 border-green-200'
+							: 'bg-orange-50 border-orange-200'}"
+				>
+					{#if bulkError}
+						<p class="text-sm text-red-700 font-medium">Remove All failed: {bulkError}</p>
+					{:else if bulkComplete}
+						<p
+							class="text-sm font-medium {bulkFailCount > 0 ? 'text-orange-700' : 'text-green-700'}"
+						>
+							Remove All complete — {bulkDoneCount} submitted{bulkFailCount > 0
+								? `, ${bulkFailCount} failed`
+								: ''}
+						</p>
+					{:else}
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<p class="text-sm font-medium text-orange-700">Submitting removals…</p>
+								<p class="text-sm text-orange-700">{bulkDoneCount + bulkFailCount} / {bulkTotal}</p>
+							</div>
+							<div class="w-full bg-orange-200 rounded-full h-2">
+								<div
+									class="bg-orange-600 h-2 rounded-full transition-all"
+									style="width: {bulkTotal > 0
+										? Math.round(((bulkDoneCount + bulkFailCount) / bulkTotal) * 100)
+										: 0}%"
+								></div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if loading}
 				<!-- Loading State -->

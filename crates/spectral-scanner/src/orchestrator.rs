@@ -337,7 +337,27 @@ impl ScanOrchestrator {
             .build_search_url(&broker_def, &profile_id, &vault_key)
             .await
         {
-            Ok(url) => url,
+            Ok(url) => {
+                tracing::info!("[scan] {} → fetching {}", broker_id, url);
+                url
+            }
+            Err(ScanError::NotScannable { reason, .. }) => {
+                // Broker requires manual search — skip cleanly, don't count as failure
+                tracing::info!("[scan] {} → skipped ({})", broker_id, reason);
+                spectral_db::broker_scans::update_status(
+                    self.db.pool(),
+                    &broker_scan.id,
+                    "Skipped",
+                    Some(reason.clone()),
+                )
+                .await?;
+
+                return Ok(BrokerScanResult {
+                    broker_id,
+                    findings_count: 0,
+                    error: Some(format!("Skipped: {reason}")),
+                });
+            }
             Err(ScanError::MissingRequiredField(field)) => {
                 // Profile missing required field - mark as skipped
                 spectral_db::broker_scans::update_status(
@@ -425,10 +445,18 @@ impl ScanOrchestrator {
             }
         };
 
+        tracing::info!("[scan] {} → page fetched ({} bytes)", broker_id, html.len());
+
         // Parse results using ResultParser with broker-specific selectors
         let findings_count = self
             .parse_and_store_findings(&html, &broker_scan.id, &broker_id, &profile_id)
             .await?;
+
+        tracing::info!(
+            "[scan] {} → parse complete, {} finding(s)",
+            broker_id,
+            findings_count
+        );
 
         // Mark as success
         spectral_db::broker_scans::update_status(self.db.pool(), &broker_scan.id, "Success", None)
@@ -452,11 +480,19 @@ impl ScanOrchestrator {
         for attempt in 0..MAX_RETRIES {
             match self.browser_engine.fetch_page_content(url).await {
                 Ok(html) => {
-                    // Check for CAPTCHA in HTML before returning
+                    // If a CAPTCHA is present, open a visible browser window so the
+                    // user can solve it interactively, then resume with the result.
                     if Self::detect_captcha(&html) {
-                        return Err(ScanError::CaptchaRequired {
-                            broker_id: broker_id.clone(),
-                        });
+                        tracing::info!(
+                            "[scan] CAPTCHA detected for {}, opening visible browser",
+                            broker_id
+                        );
+                        return spectral_browser::BrowserEngine::solve_captcha_interactively(
+                            url,
+                            Duration::from_secs(300),
+                        )
+                        .await
+                        .map_err(ScanError::Browser);
                     }
                     return Ok(html);
                 }
@@ -872,14 +908,15 @@ impl ScanOrchestrator {
 
                 Ok(url)
             }
-            SearchMethod::WebForm { url, .. } => {
-                // For now, just return the form URL - form submission not yet implemented
-                Ok(url.clone())
-            }
-            SearchMethod::Manual { url, .. } => {
-                // Manual search - return the URL for user to visit
-                Ok(url.clone())
-            }
+            SearchMethod::WebForm { .. } => Err(ScanError::NotScannable {
+                broker_id: broker_def.broker.id.clone(),
+                reason: "WebForm search requires browser automation not yet implemented"
+                    .to_string(),
+            }),
+            SearchMethod::Manual { .. } => Err(ScanError::NotScannable {
+                broker_id: broker_def.broker.id.clone(),
+                reason: "Manual search — no automated scan URL available".to_string(),
+            }),
         }
     }
 

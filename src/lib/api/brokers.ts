@@ -48,6 +48,10 @@ export interface BrokerDetail {
 	finding_count: number | null;
 	email_template: EmailTemplate | null;
 	email_fallback: EmailFallback | null;
+	/** Whether this broker can be auto-scanned or requires manual action */
+	search_method_type: 'scannable' | 'web_form' | 'manual';
+	/** URL for the removal action form, or null for email/manual/phone methods */
+	removal_action_url: string | null;
 }
 
 export const brokerAPI = {

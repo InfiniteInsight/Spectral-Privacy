@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { vaultStore } from '$lib/stores/vault.svelte';
 	import { removalAPI, type RemovalJobSummary } from '$lib/api/removal';
+	import FollowUpNotifications from '$lib/components/removals/FollowUpNotifications.svelte';
 
 	let jobs = $state<RemovalJobSummary[]>([]);
 	let loading = $state(true);
@@ -53,6 +54,7 @@
 			>
 		</div>
 	{:else}
+		<FollowUpNotifications vaultId={vaultStore.currentVaultId ?? ''} />
 		<div class="space-y-4">
 			{#each jobs as job (job.scan_job_id)}
 				<div class="rounded-lg border border-gray-200 bg-white shadow-sm">

@@ -35,7 +35,10 @@ impl std::fmt::Debug for ImapConfig {
 /// Result of a single polling pass
 #[derive(Debug, Default)]
 pub struct PollResult {
+    /// broker_email → attempt_id for each email matched to a known broker
     pub verified: HashMap<String, String>,
+    /// broker_email → plain-text message body for matched emails (for LLM reply analysis)
+    pub bodies: HashMap<String, String>,
     pub errors: Vec<String>,
 }
 
@@ -86,7 +89,8 @@ pub fn poll_for_verifications(
     let uid_list: Vec<String> = uids.iter().map(|u| u.to_string()).collect();
     let fetch_query = uid_list.join(",");
 
-    let messages = match session.fetch(&fetch_query, "RFC822.HEADER") {
+    // Fetch full RFC822 messages so we can extract both headers and body
+    let messages = match session.fetch(&fetch_query, "RFC822") {
         Ok(m) => m,
         Err(e) => {
             tracing::warn!("IMAP fetch error: {}", e);
@@ -96,7 +100,10 @@ pub fn poll_for_verifications(
         }
     };
 
-    result.verified = extract_verifications_from_messages(messages.iter(), broker_email_to_attempt);
+    let (verified, bodies) =
+        extract_verifications_from_messages(messages.iter(), broker_email_to_attempt);
+    result.verified = verified;
+    result.bodies = bodies;
 
     let _ = session.logout();
     result
@@ -139,20 +146,26 @@ fn establish_imap_session(
     Some(session)
 }
 
-/// Extract verifications from fetched messages
+/// Extract verifications and message bodies from fetched messages.
+///
+/// Returns `(verified, bodies)` where:
+/// - `verified`: broker_email → attempt_id
+/// - `bodies`: broker_email → plain-text body (for LLM reply analysis)
 fn extract_verifications_from_messages<'a, T>(
     messages: T,
     broker_email_to_attempt: &HashMap<String, String>,
-) -> HashMap<String, String>
+) -> (HashMap<String, String>, HashMap<String, String>)
 where
     T: IntoIterator<Item = &'a imap::types::Fetch<'a>>,
 {
     let mut verified = HashMap::new();
+    let mut bodies = HashMap::new();
 
     for msg in messages.into_iter() {
-        if let Some(header_bytes) = msg.header() {
-            let headers = String::from_utf8_lossy(header_bytes);
-            if let Some(from) = extract_from_header(&headers) {
+        // RFC822 fetch returns the full raw message in body()
+        let raw = msg.body().map(String::from_utf8_lossy);
+        if let Some(raw_str) = raw {
+            if let Some(from) = extract_from_header_raw(&raw_str) {
                 if let Some(attempt_id) = broker_email_to_attempt.get(&from.to_lowercase()) {
                     tracing::info!(
                         "Found verification email from {} for attempt {}",
@@ -160,12 +173,40 @@ where
                         attempt_id
                     );
                     verified.insert(from.clone(), attempt_id.clone());
+                    // Extract plain-text body (everything after the header block)
+                    let body_text = extract_body_text(&raw_str);
+                    bodies.insert(from.clone(), body_text);
                 }
             }
         }
     }
 
-    verified
+    (verified, bodies)
+}
+
+/// Extract plain-text body from a raw RFC822 message (everything after the blank line).
+fn extract_body_text(raw: &str) -> String {
+    // RFC822 headers end at the first blank line (\r\n\r\n or \n\n)
+    if let Some(pos) = raw.find("\r\n\r\n") {
+        raw[pos + 4..].trim().to_string()
+    } else if let Some(pos) = raw.find("\n\n") {
+        raw[pos + 2..].trim().to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Extract the From address from a raw RFC822 message (headers + body).
+fn extract_from_header_raw(raw: &str) -> Option<String> {
+    // Only look in the header section (before the blank line)
+    let header_section = if let Some(pos) = raw.find("\r\n\r\n") {
+        &raw[..pos]
+    } else if let Some(pos) = raw.find("\n\n") {
+        &raw[..pos]
+    } else {
+        raw
+    };
+    extract_from_header(header_section)
 }
 
 fn extract_from_header(headers: &str) -> Option<String> {

@@ -8,7 +8,8 @@ export interface BatchSubmissionResult {
 
 export interface RemovalAttempt {
 	id: string;
-	finding_id: string;
+	finding_id: string | null;
+	profile_id: string | null;
 	broker_id: string;
 	status: 'Pending' | 'Processing' | 'Submitted' | 'Completed' | 'Failed';
 	created_at: string;
@@ -64,6 +65,30 @@ export const removalAPI = {
 	 */
 	async getJobHistory(vaultId: string): Promise<RemovalJobSummary[]> {
 		return await invoke<RemovalJobSummary[]>('get_removal_job_history', { vaultId });
+	},
+
+	/**
+	 * Initiate a direct removal attempt for one non-scannable broker.
+	 * Returns the removal attempt ID.
+	 */
+	async initiateDirectRemoval(
+		vaultId: string,
+		brokerId: string,
+		profileId: string
+	): Promise<string> {
+		return await invoke<string>('initiate_direct_removal', { vaultId, brokerId, profileId });
+	},
+
+	/**
+	 * Initiate bulk removal for all non-scannable brokers in a list.
+	 * Returns array of created removal attempt IDs.
+	 */
+	async initiateBulkRemoval(
+		vaultId: string,
+		profileId: string,
+		brokerIds: string[]
+	): Promise<string[]> {
+		return await invoke<string[]>('initiate_bulk_removal', { vaultId, profileId, brokerIds });
 	}
 };
 

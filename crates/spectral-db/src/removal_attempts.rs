@@ -39,8 +39,10 @@ impl fmt::Display for RemovalStatus {
 pub struct RemovalAttempt {
     /// Unique identifier
     pub id: String,
-    /// ID of the finding being removed
-    pub finding_id: String,
+    /// ID of the finding being removed (None for standalone removals)
+    pub finding_id: Option<String>,
+    /// ID of the profile this removal is for (set for standalone removals)
+    pub profile_id: Option<String>,
     /// ID of the broker
     pub broker_id: String,
     /// Status of the removal attempt
@@ -65,17 +67,19 @@ pub async fn create_removal_attempt(
     pool: &Pool<Sqlite>,
     finding_id: String,
     broker_id: String,
+    profile_id: String,
 ) -> Result<RemovalAttempt, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     let created_at = Utc::now();
 
     // Insert removal attempt
     sqlx::query(
-        "INSERT INTO removal_attempts (id, finding_id, broker_id, status, created_at)
-         VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO removal_attempts (id, finding_id, profile_id, broker_id, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&finding_id)
+    .bind(&profile_id)
     .bind(&broker_id)
     .bind(RemovalStatus::Pending.to_string())
     .bind(created_at.to_rfc3339())
@@ -91,8 +95,48 @@ pub async fn create_removal_attempt(
 
     Ok(RemovalAttempt {
         id,
-        finding_id,
+        finding_id: Some(finding_id),
+        profile_id: Some(profile_id),
         broker_id,
+        status: RemovalStatus::Pending,
+        created_at,
+        submitted_at: None,
+        completed_at: None,
+        error_message: None,
+    })
+}
+
+/// Create a removal attempt without an associated finding.
+///
+/// Used for brokers that cannot be auto-scanned (email, web-form, manual methods).
+///
+/// # Errors
+/// Returns `sqlx::Error` if the database insert fails.
+pub async fn create_standalone_removal_attempt(
+    pool: &Pool<Sqlite>,
+    broker_id: &str,
+    profile_id: &str,
+) -> Result<RemovalAttempt, sqlx::Error> {
+    let id = Uuid::new_v4().to_string();
+    let created_at = Utc::now();
+
+    sqlx::query(
+        "INSERT INTO removal_attempts (id, finding_id, profile_id, broker_id, status, created_at)
+         VALUES (?, NULL, ?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(profile_id)
+    .bind(broker_id)
+    .bind(RemovalStatus::Pending.to_string())
+    .bind(created_at.to_rfc3339())
+    .execute(pool)
+    .await?;
+
+    Ok(RemovalAttempt {
+        id,
+        finding_id: None,
+        profile_id: Some(profile_id.to_string()),
+        broker_id: broker_id.to_string(),
         status: RemovalStatus::Pending,
         created_at,
         submitted_at: None,
@@ -112,7 +156,7 @@ pub async fn get_by_finding_id(
     finding_id: &str,
 ) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+        "SELECT id, finding_id, profile_id, broker_id, status, created_at, submitted_at, completed_at, error_message
          FROM removal_attempts WHERE finding_id = ? ORDER BY created_at DESC",
     )
     .bind(finding_id)
@@ -161,7 +205,7 @@ pub async fn get_by_id(
     id: &str,
 ) -> Result<Option<RemovalAttempt>, sqlx::Error> {
     let row = sqlx::query(
-        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+        "SELECT id, finding_id, profile_id, broker_id, status, created_at, submitted_at, completed_at, error_message
          FROM removal_attempts WHERE id = ?",
     )
     .bind(id)
@@ -215,7 +259,8 @@ fn parse_removal_attempts_from_rows(
 
             Ok(RemovalAttempt {
                 id: row.get("id"),
-                finding_id: row.get("finding_id"),
+                finding_id: row.try_get("finding_id").ok().flatten(),
+                profile_id: row.try_get("profile_id").ok().flatten(),
                 broker_id: row.get("broker_id"),
                 status,
                 created_at,
@@ -236,7 +281,7 @@ fn parse_removal_attempts_from_rows(
 /// Returns `sqlx::Error` if the database query fails.
 pub async fn get_captcha_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+        "SELECT id, finding_id, profile_id, broker_id, status, created_at, submitted_at, completed_at, error_message
          FROM removal_attempts
          WHERE status = 'Pending' AND error_message LIKE 'CAPTCHA_REQUIRED%'
          ORDER BY created_at ASC",
@@ -256,7 +301,7 @@ pub async fn get_captcha_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt
 /// Returns `sqlx::Error` if the database query fails.
 pub async fn get_failed_queue(pool: &Pool<Sqlite>) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT id, finding_id, broker_id, status, created_at, submitted_at, completed_at, error_message
+        "SELECT id, finding_id, profile_id, broker_id, status, created_at, submitted_at, completed_at, error_message
          FROM removal_attempts
          WHERE status = 'Failed'
          ORDER BY created_at DESC",
@@ -333,7 +378,7 @@ pub async fn get_by_scan_job_id(
     scan_job_id: &str,
 ) -> Result<Vec<RemovalAttempt>, sqlx::Error> {
     let rows = sqlx::query(
-        "SELECT ra.id, ra.finding_id, ra.broker_id, ra.status, ra.created_at,
+        "SELECT ra.id, ra.finding_id, ra.profile_id, ra.broker_id, ra.status, ra.created_at,
                 ra.submitted_at, ra.completed_at, ra.error_message
          FROM removal_attempts ra
          INNER JOIN findings f ON ra.finding_id = f.id
@@ -513,13 +558,17 @@ mod tests {
     async fn test_create_removal_attempt() {
         let db = setup_test_db().await;
 
-        let result =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await;
+        let result = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await;
 
         assert!(result.is_ok());
         let attempt = result.expect("create attempt");
-        assert_eq!(attempt.finding_id, "finding-123");
+        assert_eq!(attempt.finding_id, Some("finding-123".to_string()));
         assert_eq!(attempt.broker_id, "broker-1");
         assert_eq!(attempt.status, RemovalStatus::Pending);
         assert!(attempt.submitted_at.is_none());
@@ -542,17 +591,27 @@ mod tests {
 
         // Create 2 removal attempts for same finding
         // nosemgrep: no-unwrap-in-production
-        create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-            .await
-            .expect("update status");
+        create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("update status");
 
         // Small delay to ensure different timestamps
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
         // nosemgrep: no-unwrap-in-production
-        create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-            .await
-            .expect("update status");
+        create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("update status");
 
         let attempts = get_by_finding_id(db.pool(), "finding-123")
             .await
@@ -579,10 +638,14 @@ mod tests {
     async fn test_update_status_to_submitted() {
         let db = setup_test_db().await;
 
-        let attempt =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt");
+        let attempt = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt");
 
         let submitted_timestamp = Utc::now();
         update_status(
@@ -616,10 +679,14 @@ mod tests {
     async fn test_update_status_to_completed() {
         let db = setup_test_db().await;
 
-        let attempt =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt");
+        let attempt = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt");
 
         let completed_timestamp = Utc::now();
         update_status(
@@ -651,10 +718,14 @@ mod tests {
     async fn test_update_status_to_failed_with_error() {
         let db = setup_test_db().await;
 
-        let attempt =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt");
+        let attempt = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt");
 
         update_status(
             db.pool(),
@@ -681,17 +752,21 @@ mod tests {
         let db = setup_test_db().await;
 
         // Create removal attempt
-        let attempt =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt");
+        let attempt = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt");
 
         // Get by ID - should find it
         let found = get_by_id(db.pool(), &attempt.id).await.expect("get by id");
         assert!(found.is_some());
         let found_attempt = found.expect("found attempt");
         assert_eq!(found_attempt.id, attempt.id);
-        assert_eq!(found_attempt.finding_id, "finding-123");
+        assert_eq!(found_attempt.finding_id, Some("finding-123".to_string()));
 
         // Get by non-existent ID - should return None
         let not_found = get_by_id(db.pool(), "non-existent-id")
@@ -705,25 +780,37 @@ mod tests {
         let db = setup_test_db().await;
 
         // Create 3 removal attempts
-        let attempt1 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt 1");
+        let attempt1 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 1");
 
         // Small delay to ensure different timestamps
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let attempt2 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-2".to_string())
-                .await
-                .expect("create removal attempt 2");
+        let attempt2 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-2".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 2");
 
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let attempt3 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-3".to_string())
-                .await
-                .expect("create removal attempt 3");
+        let attempt3 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-3".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 3");
 
         // Mark attempt1 and attempt2 with CAPTCHA errors
         update_status(
@@ -787,25 +874,37 @@ mod tests {
         let db = setup_test_db().await;
 
         // Create 3 removal attempts
-        let attempt1 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-1".to_string())
-                .await
-                .expect("create removal attempt 1");
+        let attempt1 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-1".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 1");
 
         // Small delay to ensure different timestamps
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let attempt2 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-2".to_string())
-                .await
-                .expect("create removal attempt 2");
+        let attempt2 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-2".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 2");
 
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        let attempt3 =
-            create_removal_attempt(db.pool(), "finding-123".to_string(), "broker-3".to_string())
-                .await
-                .expect("create removal attempt 3");
+        let attempt3 = create_removal_attempt(
+            db.pool(),
+            "finding-123".to_string(),
+            "broker-3".to_string(),
+            "profile-123".to_string(),
+        )
+        .await
+        .expect("create removal attempt 3");
 
         // Mark attempt1 and attempt2 as failed
         update_status(
@@ -855,5 +954,33 @@ mod tests {
         // Verify both have error messages
         assert!(failed_queue[0].error_message.is_some());
         assert!(failed_queue[1].error_message.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_create_standalone_removal_attempt() {
+        let db = setup_test_db().await;
+
+        let attempt = create_standalone_removal_attempt(db.pool(), "test-broker", "profile-123")
+            .await
+            .expect("should create standalone attempt");
+
+        assert_eq!(attempt.broker_id, "test-broker");
+        assert!(
+            attempt.finding_id.is_none(),
+            "standalone attempt should have no finding_id"
+        );
+        assert_eq!(attempt.profile_id.as_deref(), Some("profile-123"));
+        assert_eq!(attempt.status, RemovalStatus::Pending);
+        assert!(attempt.submitted_at.is_none());
+        assert!(attempt.error_message.is_none());
+
+        // Verify it can be retrieved by ID
+        let fetched = get_by_id(db.pool(), &attempt.id)
+            .await
+            .expect("get by id")
+            .expect("attempt exists");
+        assert_eq!(fetched.broker_id, "test-broker");
+        assert!(fetched.finding_id.is_none());
+        assert_eq!(fetched.profile_id.as_deref(), Some("profile-123"));
     }
 }

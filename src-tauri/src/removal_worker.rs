@@ -354,6 +354,7 @@ pub async fn submit_via_email(
     attempt_id: &str,
     field_values: &HashMap<String, String>,
     smtp_config: Option<&spectral_mail::SmtpConfig>,
+    cc: Option<&str>,
     db: &Database,
 ) -> Result<RemovalOutcome, String> {
     let RemovalMethod::Email {
@@ -399,7 +400,7 @@ pub async fn submit_via_email(
             "submit_via_email: sending via SMTP for attempt {}",
             attempt_id
         );
-        spectral_mail::sender::send_smtp(&email_template, user_email, config)
+        spectral_mail::sender::send_smtp(&email_template, user_email, config, cc)
             .await
             .map_err(|e| format!("SMTP send failed: {e}"))?;
     } else {
@@ -436,6 +437,24 @@ pub async fn submit_via_email(
         "Logged email removal {} for attempt {}",
         email_removal_id, attempt_id
     );
+
+    // Schedule a 15-day follow-up reminder
+    let follow_up_at = (chrono::Utc::now() + chrono::Duration::days(15)).to_rfc3339();
+    if let Err(e) = spectral_db::schedule_followup(
+        db.pool(),
+        attempt_id,
+        &broker_def.broker.id.to_string(),
+        to_email,
+        &follow_up_at,
+    )
+    .await
+    {
+        tracing::warn!(
+            "Failed to schedule follow-up for attempt {}: {}",
+            attempt_id,
+            e
+        );
+    }
 
     Ok(RemovalOutcome::Submitted)
 }
@@ -481,14 +500,27 @@ pub async fn submit_removal_task(
         .map_err(|e| format!("Failed to load removal attempt: {e}"))?
         .ok_or_else(|| format!("Removal attempt not found: {removal_attempt_id}"))?;
 
-    // Load associated finding
-    let finding = spectral_db::findings::get_by_id(db.pool(), &removal_attempt.finding_id)
-        .await
-        .map_err(|e| format!("Failed to load finding: {e}"))?
-        .ok_or_else(|| format!("Finding not found: {}", removal_attempt.finding_id))?;
+    // Load associated finding — may be None for standalone (email/form/manual) removals
+    let finding = match &removal_attempt.finding_id {
+        Some(finding_id) => Some(
+            spectral_db::findings::get_by_id(db.pool(), finding_id)
+                .await
+                .map_err(|e| format!("Failed to load finding: {e}"))?
+                .ok_or_else(|| format!("Finding not found: {finding_id}"))?,
+        ),
+        None => None,
+    };
 
-    // Load profile
-    let profile_id = spectral_core::types::ProfileId::new(&finding.profile_id)
+    // Resolve profile ID — from finding if present, otherwise from the attempt itself
+    let profile_id_str = match &finding {
+        Some(f) => f.profile_id.clone(),
+        None => removal_attempt
+            .profile_id
+            .clone()
+            .ok_or_else(|| "Removal attempt has no finding_id and no profile_id".to_string())?,
+    };
+
+    let profile_id = spectral_core::types::ProfileId::new(&profile_id_str)
         .map_err(|e| format!("Invalid profile ID: {e}"))?;
 
     let profile = vault
@@ -501,8 +533,9 @@ pub async fn submit_removal_task(
         .encryption_key()
         .map_err(|e| format!("Failed to get encryption key: {e}"))?;
 
-    // Map fields for submission
-    let field_values = map_fields_for_submission(&profile, &finding.listing_url, key)?;
+    // listing_url is empty for standalone removals (no scan finding)
+    let listing_url = finding.as_ref().map_or("", |f| f.listing_url.as_str());
+    let field_values = map_fields_for_submission(&profile, listing_url, key)?;
 
     // Load broker definition
     let broker_id =
@@ -536,15 +569,25 @@ pub async fn submit_removal_task(
         }
         RemovalMethod::Email { .. } => {
             info!("Routing removal attempt {} via email", removal_attempt_id);
-            // Note: SMTP config is not available yet (added in Task 15)
-            // For now, we pass None which will store a mailto: URL
+            // Load SMTP config and CC address from vault settings
+            let smtp_config = spectral_mail::settings::get_smtp_config(db.pool())
+                .await
+                .ok()
+                .flatten();
+            let cc_addr = spectral_mail::settings::get_cc_address(db.pool())
+                .await
+                .ok()
+                .flatten();
+            let cc_ref = cc_addr.as_deref();
+            let smtp_ref = smtp_config.as_ref();
             retry_with_backoff(
                 || async {
                     submit_via_email(
                         &broker_def,
                         &removal_attempt_id,
                         &field_values,
-                        None, // SMTP config added in Task 15
+                        smtp_ref,
+                        cc_ref,
                         &db,
                     )
                     .await

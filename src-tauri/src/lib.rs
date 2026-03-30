@@ -32,8 +32,8 @@ fn get_version() -> String {
 fn init_tracing() {
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,spectral=debug"));
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,spectral=debug,chromiumoxide=debug"));
 
     tracing_subscriber::registry()
         .with(fmt::layer().with_target(true))
@@ -114,12 +114,17 @@ pub fn run() {
             commands::profile::get_profile_completeness,
             commands::removal::submit_removal,
             commands::removal::mark_attempt_verified,
+            commands::removal::get_pending_followups,
+            commands::removal::dismiss_followup,
             commands::scan::start_scan,
             commands::scan::get_scan_status,
+            commands::scan::get_broker_scan_results,
             commands::scan::get_findings,
             commands::scan::verify_finding,
             commands::scan::submit_removals_for_confirmed,
             commands::scan::process_removal_batch,
+            commands::scan::initiate_direct_removal,
+            commands::scan::initiate_bulk_removal,
             commands::scan::get_captcha_queue,
             commands::scan::get_failed_queue,
             commands::scan::retry_removal,
@@ -138,6 +143,8 @@ pub fn run() {
             commands::scan::get_unified_scan_history,
             commands::settings::test_smtp_connection,
             commands::settings::test_imap_connection,
+            commands::settings::get_email_settings,
+            commands::settings::save_email_settings,
             commands::scheduler::get_scheduled_jobs,
             commands::scheduler::update_scheduled_job,
             commands::scheduler::run_job_now,

@@ -7,6 +7,18 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_broker::definition::BrokerDefinition;
 
+/// Indicates what kind of automated action is possible for a broker's search.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchMethodType {
+    /// URL template — can auto-scan this broker
+    Scannable,
+    /// Web form — automation possible but requires form interaction
+    WebForm,
+    /// Manual — no automated search; user must act directly
+    Manual,
+}
+
 /// Summary information about a broker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrokerSummary {
@@ -72,6 +84,10 @@ pub struct BrokerDetail {
     pub finding_count: Option<i64>,
     pub email_template: Option<EmailTemplate>,
     pub email_fallback: Option<EmailFallbackResponse>,
+    /// Whether this broker can be auto-scanned or requires manual action.
+    pub search_method_type: SearchMethodType,
+    /// URL for the removal action form, or the broker homepage for manual methods.
+    pub removal_action_url: Option<String>,
 }
 
 /// List all broker definitions.
@@ -174,6 +190,22 @@ pub async fn get_broker_detail(
         _ => None,
     };
 
+    let search_method_type = match &def.search {
+        spectral_broker::definition::SearchMethod::UrlTemplate { .. } => {
+            SearchMethodType::Scannable
+        }
+        spectral_broker::definition::SearchMethod::WebForm { .. } => SearchMethodType::WebForm,
+        spectral_broker::definition::SearchMethod::Manual { .. } => SearchMethodType::Manual,
+    };
+
+    let removal_action_url = match &def.removal {
+        spectral_broker::definition::RemovalMethod::WebForm { url, .. }
+        | spectral_broker::definition::RemovalMethod::BrowserForm { url, .. } => Some(url.clone()),
+        spectral_broker::definition::RemovalMethod::Manual { .. } => Some(def.broker.url.clone()),
+        spectral_broker::definition::RemovalMethod::Email { .. }
+        | spectral_broker::definition::RemovalMethod::Phone { .. } => None,
+    };
+
     Ok(BrokerDetail {
         summary: BrokerSummary::from(&def),
         removal_method: format!("{:?}", def.removal),
@@ -184,6 +216,8 @@ pub async fn get_broker_detail(
         finding_count,
         email_template,
         email_fallback,
+        search_method_type,
+        removal_action_url,
     })
 }
 

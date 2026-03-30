@@ -91,6 +91,7 @@ fn apply_platform_config(
             .arg("--mute-audio")
             .arg("--disable-software-rasterizer");
     }
+
     config
 }
 
@@ -155,6 +156,12 @@ impl BrowserEngine {
             }
         }
 
+        // Use a temp user-data-dir to avoid conflicts with a running Chrome instance.
+        // Without this, headless Chrome may fail with exit status 21 if the default
+        // profile directory is already locked by another Chrome process.
+        let user_data_dir = std::env::temp_dir().join("spectral-chrome-profile");
+        config = config.user_data_dir(&user_data_dir);
+
         // Add essential args
         config = config
             .arg("--headless")
@@ -211,6 +218,87 @@ impl BrowserEngine {
             .clone())
     }
 
+    /// Open a visible (non-headless) Chrome window so the user can solve a CAPTCHA,
+    /// then return the page HTML once the CAPTCHA challenge is no longer present.
+    ///
+    /// Polls every 2 seconds for up to `timeout`. The user sees a real Chrome window
+    /// and can interact with it normally.
+    pub async fn solve_captcha_interactively(url: &str, timeout: Duration) -> Result<String> {
+        tracing::info!("[captcha] Opening visible browser for CAPTCHA at {}", url);
+
+        let mut config = BrowserConfig::builder().no_sandbox().disable_default_args();
+
+        if let Ok(chrome_path) = std::env::var("CHROME_PATH") {
+            config = config.chrome_executable(&chrome_path);
+        } else {
+            #[cfg(target_os = "windows")]
+            if let Some(path) = detect_chrome_path() {
+                config = config.chrome_executable(&path);
+            }
+        }
+
+        // Separate profile dir so the visible window doesn't conflict with headless scans
+        let user_data_dir = std::env::temp_dir().join("spectral-chrome-captcha");
+        config = config.user_data_dir(&user_data_dir);
+
+        // Visible window — no --headless
+        config = config
+            .arg("--no-first-run")
+            .arg("--disable-extensions")
+            .arg("--disable-sync")
+            .arg("--window-size=1024,768");
+
+        let config = config
+            .build()
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        let (mut browser, mut handler) = Browser::launch(config)
+            .await
+            .map_err(|e| handle_browser_launch_error(e.to_string()))?;
+
+        tokio::spawn(async move {
+            while let Some(event) = handler.next().await {
+                let _ = event;
+            }
+        });
+
+        let page = browser
+            .new_page(url)
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        let deadline = Instant::now() + timeout; // nosemgrep: semgrep.llm-prompt-injection-risk
+        let result = loop {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+
+            match page.content().await {
+                Ok(html) => {
+                    let lower = html.to_lowercase();
+                    if !lower.contains("recaptcha")
+                        && !lower.contains("g-recaptcha")
+                        && !lower.contains("captcha")
+                        && !lower.contains("cf-challenge")
+                    {
+                        tracing::info!("[captcha] CAPTCHA solved, resuming scan");
+                        break Ok(html);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[captcha] Could not read page content: {e}");
+                }
+            }
+
+            if Instant::now() >= deadline {
+                break Err(BrowserError::Timeout(
+                    "CAPTCHA was not solved within the allowed time".to_string(),
+                ));
+            }
+        };
+
+        let _ = browser.close().await;
+        result
+    }
+
     /// Fetch a page and return its HTML content
     pub async fn fetch_page_content(&self, url: &str) -> Result<String> {
         // Navigate to the URL
@@ -240,8 +328,9 @@ impl BrowserActions for BrowserEngine {
 
         let page = self.get_page().await?;
 
-        page.goto(url)
+        tokio::time::timeout(Duration::from_secs(30), page.goto(url))
             .await
+            .map_err(|_| BrowserError::Timeout(format!("Navigation to {url} timed out after 30s")))?
             .map_err(|e| BrowserError::NavigationError(e.to_string()))?;
 
         Ok(())
