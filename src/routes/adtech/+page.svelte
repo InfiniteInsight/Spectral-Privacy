@@ -26,6 +26,15 @@
 	let bulkComplete = $state(false);
 	let bulkUnlistenFns: UnlistenFn[] = [];
 
+	// Bulk email-only state
+	let bulkEmailing = $state(false);
+	let bulkEmailTotal = $state(0);
+	let bulkEmailDone = $state(0);
+	let bulkEmailFail = $state(0);
+	let bulkEmailError = $state<string | null>(null);
+	let bulkEmailComplete = $state(false);
+	let bulkEmailUnlistenFns: UnlistenFn[] = [];
+
 	// Resolve profile ID from store
 	$effect(() => {
 		const profiles = profileStore.profiles;
@@ -77,8 +86,71 @@
 	// Get unique difficulties for filter dropdown
 	const difficulties = $derived(['all', ...new Set(brokers.map((b) => b.difficulty))]);
 
+	const emailBrokers = $derived(brokers.filter((b) => b.removal_method.startsWith('Email')));
+
 	function handleRowClick(brokerId: string) {
 		goto(`/adtech/${brokerId}`);
+	}
+
+	async function handleEmailAll() {
+		if (!vaultId || !profileId || bulkEmailing) return;
+
+		bulkEmailing = true;
+		bulkEmailComplete = false;
+		bulkEmailError = null;
+		bulkEmailDone = 0;
+		bulkEmailFail = 0;
+
+		for (const u of bulkEmailUnlistenFns) u();
+		bulkEmailUnlistenFns = [];
+
+		try {
+			const attemptIds = await removalAPI.initiateBulkRemoval(
+				vaultId,
+				profileId,
+				emailBrokers.map((b) => b.id)
+			);
+			bulkEmailTotal = attemptIds.length;
+
+			if (bulkEmailTotal === 0) {
+				bulkEmailComplete = true;
+				bulkEmailing = false;
+				return;
+			}
+
+			const attemptIdSet = new Set(attemptIds);
+
+			const unlistenSuccess = await listen<{ removal_attempt_id: string }>(
+				'removal:success',
+				(event) => {
+					if (attemptIdSet.has(event.payload.removal_attempt_id)) {
+						bulkEmailDone++;
+						if (bulkEmailDone + bulkEmailFail >= bulkEmailTotal) {
+							bulkEmailing = false;
+							bulkEmailComplete = true;
+						}
+					}
+				}
+			);
+			bulkEmailUnlistenFns.push(unlistenSuccess);
+
+			const unlistenFailed = await listen<{ removal_attempt_id: string }>(
+				'removal:failed',
+				(event) => {
+					if (attemptIdSet.has(event.payload.removal_attempt_id)) {
+						bulkEmailFail++;
+						if (bulkEmailDone + bulkEmailFail >= bulkEmailTotal) {
+							bulkEmailing = false;
+							bulkEmailComplete = true;
+						}
+					}
+				}
+			);
+			bulkEmailUnlistenFns.push(unlistenFailed);
+		} catch (err) {
+			bulkEmailError = err instanceof Error ? err.message : String(err);
+			bulkEmailing = false;
+		}
 	}
 
 	async function handleRemoveAll() {
@@ -139,6 +211,7 @@
 
 	onDestroy(() => {
 		for (const u of bulkUnlistenFns) u();
+		for (const u of bulkEmailUnlistenFns) u();
 	});
 </script>
 
@@ -156,9 +229,20 @@
 					</div>
 					<div class="flex items-center gap-3">
 						{#if vaultId && profileId && !loading}
+							{#if emailBrokers.length > 0}
+								<button
+									onclick={handleEmailAll}
+									disabled={bulkEmailing || bulkRemoving}
+									class="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{bulkEmailing
+										? `Emailing… ${bulkEmailDone + bulkEmailFail}/${bulkEmailTotal}`
+										: `Email All (${emailBrokers.length})`}
+								</button>
+							{/if}
 							<button
 								onclick={handleRemoveAll}
-								disabled={bulkRemoving}
+								disabled={bulkRemoving || bulkEmailing}
 								class="px-5 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{bulkRemoving ? 'Removing...' : 'Remove All'}
@@ -209,6 +293,46 @@
 					</p>
 				{/if}
 			</div>
+
+			<!-- Bulk Email Progress -->
+			{#if bulkEmailing || bulkEmailComplete || bulkEmailError}
+				<div
+					class="mb-4 p-4 border rounded-lg {bulkEmailError
+						? 'bg-red-50 border-red-200'
+						: bulkEmailComplete
+							? 'bg-green-50 border-green-200'
+							: 'bg-blue-50 border-blue-200'}"
+				>
+					{#if bulkEmailError}
+						<p class="text-sm text-red-700 font-medium">Email All failed: {bulkEmailError}</p>
+					{:else if bulkEmailComplete}
+						<p
+							class="text-sm font-medium {bulkEmailFail > 0 ? 'text-orange-700' : 'text-green-700'}"
+						>
+							✓ Email All complete — {bulkEmailDone} sent{bulkEmailFail > 0
+								? `, ${bulkEmailFail} failed`
+								: ''}.
+						</p>
+					{:else}
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<p class="text-sm font-medium text-blue-700">Sending removal emails…</p>
+								<p class="text-sm text-blue-700">
+									{bulkEmailDone + bulkEmailFail} / {bulkEmailTotal}
+								</p>
+							</div>
+							<div class="w-full bg-blue-200 rounded-full h-2">
+								<div
+									class="bg-blue-600 h-2 rounded-full transition-all"
+									style="width: {bulkEmailTotal > 0
+										? Math.round(((bulkEmailDone + bulkEmailFail) / bulkEmailTotal) * 100)
+										: 0}%"
+								></div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			<!-- Bulk Removal Progress -->
 			{#if bulkRemoving || bulkComplete || bulkError}

@@ -28,6 +28,7 @@ pub struct BrokerSummary {
     pub category: String,
     pub difficulty: String,
     pub typical_removal_days: u32,
+    pub removal_method: String,
 }
 
 impl From<&BrokerDefinition> for BrokerSummary {
@@ -39,6 +40,7 @@ impl From<&BrokerDefinition> for BrokerSummary {
             category: format!("{:?}", def.broker.category),
             difficulty: format!("{:?}", def.broker.difficulty),
             typical_removal_days: def.broker.typical_removal_days,
+            removal_method: format!("{:?}", def.removal),
         }
     }
 }

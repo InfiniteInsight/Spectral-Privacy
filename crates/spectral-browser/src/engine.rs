@@ -156,10 +156,13 @@ impl BrowserEngine {
             }
         }
 
-        // Use a temp user-data-dir to avoid conflicts with a running Chrome instance.
-        // Without this, headless Chrome may fail with exit status 21 if the default
-        // profile directory is already locked by another Chrome process.
-        let user_data_dir = std::env::temp_dir().join("spectral-chrome-profile");
+        // Use a unique temp user-data-dir per engine instance. A fixed path would
+        // cause exit status 21 if two scans run concurrently (Chrome locks the dir).
+        // nosemgrep: semgrep.use-zeroize-for-secrets — this is a directory name, not a secret
+        let session_id: String = (0..16)
+            .map(|_| format!("{:02x}", rand::random::<u8>()))
+            .collect();
+        let user_data_dir = std::env::temp_dir().join(format!("spectral-chrome-{session_id}"));
         config = config.user_data_dir(&user_data_dir);
 
         // Add essential args

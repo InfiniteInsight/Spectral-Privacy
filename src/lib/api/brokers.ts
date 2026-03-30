@@ -7,6 +7,7 @@ export interface BrokerSummary {
 	category: string;
 	difficulty: string;
 	typical_removal_days: number;
+	removal_method: string;
 }
 
 export interface EmailTemplate {
