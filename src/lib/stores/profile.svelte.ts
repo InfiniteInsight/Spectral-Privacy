@@ -14,6 +14,20 @@
 
 import { profileAPI, type ProfileInput, type ProfileOutput, type ProfileSummary } from '$lib/api';
 
+/** Extract a human-readable message from Tauri errors (plain objects) or JS Error instances. */
+function extractMessage(err: unknown, fallback: string): string {
+	if (err instanceof Error) return err.message;
+	if (
+		err &&
+		typeof err === 'object' &&
+		'message' in err &&
+		typeof (err as { message: unknown }).message === 'string'
+	) {
+		return (err as { message: string }).message;
+	}
+	return fallback;
+}
+
 /**
  * Profile state interface
  */
@@ -66,7 +80,7 @@ function createProfileStore() {
 			try {
 				state.profiles = await profileAPI.list(vaultId);
 			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to load profiles';
+				state.error = extractMessage(err, 'Failed to load profiles');
 				console.error('Load profiles error:', err);
 			} finally {
 				state.loading = false;
@@ -86,7 +100,7 @@ function createProfileStore() {
 			try {
 				state.currentProfile = await profileAPI.get(vaultId, profileId);
 			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to load profile';
+				state.error = extractMessage(err, 'Failed to load profile');
 				console.error('Load profile error:', err);
 			} finally {
 				state.loading = false;
@@ -113,7 +127,7 @@ function createProfileStore() {
 
 				return profile;
 			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to create profile';
+				state.error = extractMessage(err, 'Failed to create profile');
 				console.error('Create profile error:', err);
 				return null;
 			} finally {
@@ -146,7 +160,7 @@ function createProfileStore() {
 
 				return profile;
 			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to update profile';
+				state.error = extractMessage(err, 'Failed to update profile');
 				console.error('Update profile error:', err);
 				return null;
 			} finally {

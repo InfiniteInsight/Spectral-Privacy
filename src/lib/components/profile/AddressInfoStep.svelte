@@ -14,6 +14,7 @@
 	let previousAddresses = $state<PreviousAddress[]>([]);
 	let showAddressModal = $state(false);
 	let editingAddressIndex = $state<number | null>(null);
+	let validationErrors = $state<Record<string, string>>({});
 
 	// Sync with profile prop changes
 	$effect(() => {
@@ -43,28 +44,25 @@
 	}
 
 	export function validate(): boolean {
-		// Validate required current address fields
-		const missingFields: string[] = [];
+		const errors: Record<string, string> = {};
 
 		if (!profile.address_line1?.trim()) {
-			missingFields.push('Street Address');
+			errors.address_line1 = 'Street address is required.';
 		}
 		if (!profile.city?.trim()) {
-			missingFields.push('City');
+			errors.city = 'City is required.';
 		}
 		if (!profile.state?.trim()) {
-			missingFields.push('State');
+			errors.state = 'State is required.';
 		}
 		if (!profile.zip_code?.trim()) {
-			missingFields.push('ZIP Code');
+			errors.zip_code = 'ZIP code is required.';
+		} else if (!/^\d{5}(-\d{4})?$/.test(profile.zip_code.trim())) {
+			errors.zip_code = 'ZIP code must be in 12345 or 12345-6789 format.';
 		}
 
-		if (missingFields.length > 0) {
-			alert(`Please fill in the following required fields:\n• ${missingFields.join('\n• ')}`);
-			return false;
-		}
-
-		return true;
+		validationErrors = errors;
+		return Object.keys(errors).length === 0;
 	}
 </script>
 
@@ -81,9 +79,14 @@
 					type="text"
 					value={profile.address_line1 || ''}
 					oninput={(e) => onUpdate({ address_line1: e.currentTarget.value })}
-					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {validationErrors.address_line1
+						? 'border-red-500'
+						: ''}"
 					placeholder="123 Main Street"
 				/>
+				{#if validationErrors.address_line1}
+					<p class="mt-1 text-xs text-red-600">{validationErrors.address_line1}</p>
+				{/if}
 			</div>
 
 			<div>
@@ -106,9 +109,14 @@
 						type="text"
 						value={profile.city || ''}
 						oninput={(e) => onUpdate({ city: e.currentTarget.value })}
-						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {validationErrors.city
+							? 'border-red-500'
+							: ''}"
 						placeholder="Chicago"
 					/>
+					{#if validationErrors.city}
+						<p class="mt-1 text-xs text-red-600">{validationErrors.city}</p>
+					{/if}
 				</div>
 
 				<div>
@@ -118,10 +126,15 @@
 						type="text"
 						value={profile.state || ''}
 						oninput={(e) => onUpdate({ state: e.currentTarget.value })}
-						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {validationErrors.state
+							? 'border-red-500'
+							: ''}"
 						placeholder="IL"
 						maxlength="2"
 					/>
+					{#if validationErrors.state}
+						<p class="mt-1 text-xs text-red-600">{validationErrors.state}</p>
+					{/if}
 				</div>
 			</div>
 
@@ -132,10 +145,15 @@
 					type="text"
 					value={profile.zip_code || ''}
 					oninput={(e) => onUpdate({ zip_code: e.currentTarget.value })}
-					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+					class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 {validationErrors.zip_code
+						? 'border-red-500'
+						: ''}"
 					placeholder="60601"
 					maxlength="10"
 				/>
+				{#if validationErrors.zip_code}
+					<p class="mt-1 text-xs text-red-600">{validationErrors.zip_code}</p>
+				{/if}
 			</div>
 		</div>
 	</div>

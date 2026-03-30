@@ -104,7 +104,10 @@
 	// Handle step update (for Phase 2 steps)
 	function handleStepUpdate(updates: Partial<ProfileInput>) {
 		formData = { ...formData, ...updates };
-		updateCompleteness();
+		// Completeness requires a saved profile — only fetch in edit mode
+		if (mode === 'edit') {
+			updateCompleteness();
+		}
 	}
 
 	// Validate current step
