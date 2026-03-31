@@ -901,9 +901,25 @@ impl ScanOrchestrator {
                         continue;
                     };
 
-                    // URL encode the value and substitute
+                    // URL encode the value and substitute.
+                    // Replace both the canonical long form (e.g. {first_name}) and the
+                    // short-form alias used by most broker templates (e.g. {first}).
                     let encoded = urlencoding::encode(&value);
                     url = url.replace(placeholder, &encoded);
+                    // Also handle short-form aliases so templates with {first}/{last}/{zip}
+                    // get substituted even when extract_pii_field_value returns the long form.
+                    match field {
+                        spectral_core::PiiField::FirstName => {
+                            url = url.replace("{first}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::LastName => {
+                            url = url.replace("{last}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::ZipCode => {
+                            url = url.replace("{zip}", encoded.as_ref());
+                        }
+                        _ => {}
+                    }
                 }
 
                 Ok(url)
