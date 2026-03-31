@@ -8,6 +8,7 @@ use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
 use spectral_broker::definition::ResultSelectors;
 use spectral_core::BrokerId;
+use tracing;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListingMatch {
@@ -45,6 +46,7 @@ impl<'a> ResultParser<'a> {
         if let Some(captcha_sel) = &self.selectors.captcha_required {
             if let Ok(selector) = Selector::parse(captcha_sel) {
                 if document.select(&selector).next().is_some() {
+                    tracing::debug!("[parser] CAPTCHA detected via selector '{}'", captcha_sel);
                     return Err(ScanError::CaptchaRequired {
                         broker_id: BrokerId::new("test-broker").expect("valid broker ID"),
                     });
@@ -56,6 +58,10 @@ impl<'a> ResultParser<'a> {
         if let Some(no_results_sel) = &self.selectors.no_results_indicator {
             if let Ok(selector) = Selector::parse(no_results_sel) {
                 if document.select(&selector).next().is_some() {
+                    tracing::debug!(
+                        "[parser] No-results indicator matched selector '{}'",
+                        no_results_sel
+                    );
                     return Ok(vec![]);
                 }
             }
@@ -76,6 +82,13 @@ impl<'a> ResultParser<'a> {
                 reason: format!("Invalid item selector: {}", e),
             }
         })?;
+
+        let item_count = document.select(&item_selector).count();
+        tracing::debug!(
+            "[parser] selector '{}' matched {} item(s)",
+            self.selectors.result_item,
+            item_count
+        );
 
         let mut matches = Vec::new();
 

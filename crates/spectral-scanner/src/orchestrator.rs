@@ -169,15 +169,15 @@ impl ScanOrchestrator {
             );
         }
 
-        // Update to completed status (keep SET as safety net)
-        sqlx::query(
-            "UPDATE scan_jobs SET status = 'Completed', completed_at = ?, completed_brokers = ? WHERE id = ?"
-        )
-        .bind(chrono::Utc::now().to_rfc3339())
-        .bind(completed_brokers)
-        .bind(job_id)
-        .execute(self.db.pool())
-        .await?;
+        // Update status to Completed. Do NOT overwrite completed_brokers — it has been
+        // incremented live by increment_scan_progress for every broker (including errors
+        // and skips). Overwriting it with results.len() would set it back to N-1 whenever
+        // the last broker produces an error that doesn't land in the results vec.
+        sqlx::query("UPDATE scan_jobs SET status = 'Completed', completed_at = ? WHERE id = ?")
+            .bind(chrono::Utc::now().to_rfc3339())
+            .bind(job_id)
+            .execute(self.db.pool())
+            .await?;
 
         Ok(())
     }
@@ -446,6 +446,11 @@ impl ScanOrchestrator {
         };
 
         tracing::info!("[scan] {} → page fetched ({} bytes)", broker_id, html.len());
+        tracing::debug!(
+            "[scan] {} → HTML snippet: {}",
+            broker_id,
+            &html[..html.len().min(500)]
+        );
 
         // Parse results using ResultParser with broker-specific selectors
         let findings_count = self
