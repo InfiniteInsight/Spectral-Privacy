@@ -316,24 +316,7 @@ impl BrowserEngine {
 
     /// Fetch a page and return its HTML content
     pub async fn fetch_page_content(&self, url: &str) -> Result<String> {
-        // Navigate to the URL
-        self.navigate(url).await?;
-
-        // Get the page HTML
-        let page = self.get_page().await?;
-        let html = page
-            .content()
-            .await
-            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
-
-        Ok(html)
-    }
-}
-
-#[async_trait::async_trait]
-impl BrowserActions for BrowserEngine {
-    async fn navigate(&self, url: &str) -> Result<()> {
-        // Check rate limit
+        // Rate-check before acquiring the page lock
         let domain = extract_domain(url)?;
         self.rate_limiter
             .write()
@@ -341,6 +324,47 @@ impl BrowserActions for BrowserEngine {
             .check_and_update(&domain)
             .await?;
 
+        // Hold the write lock for the full navigate+content cycle so that concurrent
+        // callers on the same engine cannot swap the page between the two calls.
+        // A 45-second overall timeout prevents a hung page from blocking forever.
+        let page_fut = async {
+            let page = {
+                let mut page_lock = self.current_page.write().await;
+                if page_lock.is_none() {
+                    let p = self
+                        .browser
+                        .new_page("about:blank")
+                        .await
+                        .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+                    *page_lock = Some(p);
+                }
+                page_lock
+                    .as_ref()
+                    .expect("current_page should be Some")
+                    .clone()
+            };
+
+            page.goto(url)
+                .await
+                .map_err(|e| BrowserError::NavigationError(e.to_string()))?;
+
+            let html = page
+                .content()
+                .await
+                .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+            Ok::<String, BrowserError>(html)
+        };
+
+        tokio::time::timeout(Duration::from_secs(45), page_fut)
+            .await
+            .map_err(|_| BrowserError::Timeout(format!("fetch_page_content timed out for {url}")))?
+    }
+}
+
+#[async_trait::async_trait]
+impl BrowserActions for BrowserEngine {
+    async fn navigate(&self, url: &str) -> Result<()> {
         let page = self.get_page().await?;
 
         tokio::time::timeout(Duration::from_secs(30), page.goto(url))
