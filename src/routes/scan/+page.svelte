@@ -20,9 +20,8 @@
 		try {
 			startingBrokerScan = true;
 			error = null;
-			await scanAPI.start(vaultStore.currentVaultId, profileStore.currentProfile.id);
-			// Navigate to brokers page where scan progress is shown
-			goto('/brokers');
+			const job = await scanAPI.start(vaultStore.currentVaultId, profileStore.currentProfile.id);
+			goto(`/scan/progress/${job.id}`);
 		} catch (err) {
 			error = err instanceof Error ? err.message : String(err);
 		} finally {

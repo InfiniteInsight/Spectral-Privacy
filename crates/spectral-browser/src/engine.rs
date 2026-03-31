@@ -163,16 +163,28 @@ impl BrowserEngine {
             .map(|_| format!("{:02x}", rand::random::<u8>()))
             .collect();
         let user_data_dir = std::env::temp_dir().join(format!("spectral-chrome-{session_id}"));
+        // Chrome will fail with exit status 21 if the profile dir doesn't exist yet
+        if let Err(e) = std::fs::create_dir_all(&user_data_dir) {
+            tracing::warn!("Could not pre-create Chrome profile dir: {e}");
+        }
         config = config.user_data_dir(&user_data_dir);
 
-        // Add essential args
+        // Add essential args.
+        // Use --headless=old: Chrome 112+ changed the default headless renderer and
+        // --headless=new can fail to launch on Windows without a full GPU stack.
         config = config
-            .arg("--headless")
+            .arg("--headless=old")
             .arg("--disable-gpu")
             .arg("--no-first-run")
             .arg("--disable-dev-shm-usage")
             .arg("--disable-extensions")
-            .arg("--disable-sync");
+            .arg("--disable-sync")
+            .arg("--disable-background-networking")
+            .arg("--disable-default-apps")
+            .arg("--disable-hang-monitor")
+            .arg("--disable-popup-blocking")
+            .arg("--no-default-browser-check")
+            .arg("--metrics-recording-only");
 
         // Apply platform-specific configuration
         config = apply_platform_config(config);
