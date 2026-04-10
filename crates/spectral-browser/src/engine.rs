@@ -172,6 +172,10 @@ impl BrowserEngine {
         // Add essential args.
         // Use --headless=old: Chrome 112+ changed the default headless renderer and
         // --headless=new can fail to launch on Windows without a full GPU stack.
+        // Spoof User-Agent to look like regular (non-headless) Chrome.
+        // The default headless UA contains "HeadlessChrome" which sites use to 403/block bots.
+        let ua = fingerprint.user_agent.clone();
+
         config = config
             .arg("--headless=old")
             .arg("--disable-gpu")
@@ -184,7 +188,8 @@ impl BrowserEngine {
             .arg("--disable-hang-monitor")
             .arg("--disable-popup-blocking")
             .arg("--no-default-browser-check")
-            .arg("--metrics-recording-only");
+            .arg("--metrics-recording-only")
+            .arg(format!("--user-agent={ua}"));
 
         // Apply platform-specific configuration
         config = apply_platform_config(config);
