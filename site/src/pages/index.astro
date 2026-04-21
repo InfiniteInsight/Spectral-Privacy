@@ -1,13 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import Logo from "../components/Logo.astro";
+import Nav from "../components/Nav.astro";
 ---
 
 <Layout>
-  <div style="padding:40px; background:#f0fdf4; display:flex; gap:20px; align-items:center;">
-    <Logo width={80} height={90} />
-    <Logo width={48} height={54} />
-    <Logo width={32} height={36} />
-    <span style="font-size:24px;font-weight:800;color:#059669;">spectral</span>
-  </div>
+  <Nav />
+  <main style="padding:40px;">Page content here</main>
 </Layout>
