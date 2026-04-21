@@ -3,13 +3,14 @@ interface Props {
   width?: number;
   height?: number;
 }
-const { width = 72, height = 80 } = Astro.props;
+const { width = 72 } = Astro.props;
+const height = Math.round(width * 64 / 80);
 ---
 
 <svg
   width={width}
   height={height}
-  viewBox="0 0 80 96"
+  viewBox="0 4 80 64"
   style="overflow:visible;"
   fill="none"
   xmlns="http://www.w3.org/2000/svg"
