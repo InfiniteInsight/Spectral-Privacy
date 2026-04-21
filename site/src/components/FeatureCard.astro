@@ -80,11 +80,14 @@ const { icon, title, description } = Astro.props;
   .card-content {
     position: relative;
     z-index: 1;
-    transition: opacity 0.3s ease;
+    /* exit: slight delay so ghost starts sinking before content reappears */
+    transition: opacity 0.3s ease 0.1s;
   }
 
   .feature-card:hover .card-content {
     opacity: 0;
+    /* enter: fade out immediately, no delay */
+    transition: opacity 0.25s ease;
   }
 
   .feature-icon {
@@ -122,13 +125,18 @@ const { icon, title, description } = Astro.props;
     opacity: 0;
     pointer-events: none;
     transform: translateY(60px) scale(0.85);
+    /* exit: start sinking immediately, no delay */
     transition:
-      opacity 0.35s ease 0.2s,
-      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s;
+      opacity 0.2s ease,
+      transform 0.35s ease;
   }
 
   .feature-card:hover .card-ghost {
     opacity: 1;
     transform: translateY(12px) scale(1);
+    /* enter: delay so content fades first */
+    transition:
+      opacity 0.35s ease 0.2s,
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s;
   }
 </style>
