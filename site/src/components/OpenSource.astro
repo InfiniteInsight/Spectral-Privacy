@@ -1,0 +1,94 @@
+---
+const items = [
+  { icon: "code-2", title: "MIT Licensed", body: "Free to use, fork, and modify" },
+  { icon: "git-pull-request", title: "Contributions welcome", body: "Open PRs, open issues" },
+  {
+    icon: "package",
+    title: "Built with Rust + Svelte",
+    body: "Fast, safe, cross-platform",
+  },
+];
+---
+
+<section class="opensource">
+  <p class="section-label">Open Source</p>
+  <h2 class="section-title">Built in the open</h2>
+  <p class="section-sub">No black boxes. Audit the code, contribute, or build on top of it.</p>
+  <div class="grid">
+    {
+      items.map((item) => (
+        <div class="os-card">
+          <i
+            data-lucide={item.icon}
+            style="width:24px;height:24px;color:#6ee7b7;display:block;margin-bottom:8px;"
+          />
+          <h4>{item.title}</h4>
+          <p>{item.body}</p>
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+<style>
+  .opensource {
+    padding: 72px 40px;
+    background: var(--dark);
+  }
+
+  .section-label {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6ee7b7;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .section-sub {
+    text-align: center;
+    font-size: 15px;
+    color: #9ca3af;
+    max-width: 480px;
+    margin: 0 auto 40px;
+    line-height: 1.6;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .os-card {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f9fafb;
+    margin-bottom: 4px;
+  }
+
+  p {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+</style>

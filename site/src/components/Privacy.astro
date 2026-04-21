@@ -1,0 +1,120 @@
+---
+const guarantees = [
+  "Run entirely offline with a local LLM",
+  "When using cloud AI, sensitive data is tokenized before it leaves Spectral",
+  "No account, no telemetry, no subscription",
+  "Encrypted local database for all your data",
+  "Open source — audit it yourself",
+];
+
+const levels = [
+  { label: "Paranoid — fully offline", pct: 100 },
+  { label: "Local — local LLM only", pct: 80 },
+  { label: "Balanced — PII-filtered cloud", pct: 55 },
+  { label: "Custom — your choice", pct: 35 },
+];
+---
+
+<section class="privacy">
+  <p class="section-label">Privacy first</p>
+  <h2 class="section-title">You control what leaves your machine</h2>
+  <p class="section-sub">Choose your privacy level — from fully local to cloud-assisted.</p>
+  <div class="grid">
+    <ul class="checklist">
+      {
+        guarantees.map((g) => (
+          <li>
+            <i
+              data-lucide="check-circle-2"
+              style="width:16px;height:16px;flex-shrink:0;color:#059669;margin-top:2px;"
+            />
+            {g}
+          </li>
+        ))
+      }
+    </ul>
+    <div class="panel">
+      <h4>Privacy Levels</h4>
+      {
+        levels.map((l) => (
+          <div class="level">
+            <div class="level-label">{l.label}</div>
+            <div class="bar">
+              <div class="fill" style={`width:${l.pct}%`}></div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .privacy {
+    padding: 72px 40px;
+    background: #fff;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+    align-items: center;
+  }
+
+  .checklist {
+    list-style: none;
+  }
+
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--gray-700);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .panel {
+    background: var(--green-bg);
+    border: 1px solid var(--green-200);
+    border-radius: var(--radius-md);
+    padding: 24px;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green-900);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .level {
+    margin-bottom: 12px;
+  }
+
+  .level-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 4px;
+  }
+
+  .bar {
+    height: 6px;
+    background: var(--green-100);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    background: var(--green-500);
+    border-radius: 3px;
+  }
+</style>
