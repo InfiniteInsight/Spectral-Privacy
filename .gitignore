@@ -131,3 +131,4 @@ semgrep-report.json
 clipper-report.json
 clipper-full-report.txt
 eslint-report.txt
+.superpowers/
