@@ -1,0 +1,120 @@
+<section class="hero">
+  <div class="badge">
+    <i data-lucide="shield-check" style="width:12px;height:12px;"></i>
+    Free &amp; Open Source
+  </div>
+  <h1>
+    Data brokers are selling your information.<br />
+    <span class="disappear-text">Disappear with Spectral.</span>
+  </h1>
+  <p>
+    Automatically scan 130+ data broker sites, send removal requests, and take back control of
+    your personal information — all from your desktop.
+  </p>
+  <div class="hero-cta">
+    <a
+      href="https://github.com/InfiniteInsight/spectral/releases/latest"
+      class="btn-primary"
+      target="_blank"
+      rel="noopener"
+    >
+      <i data-lucide="download" style="width:14px;height:14px;"></i>
+      Download for Free
+    </a>
+    <a
+      href="https://github.com/InfiniteInsight/spectral"
+      class="btn-outline"
+      target="_blank"
+      rel="noopener"
+    >
+      <i data-lucide="external-link" style="width:14px;height:14px;"></i>
+      View on GitHub
+    </a>
+  </div>
+  <p class="hero-note">Available for Windows, macOS, and Linux &nbsp;·&nbsp; No account required</p>
+</section>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 80px 40px 60px;
+    background: linear-gradient(160deg, var(--green-50) 0%, var(--green-bg) 60%, #fff 100%);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-100);
+    color: var(--green-900);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 99px;
+    margin-bottom: 20px;
+    border: 1px solid var(--green-200);
+  }
+
+  h1 {
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--text);
+    letter-spacing: -1.5px;
+    margin-bottom: 16px;
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .disappear-text {
+    display: block;
+    color: var(--green-500);
+    opacity: 1;
+    transition: opacity 2.5s ease;
+    user-select: none;
+  }
+
+  p {
+    font-size: 18px;
+    color: var(--gray-600);
+    max-width: 520px;
+    margin: 0 auto 32px;
+    line-height: 1.6;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-note {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 16px;
+    margin-bottom: 0;
+  }
+</style>
+
+<script>
+  const text = document.querySelector<HTMLElement>(".disappear-text")!;
+  let state: "visible" | "fading" | "hidden" | "reappearing" = "visible";
+
+  document.addEventListener("mousemove", () => {
+    if (state !== "visible") return;
+    state = "fading";
+    text.style.opacity = "0";
+    setTimeout(() => {
+      state = "hidden";
+      setTimeout(() => {
+        state = "reappearing";
+        text.style.opacity = "1";
+        setTimeout(() => {
+          state = "visible";
+        }, 2500);
+      }, 3000);
+    }, 2500);
+  });
+</script>
