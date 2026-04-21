@@ -1,0 +1,41 @@
+---
+interface Props {
+  width?: number;
+  height?: number;
+}
+const { width = 72, height = 80 } = Astro.props;
+---
+
+<svg
+  width={width}
+  height={height}
+  viewBox="0 0 80 96"
+  style="overflow:visible;"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <filter id="ghost-shadow" x="-20%" y="-10%" width="180%" height="160%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#065f46" flood-opacity="0.22" />
+    </filter>
+  </defs>
+  <rect x="12" y="4" width="64" height="64" rx="16" fill="#059669" />
+  <path
+    d="M 27 8 C 40 8 50 18 50 31 L 50 56
+       C 50 59 48 61 46 62 C 44 63 43 65 42 66
+       C 40 68 38 67 36 65 C 34 63 33 67 31 71
+       C 29 76 27 84 24 84 C 21 84 19 76 17 71
+       C 15 66 15 61 13 57 C 10 53 7 52 4 55
+       L 4 31 C 4 18 14 8 27 8 Z"
+    fill="#ecfdf5"
+    filter="url(#ghost-shadow)"
+  />
+  <circle cx="19" cy="28" r="3" fill="#059669" />
+  <path
+    d="M 33 34 Q 38 30 43 34"
+    stroke="#059669"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    fill="none"
+  />
+</svg>

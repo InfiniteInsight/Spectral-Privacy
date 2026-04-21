@@ -1,17 +1,13 @@
 ---
-
+import Layout from "../layouts/Layout.astro";
+import Logo from "../components/Logo.astro";
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout>
+  <div style="padding:40px; background:#f0fdf4; display:flex; gap:20px; align-items:center;">
+    <Logo width={80} height={90} />
+    <Logo width={48} height={54} />
+    <Logo width={32} height={36} />
+    <span style="font-size:24px;font-weight:800;color:#059669;">spectral</span>
+  </div>
+</Layout>
