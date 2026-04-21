@@ -15,3 +15,6 @@ package-lock.json
 
 # Documentation that may have custom formatting
 *.md
+
+# Marketing site (Astro — has its own prettier config)
+site/

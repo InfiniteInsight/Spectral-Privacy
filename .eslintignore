@@ -10,3 +10,6 @@ src-tauri/gen/
 # Config files (handled separately)
 *.config.js
 *.config.ts
+
+# Marketing site (Astro — separate project)
+site/
