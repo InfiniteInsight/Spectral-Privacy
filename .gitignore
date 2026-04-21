@@ -132,3 +132,10 @@ clipper-report.json
 clipper-full-report.txt
 eslint-report.txt
 .superpowers/
+
+# -----------------------------------------------------------------------------
+# Marketing site (Astro)
+# -----------------------------------------------------------------------------
+site/node_modules/
+site/dist/
+site/.astro/
