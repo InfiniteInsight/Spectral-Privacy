@@ -2,31 +2,13 @@
 import Layout from "../layouts/Layout.astro";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
-import FeatureCard from "../components/FeatureCard.astro";
+import Features from "../components/Features.astro";
 ---
 
 <Layout>
   <Nav />
   <main>
     <Hero />
-    <div
-      style="padding:40px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:960px;margin:0 auto;"
-    >
-      <FeatureCard
-        icon="scan-search"
-        title="Broker Scanning"
-        description="Searches 130+ data broker sites for your name, address, and other personal details."
-      />
-      <FeatureCard
-        icon="mail-x"
-        title="Automated Removal"
-        description="Sends removal emails on your behalf, with follow-up reminders."
-      />
-      <FeatureCard
-        icon="brain-circuit"
-        title="AI-Assisted"
-        description="Uses local or cloud LLMs to handle complex removal flows."
-      />
-    </div>
+    <Features />
   </main>
 </Layout>

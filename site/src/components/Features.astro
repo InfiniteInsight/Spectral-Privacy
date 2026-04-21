@@ -1,0 +1,83 @@
+---
+import FeatureCard from "./FeatureCard.astro";
+
+const cards = [
+  {
+    icon: "scan-search",
+    title: "Broker Scanning",
+    description:
+      "Searches 130+ data broker sites for your name, address, and other personal details.",
+  },
+  {
+    icon: "mail-x",
+    title: "Automated Removal",
+    description: "Sends removal emails on your behalf, with follow-up reminders.",
+  },
+  {
+    icon: "brain-circuit",
+    title: "AI-Assisted",
+    description:
+      "Uses local or cloud LLMs to handle complex removal flows — your data stays yours.",
+  },
+  {
+    icon: "lock-keyhole",
+    title: "Encrypted Vault",
+    description:
+      "All profile data stored in an encrypted local database. Nothing leaves your machine without your consent.",
+  },
+  {
+    icon: "filter-x",
+    title: "PII Filtering",
+    description: "When using cloud AI, sensitive data is tokenized before it leaves Spectral.",
+  },
+  {
+    icon: "bell-ring",
+    title: "Follow-up Tracking",
+    description: "Tracks which brokers haven't responded and resurfaces them automatically.",
+  },
+  {
+    icon: "cookie",
+    title: "Cookie Cleanup",
+    description:
+      "Scans Chrome, Firefox, Edge, Brave, and Safari for tracking cookies tied to data brokers and removes them safely.",
+  },
+  {
+    icon: "scan-text",
+    title: "Local PII Scanning",
+    description:
+      "Scans your device for files containing personal information — names, emails, SSNs — so you know what's sitting locally.",
+  },
+  {
+    icon: "target",
+    title: "Adtech Removal",
+    description:
+      "Sends data deletion requests to 60+ ad networks and marketing platforms — Google Ads, Meta, The Trade Desk, and more.",
+  },
+];
+---
+
+<section id="features" class="features">
+  <p class="section-label">What it does</p>
+  <h2 class="section-title">Everything you need to disappear</h2>
+  <p class="section-sub">
+    Spectral handles the tedious, repetitive work of data broker removal — so you don't have to.
+  </p>
+  <div class="grid">
+    {cards.map((card) => <FeatureCard icon={card.icon} title={card.title} description={card.description} />)}
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: 72px 40px;
+    background: #fff;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+</style>
