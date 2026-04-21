@@ -2,7 +2,6 @@ use crate::removal_worker::submit_removal_task;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use spectral_broker::{BrokerRegistry, RemovalMethod, ScanPriority};
-use spectral_browser::BrowserEngine;
 use spectral_core::types::{BrokerId, ProfileId};
 use spectral_scanner::{BrokerFilter, ScanOrchestrator};
 use std::collections::HashMap;
@@ -209,29 +208,17 @@ pub async fn start_scan(
     // Get the vault's database
     let db = get_db(&vault)?;
 
-    // Create orchestrator for this scan
-    // TODO: These should be cached/shared across scans
-    // Note: We can't clone EncryptedPool (it contains Zeroizing secrets),
-    // but Pool<Sqlite> itself is Arc-based and can be cloned.
-    // For now, we create a temporary EncryptedPool from the existing pool.
-    // In production, the orchestrator should be a singleton in AppState.
     let broker_registry = state.broker_registry.clone();
-    let browser_engine = Arc::new(
-        BrowserEngine::new()
-            .await
-            .map_err(|e| format!("Failed to create browser engine: {e}"))?,
-    );
+    let browser_engine = state
+        .get_or_init_browser_engine()
+        .await
+        .map_err(|e| format!("Failed to initialize browser engine: {e}"))?;
 
-    // Get the underlying Pool<Sqlite> which can be cloned
-    let pool = db.pool().clone();
-    let vault_key_vec = vault_key.to_vec();
-
-    // Create a new EncryptedPool with the same pool and key
-    // This is safe because both point to the same underlying connection pool
+    // Pool<Sqlite> is Arc-based and cloneable; wrap with the vault key to form the db handle.
     use spectral_db::{Database, EncryptedPool};
-    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key_vec);
-    let database = Database::from_encrypted_pool(encrypted_pool);
-    let db = Arc::new(database);
+    let pool = db.pool().clone();
+    let encrypted_pool = EncryptedPool::from_pool(pool, vault_key.to_vec());
+    let db = Arc::new(Database::from_encrypted_pool(encrypted_pool));
 
     let orchestrator = ScanOrchestrator::new(broker_registry.clone(), browser_engine, db.clone())
         .with_max_concurrent_scans(4);
