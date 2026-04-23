@@ -244,6 +244,14 @@ impl BrowserEngine {
     /// Polls every 2 seconds for up to `timeout`. The user sees a real Chrome window
     /// and can interact with it normally.
     pub async fn solve_captcha_interactively(url: &str, timeout: Duration) -> Result<String> {
+        // WSL2 has no display — skip interactive solving immediately.
+        #[cfg(target_os = "linux")]
+        if is_wsl2() {
+            return Err(BrowserError::Timeout(
+                "CAPTCHA solving skipped: no display in WSL2".to_string(),
+            ));
+        }
+
         tracing::info!("[captcha] Opening visible browser for CAPTCHA at {}", url);
 
         let mut config = BrowserConfig::builder().no_sandbox().disable_default_args();

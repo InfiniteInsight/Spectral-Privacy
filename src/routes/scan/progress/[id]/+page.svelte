@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	const scanJobId = $derived($page.params.id);
 
@@ -132,9 +133,7 @@
 			<!-- Broker Status List (Placeholder - Task 7 will add BrokerStatusList component) -->
 			{#if isInProgress}
 				<div class="text-center py-8">
-					<div
-						class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"
-					></div>
+					<Spinner size="lg" color="primary" />
 					<p class="text-sm text-gray-600 mt-4">Scanning brokers...</p>
 				</div>
 			{/if}

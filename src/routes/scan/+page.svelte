@@ -5,6 +5,7 @@
 	import { cookiesAPI } from '$lib/api/cookies';
 	import { startDiscoveryScan } from '$lib/api/discovery';
 	import { goto } from '$app/navigation';
+	import Spinner from '$lib/components/Spinner.svelte';
 
 	let startingBrokerScan = $state(false);
 	let startingCookieScan = $state(false);
@@ -139,9 +140,7 @@
 				>
 					{#if startingBrokerScan}
 						<span class="flex items-center justify-center gap-2">
-							<div
-								class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-							></div>
+							<Spinner size="sm" color="white" inline={true} />
 							Starting Broker Scan...
 						</span>
 					{:else}
@@ -177,9 +176,7 @@
 				>
 					{#if startingCookieScan}
 						<span class="flex items-center justify-center gap-2">
-							<div
-								class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-							></div>
+							<Spinner size="sm" color="white" inline={true} />
 							Scanning Cookies...
 						</span>
 					{:else}
@@ -215,9 +212,7 @@
 				>
 					{#if startingDiscoveryScan}
 						<span class="flex items-center justify-center gap-2">
-							<div
-								class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-							></div>
+							<Spinner size="sm" color="white" inline={true} />
 							Scanning Files...
 						</span>
 					{:else}
