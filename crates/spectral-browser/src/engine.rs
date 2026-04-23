@@ -319,6 +319,34 @@ impl BrowserEngine {
         result
     }
 
+    /// Fetch a page using reqwest (plain HTTP client) — used on WSL2 where
+    /// headless Chrome's network stack cannot reach external hosts.
+    async fn fetch_with_reqwest(&self, url: &str) -> Result<String> {
+        let ua = self.fingerprint.user_agent.clone();
+        let client = reqwest::Client::builder()
+            .user_agent(ua)
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| BrowserError::ChromiumError(format!("reqwest build error: {e}")))?;
+
+        let html = client
+            .get(url)
+            .header(
+                "Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            )
+            .header("Accept-Language", "en-US,en;q=0.5")
+            .header("DNT", "1")
+            .send()
+            .await
+            .map_err(|e| BrowserError::NavigationError(format!("reqwest fetch error: {e}")))?
+            .text()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(format!("reqwest body error: {e}")))?;
+
+        Ok(html)
+    }
+
     /// Fetch a page and return its HTML content
     pub async fn fetch_page_content(&self, url: &str) -> Result<String> {
         // Rate-check before acquiring the page lock
@@ -328,6 +356,14 @@ impl BrowserEngine {
             .await
             .check_and_update(&domain)
             .await?;
+
+        // On WSL2 the headless Chrome network stack cannot reach external hosts
+        // even though the system network works fine. Use reqwest (plain HTTP) instead.
+        #[cfg(target_os = "linux")]
+        if is_wsl2() {
+            tracing::info!("[browser] WSL2: using reqwest for {}", url);
+            return self.fetch_with_reqwest(url).await;
+        }
 
         // Hold the write lock for the full navigate+content cycle so that concurrent
         // callers on the same engine cannot swap the page between the two calls.
