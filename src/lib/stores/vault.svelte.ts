@@ -77,6 +77,12 @@ function createVaultStore() {
 			try {
 				state.availableVaults = await listVaults();
 
+				// Sync unlocked state from server (backend knows which vaults are unlocked)
+				const serverUnlocked = new Set(
+					state.availableVaults.filter((v) => v.unlocked).map((v) => v.vault_id)
+				);
+				state.unlockedVaultIds = new Set([...state.unlockedVaultIds, ...serverUnlocked]);
+
 				// Auto-select first vault if none selected
 				if (state.currentVaultId === null && state.availableVaults.length > 0) {
 					state.currentVaultId = state.availableVaults[0].vault_id;
@@ -101,6 +107,9 @@ function createVaultStore() {
 			state.error = null;
 			try {
 				await createVault(vaultId, displayName, password);
+				// vault_create unlocks the vault on the backend immediately
+				state.unlockedVaultIds = new Set([...state.unlockedVaultIds, vaultId]);
+				state.currentVaultId = vaultId;
 			} catch (err) {
 				state.error = err instanceof Error ? err.message : 'Failed to create vault';
 				throw err;
