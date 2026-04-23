@@ -22,6 +22,41 @@
 		}
 	);
 
+	const currentYear = new Date().getFullYear();
+	const years = Array.from({ length: currentYear - 1919 }, (_, i) => currentYear - i);
+	const months = [
+		{ value: '01', label: '01 - January' },
+		{ value: '02', label: '02 - February' },
+		{ value: '03', label: '03 - March' },
+		{ value: '04', label: '04 - April' },
+		{ value: '05', label: '05 - May' },
+		{ value: '06', label: '06 - June' },
+		{ value: '07', label: '07 - July' },
+		{ value: '08', label: '08 - August' },
+		{ value: '09', label: '09 - September' },
+		{ value: '10', label: '10 - October' },
+		{ value: '11', label: '11 - November' },
+		{ value: '12', label: '12 - December' }
+	];
+
+	function parseYearMonth(value: string | undefined): { year: string; month: string } {
+		if (!value) return { year: '', month: '' };
+		const parts = value.split('-');
+		return { year: parts[0] ?? '', month: parts[1] ?? '' };
+	}
+
+	let fromParts = $state(parseYearMonth(initialAddress?.lived_from));
+	let toParts = $state(parseYearMonth(initialAddress?.lived_to));
+
+	function updateFrom() {
+		formData.lived_from =
+			fromParts.year && fromParts.month ? `${fromParts.year}-${fromParts.month}` : '';
+	}
+
+	function updateTo() {
+		formData.lived_to = toParts.year && toParts.month ? `${toParts.year}-${toParts.month}` : '';
+	}
+
 	function handleSave() {
 		// Validate required fields
 		if (!formData.address_line1 || !formData.city || !formData.state || !formData.zip_code) {
@@ -134,25 +169,57 @@
 				/>
 			</div>
 
-			<div class="grid grid-cols-2 gap-4">
+			<div class="space-y-4">
 				<div>
-					<label class="block text-sm font-medium mb-1" for="from"> Lived From </label>
-					<input
-						id="from"
-						type="date"
-						bind:value={formData.lived_from}
-						class="w-full px-3 py-2 border rounded-md"
-					/>
+					<label class="block text-sm font-medium mb-1">Lived From</label>
+					<div class="flex gap-1">
+						<select
+							bind:value={fromParts.month}
+							onchange={updateFrom}
+							class="flex-1 px-2 py-2 border rounded-md text-sm"
+						>
+							<option value="">Month</option>
+							{#each months as m}
+								<option value={m.value}>{m.label}</option>
+							{/each}
+						</select>
+						<select
+							bind:value={fromParts.year}
+							onchange={updateFrom}
+							class="w-24 px-2 py-2 border rounded-md text-sm"
+						>
+							<option value="">Year</option>
+							{#each years as y}
+								<option value={String(y)}>{y}</option>
+							{/each}
+						</select>
+					</div>
 				</div>
 
 				<div>
-					<label class="block text-sm font-medium mb-1" for="to"> Lived To </label>
-					<input
-						id="to"
-						type="date"
-						bind:value={formData.lived_to}
-						class="w-full px-3 py-2 border rounded-md"
-					/>
+					<label class="block text-sm font-medium mb-1">Lived To</label>
+					<div class="flex gap-1">
+						<select
+							bind:value={toParts.month}
+							onchange={updateTo}
+							class="flex-1 px-2 py-2 border rounded-md text-sm"
+						>
+							<option value="">Month</option>
+							{#each months as m}
+								<option value={m.value}>{m.label}</option>
+							{/each}
+						</select>
+						<select
+							bind:value={toParts.year}
+							onchange={updateTo}
+							class="w-24 px-2 py-2 border rounded-md text-sm"
+						>
+							<option value="">Year</option>
+							{#each years as y}
+								<option value={String(y)}>{y}</option>
+							{/each}
+						</select>
+					</div>
 				</div>
 			</div>
 		</div>

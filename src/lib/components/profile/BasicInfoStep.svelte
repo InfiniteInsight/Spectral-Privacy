@@ -37,6 +37,61 @@
 		return '';
 	}
 
+	// DOB dropdowns
+	const currentYear = new Date().getFullYear();
+	const years = Array.from({ length: 108 }, (_, i) => currentYear - 13 - i);
+	const months = [
+		{ value: '01', label: '01 - January' },
+		{ value: '02', label: '02 - February' },
+		{ value: '03', label: '03 - March' },
+		{ value: '04', label: '04 - April' },
+		{ value: '05', label: '05 - May' },
+		{ value: '06', label: '06 - June' },
+		{ value: '07', label: '07 - July' },
+		{ value: '08', label: '08 - August' },
+		{ value: '09', label: '09 - September' },
+		{ value: '10', label: '10 - October' },
+		{ value: '11', label: '11 - November' },
+		{ value: '12', label: '12 - December' }
+	];
+
+	let dobMonth = $state('');
+	let dobDay = $state('');
+	let dobYear = $state('');
+
+	// Initialise dropdowns from existing data
+	$effect(() => {
+		if (data.date_of_birth && !dobYear) {
+			const parts = data.date_of_birth.split('-');
+			if (parts.length === 3) {
+				dobYear = parts[0];
+				dobMonth = parts[1];
+				dobDay = parts[2];
+			}
+		}
+	});
+
+	const daysInMonth = $derived(() => {
+		if (!dobMonth || !dobYear) return 31;
+		return new Date(Number(dobYear), Number(dobMonth), 0).getDate();
+	});
+
+	const days = $derived(() => Array.from({ length: daysInMonth() }, (_, i) => i + 1));
+
+	function handleDobChange() {
+		if (dobYear && dobMonth && dobDay) {
+			const day = dobDay.padStart(2, '0');
+			const value = `${dobYear}-${dobMonth}-${day}`;
+			data.date_of_birth = value;
+			errors.date_of_birth = validateDateOfBirth(value);
+			onchange(data);
+		} else {
+			data.date_of_birth = undefined;
+			errors.date_of_birth = '';
+			onchange(data);
+		}
+	}
+
 	function validateDateOfBirth(value: string): string {
 		if (!value) return ''; // Optional field
 
@@ -70,12 +125,6 @@
 	function handleLastNameChange(value: string) {
 		data.last_name = value;
 		errors.last_name = validateLastName(value);
-		onchange(data);
-	}
-
-	function handleDateOfBirthChange(value: string) {
-		data.date_of_birth = value || undefined;
-		errors.date_of_birth = validateDateOfBirth(value);
 		onchange(data);
 	}
 
@@ -150,15 +199,44 @@
 		onchange={handleLastNameChange}
 	/>
 
-	<FormField
-		label="Date of Birth"
-		id="date-of-birth"
-		type="date"
-		value={data.date_of_birth || ''}
-		error={errors.date_of_birth}
-		required={false}
-		onchange={handleDateOfBirthChange}
-	/>
+	<div class="mb-4">
+		<label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+		<div class="flex gap-2">
+			<select
+				bind:value={dobMonth}
+				onchange={handleDobChange}
+				class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+			>
+				<option value="">Month</option>
+				{#each months as m}
+					<option value={m.value}>{m.label}</option>
+				{/each}
+			</select>
+			<select
+				bind:value={dobDay}
+				onchange={handleDobChange}
+				class="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+			>
+				<option value="">Day</option>
+				{#each days() as d}
+					<option value={String(d)}>{d}</option>
+				{/each}
+			</select>
+			<select
+				bind:value={dobYear}
+				onchange={handleDobChange}
+				class="w-28 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+			>
+				<option value="">Year</option>
+				{#each years as y}
+					<option value={String(y)}>{y}</option>
+				{/each}
+			</select>
+		</div>
+		{#if errors.date_of_birth}
+			<p class="mt-1 text-sm text-red-600">{errors.date_of_birth}</p>
+		{/if}
+	</div>
 
 	<FormField
 		label="Social Security Number"

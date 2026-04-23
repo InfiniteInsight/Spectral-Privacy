@@ -89,7 +89,8 @@ fn apply_platform_config(
             .arg("--single-process")
             .arg("--no-zygote")
             .arg("--mute-audio")
-            .arg("--disable-software-rasterizer");
+            .arg("--disable-software-rasterizer")
+            .arg("--no-proxy-server");
     }
 
     config
@@ -183,7 +184,6 @@ impl BrowserEngine {
             .arg("--disable-dev-shm-usage")
             .arg("--disable-extensions")
             .arg("--disable-sync")
-            .arg("--disable-background-networking")
             .arg("--disable-default-apps")
             .arg("--disable-hang-monitor")
             .arg("--disable-popup-blocking")
