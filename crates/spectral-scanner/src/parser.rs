@@ -4,6 +4,7 @@
 #![allow(clippy::ref_option)]
 
 use crate::error::{Result, ScanError};
+use base64::Engine as _;
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
 use spectral_broker::definition::ResultSelectors;
@@ -113,10 +114,27 @@ impl<'a> ResultParser<'a> {
         let listing_url = element
             .select(&url_selector)
             .next()
-            .and_then(|el| el.value().attr("href"))
+            .and_then(|el| {
+                // Prefer standard href; fall back to x-href (used by some sites like
+                // ThatsThem that encode URLs as base64 Alpine.js directives).
+                el.value().attr("href").map(str::to_string).or_else(|| {
+                    el.value().attr("x-href").and_then(|encoded| {
+                        // x-href is base64-encoded path, e.g. "/name/John-Smith"
+                        let padded = match encoded.len() % 4 {
+                            2 => format!("{encoded}=="),
+                            3 => format!("{encoded}="),
+                            _ => encoded.to_string(),
+                        };
+                        base64::engine::general_purpose::STANDARD
+                            .decode(padded)
+                            .ok()
+                            .and_then(|bytes| String::from_utf8(bytes).ok())
+                    })
+                })
+            })
             .map(|href| {
                 if href.starts_with("http") {
-                    href.to_string()
+                    href
                 } else {
                     format!("{}{}", self.base_url, href)
                 }

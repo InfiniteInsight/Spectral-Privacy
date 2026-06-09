@@ -10,7 +10,7 @@ category = "people-search"
 difficulty = "Easy"
 typical_removal_days = 2
 recheck_interval_days = 30
-last_verified = "2026-02-25"
+last_verified = "2026-05-07"
 scan_priority = "AutoScanTier1"
 region_relevance = ["US"]
 
@@ -20,10 +20,12 @@ template = "https://thatsthem.com/name/{first}-{last}/{state}"
 requires_fields = ["first_name", "last_name", "state"]
 
 [search.result_selectors]
-results_container = ".ThatsThem-results"
-result_item = ".result-item"
-listing_url = "a.name-link"
-name = ".name"
+# Selectors verified 2026-05-07 against live HTML
+# Cards use div.record; names are in h2; profile links use Alpine.js x-href (base64 of /name/...)
+results_container = ".records"
+result_item = ".record"
+listing_url = "a[x-href^='L25hbWUv']"
+name = "h2"
 age = ".age"
 location = ".location"
 relatives = ".relatives .name"

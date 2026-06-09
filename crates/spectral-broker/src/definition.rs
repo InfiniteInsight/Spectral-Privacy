@@ -233,6 +233,10 @@ pub enum SearchMethod {
         fields: HashMap<String, String>,
         /// PII fields required for search
         requires_fields: Vec<PiiField>,
+        /// CSS selectors for the search form inputs (enables browser automation).
+        /// TOML key: `form_selectors` (renamed to avoid collision with removal form selectors).
+        #[serde(rename = "form_selectors", skip_serializing_if = "Option::is_none")]
+        search_form_selectors: Option<FormSelectors>,
         /// CSS selectors for parsing search results
         #[serde(skip_serializing_if = "Option::is_none")]
         result_selectors: Option<ResultSelectors>,
@@ -297,6 +301,27 @@ impl SearchMethod {
         }
     }
 
+    /// Get the search form selectors, if this is a WebForm with automation configured.
+    #[must_use]
+    pub fn search_form_selectors(&self) -> Option<&FormSelectors> {
+        match self {
+            Self::WebForm {
+                search_form_selectors,
+                ..
+            } => search_form_selectors.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Get the WebForm URL if this is a WebForm search method.
+    #[must_use]
+    pub fn web_form_url(&self) -> Option<&str> {
+        match self {
+            Self::WebForm { url, .. } => Some(url.as_str()),
+            _ => None,
+        }
+    }
+
     /// Validate the search method configuration.
     fn validate(&self, broker_id: &BrokerId) -> Result<()> {
         match self {
@@ -309,8 +334,15 @@ impl SearchMethod {
                 url,
                 fields,
                 requires_fields,
+                search_form_selectors,
                 ..
-            } => Self::validate_web_form_search(broker_id, url, fields, requires_fields),
+            } => Self::validate_web_form_search(
+                broker_id,
+                url,
+                fields,
+                requires_fields,
+                search_form_selectors.as_ref(),
+            ),
             Self::Manual { url, instructions } => {
                 Self::validate_manual_search(broker_id, url, instructions)
             }
@@ -342,6 +374,7 @@ impl SearchMethod {
         url: &str,
         fields: &HashMap<String, String>,
         requires_fields: &[PiiField],
+        search_form_selectors: Option<&FormSelectors>,
     ) -> Result<()> {
         if url.is_empty() {
             return Err(BrokerError::ValidationError {
@@ -360,6 +393,17 @@ impl SearchMethod {
                 broker_id: broker_id.to_string(),
                 reason: "WebForm requires at least one PII field".to_string(),
             });
+        }
+        // If form selectors are provided, submit_button must be set
+        if let Some(selectors) = search_form_selectors {
+            if selectors.submit_button.is_empty() {
+                return Err(BrokerError::ValidationError {
+                    broker_id: broker_id.to_string(),
+                    reason:
+                        "search.form_selectors.submit_button is required when form selectors are set"
+                            .to_string(),
+                });
+            }
         }
         Ok(())
     }
@@ -461,6 +505,20 @@ pub struct FormSelectors {
     /// Selector for full name input (single field combining first and last name)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_name_input: Option<String>,
+
+    /// Selector for state field (e.g., state dropdown selector).
+    /// Falls back to repurposing `email_input` when its selector text contains "state"
+    /// (legacy compatibility).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_input: Option<String>,
+
+    /// Selector for city field
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub city_input: Option<String>,
+
+    /// Selector for zip/postal code field
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zip_input: Option<String>,
 
     /// Selector for submit button
     #[serde(default)]

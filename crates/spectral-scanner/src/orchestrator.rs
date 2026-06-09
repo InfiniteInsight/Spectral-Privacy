@@ -332,6 +332,54 @@ impl ScanOrchestrator {
         )
         .await?;
 
+        // If this is a WebForm broker with search form selectors, use browser automation
+        // instead of the URL-template code path.
+        if broker_def.search.search_form_selectors().is_some() {
+            tracing::info!("[scan] {} → WebForm scan via browser automation", broker_id);
+            let html = match self
+                .perform_web_form_scan(&broker_def, &profile_id, &vault_key)
+                .await
+            {
+                Ok(html) => html,
+                Err(e) => {
+                    let reason = e.to_string();
+                    spectral_db::broker_scans::update_status(
+                        self.db.pool(),
+                        &broker_scan.id,
+                        "Failed",
+                        Some(reason.clone()),
+                    )
+                    .await?;
+                    return Ok(BrokerScanResult {
+                        broker_id,
+                        findings_count: 0,
+                        error: Some(reason),
+                    });
+                }
+            };
+
+            tracing::info!(
+                "[scan] {} → WebForm page fetched ({} bytes)",
+                broker_id,
+                html.len()
+            );
+            let findings_count = self
+                .parse_and_store_findings(&html, &broker_scan.id, &broker_id, &profile_id)
+                .await?;
+            spectral_db::broker_scans::update_status(
+                self.db.pool(),
+                &broker_scan.id,
+                "Success",
+                None,
+            )
+            .await?;
+            return Ok(BrokerScanResult {
+                broker_id,
+                findings_count,
+                error: None,
+            });
+        }
+
         // Build search URL from profile data and broker template
         let search_url = match self
             .build_search_url(&broker_def, &profile_id, &vault_key)
@@ -551,9 +599,33 @@ impl ScanOrchestrator {
 
     /// Detect CAPTCHA challenges in HTML content.
     ///
-    /// Looks for common CAPTCHA indicators like reCAPTCHA iframes or CAPTCHA divs.
+    /// Looks for common CAPTCHA indicators including Google reCAPTCHA, Cloudflare
+    /// Turnstile, DataDome, hCaptcha, and other bot-detection markers.
     fn detect_captcha(html: &str) -> bool {
-        html.contains("recaptcha") || html.contains("g-recaptcha") || html.contains("captcha")
+        let lower = html.to_lowercase();
+
+        // Google reCAPTCHA
+        lower.contains("recaptcha") || lower.contains("g-recaptcha") || lower.contains("recaptcha_api")
+        // hCaptcha
+        || lower.contains("hcaptcha") || lower.contains("hcaptcha_frame") || lower.contains("hcaptcha_challenge")
+        // Cloudflare Turnstile
+        || lower.contains("cf-turnstile") || lower.contains("turnstile")
+        // DataDome
+        || lower.contains("datadome") || lower.contains("datadome.co")
+        // Cloudflare interception
+        || lower.contains("cf_chl") || lower.contains("cf-ray") && lower.contains("challenge")
+        // Generic bot protection markers
+        || lower.contains("captcha") || lower.contains("bot-check") || lower.contains("bot-checker")
+        // PerimeterX / Human Security
+        || lower.contains("perimeterx") || lower.contains("px-captcha")
+        // Akamai Bot Defense
+        || lower.contains("akamai") && lower.contains("bot")
+        // Imperva / Incapsula
+        || lower.contains("incapsula") || lower.contains("incapi")
+        // PerimeterX / Bot Manager
+        || lower.contains("botman") || lower.contains("botmanager")
+        // Generic challenge/verify pages
+        || lower.contains("verify_you_are_human") || lower.contains("please_verify")
     }
 
     /// Extract a PII field value from a profile.
@@ -862,6 +934,159 @@ impl ScanOrchestrator {
         }
     }
 
+    /// Perform a WebForm search by navigating to the form URL, filling in fields,
+    /// submitting, and returning the result page HTML.
+    ///
+    /// Requires `search_form_selectors` to be set in the broker definition.
+    async fn perform_web_form_scan(
+        &self,
+        broker_def: &BrokerDefinition,
+        profile_id: &str,
+        vault_key: &[u8; 32],
+    ) -> Result<String> {
+        use spectral_browser::BrowserActions;
+
+        let broker_id = &broker_def.broker.id;
+        let form_url = broker_def
+            .search
+            .web_form_url()
+            .ok_or_else(|| ScanError::NotScannable {
+                broker_id: broker_id.clone(),
+                reason: "WebForm URL missing".to_string(),
+            })?;
+        let form_selectors =
+            broker_def
+                .search
+                .search_form_selectors()
+                .ok_or_else(|| ScanError::NotScannable {
+                    broker_id: broker_id.clone(),
+                    reason: "No search form selectors defined for WebForm broker".to_string(),
+                })?;
+
+        // Load and decrypt profile data
+        let profile_id_typed =
+            spectral_core::ProfileId::new(profile_id.to_string()).map_err(|e| {
+                ScanError::ProfileDataError {
+                    broker_id: broker_id.clone(),
+                    reason: format!("Invalid profile ID: {e}"),
+                }
+            })?;
+        let profile = UserProfile::load(&self.db, &profile_id_typed, vault_key)
+            .await
+            .map_err(|e| ScanError::ProfileDataError {
+                broker_id: broker_id.clone(),
+                reason: format!("Failed to load profile: {e}"),
+            })?;
+
+        let first = profile
+            .first_name
+            .as_ref()
+            .and_then(|f| f.decrypt(vault_key).ok())
+            .unwrap_or_default();
+        let last = profile
+            .last_name
+            .as_ref()
+            .and_then(|f| f.decrypt(vault_key).ok())
+            .unwrap_or_default();
+        let state = profile
+            .state
+            .as_ref()
+            .and_then(|f| f.decrypt(vault_key).ok())
+            .unwrap_or_default();
+
+        tracing::info!("[scan] {} → WebForm: navigating to {}", broker_id, form_url);
+        // All BrowserEngine methods return BrowserError which converts to ScanError::Browser via #[from]
+        self.browser_engine.navigate(form_url).await?;
+
+        // Fill first name
+        if let Some(sel) = &form_selectors.first_name_input {
+            if !first.is_empty() {
+                tracing::debug!("[scan] {} → filling first name field '{}'", broker_id, sel);
+                self.browser_engine.fill_field(sel, &first).await?;
+            }
+        }
+
+        // Fill last name
+        if let Some(sel) = &form_selectors.last_name_input {
+            if !last.is_empty() {
+                tracing::debug!("[scan] {} → filling last name field '{}'", broker_id, sel);
+                self.browser_engine.fill_field(sel, &last).await?;
+            }
+        }
+
+        // Fill full name if a combined field is configured
+        if let Some(sel) = &form_selectors.full_name_input {
+            if !first.is_empty() || !last.is_empty() {
+                let full = format!("{first} {last}").trim().to_string();
+                tracing::debug!("[scan] {} → filling full name field '{}'", broker_id, sel);
+                self.browser_engine.fill_field(sel, &full).await?;
+            }
+        }
+
+        // Fill state: prefer explicit state_input, fall back to repurposing email_input
+        // when its selector text contains "state" (legacy compatibility).
+        if !state.is_empty() {
+            let state_sel = form_selectors.state_input.as_deref().or_else(|| {
+                form_selectors
+                    .email_input
+                    .as_ref()
+                    .filter(|sel| sel.to_lowercase().contains("state"))
+                    .map(String::as_str)
+            });
+            if let Some(sel) = state_sel {
+                tracing::debug!(
+                    "[scan] {} → filling state field '{}' → '{}'",
+                    broker_id,
+                    sel,
+                    state
+                );
+                self.browser_engine.fill_field(sel, &state).await?;
+            }
+        }
+
+        // Fill city if selector is present
+        if let (Some(sel), Some(ref city_enc)) = (&form_selectors.city_input, &profile.city) {
+            let city_val = city_enc.decrypt(vault_key).unwrap_or_default();
+            if !city_val.is_empty() {
+                tracing::debug!("[scan] {} → filling city field '{}'", broker_id, sel);
+                self.browser_engine.fill_field(sel, &city_val).await?;
+            }
+        }
+
+        // Fill zip if selector is present
+        if let (Some(sel), Some(ref zip_enc)) = (&form_selectors.zip_input, &profile.zip_code) {
+            let zip_val = zip_enc.decrypt(vault_key).unwrap_or_default();
+            if !zip_val.is_empty() {
+                tracing::debug!("[scan] {} → filling zip field '{}'", broker_id, sel);
+                self.browser_engine.fill_field(sel, &zip_val).await?;
+            }
+        }
+
+        // Click submit
+        tracing::debug!(
+            "[scan] {} → clicking submit '{}'",
+            broker_id,
+            form_selectors.submit_button
+        );
+        self.browser_engine
+            .click(&form_selectors.submit_button)
+            .await?;
+
+        // Wait for the results page to load
+        let wait_ms: u64 = std::env::var("SPECTRAL_PAGE_WAIT_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(4000);
+        tokio::time::sleep(Duration::from_millis(wait_ms)).await;
+
+        // Get the current page HTML without navigating away.
+        // Using fetch_page_content(form_url) would re-navigate to the form,
+        // discarding the results page we just loaded after form submission.
+        let html = self.browser_engine.get_current_page_html().await?;
+
+        Ok(html)
+    }
+
     /// Build search URL from broker definition and profile data.
     ///
     /// Loads the profile from database, decrypts required fields,
@@ -911,17 +1136,65 @@ impl ScanOrchestrator {
                     // short-form alias used by most broker templates (e.g. {first}).
                     let encoded = urlencoding::encode(&value);
                     url = url.replace(placeholder, &encoded);
-                    // Also handle short-form aliases so templates with {first}/{last}/{zip}
+                    // Also handle short-form aliases so templates with {first}/{last}/{zip}/{dob}
                     // get substituted even when extract_pii_field_value returns the long form.
                     match field {
                         spectral_core::PiiField::FirstName => {
                             url = url.replace("{first}", encoded.as_ref());
                         }
+                        spectral_core::PiiField::MiddleName => {
+                            url = url.replace("{middle}", encoded.as_ref());
+                        }
                         spectral_core::PiiField::LastName => {
                             url = url.replace("{last}", encoded.as_ref());
                         }
+                        spectral_core::PiiField::Address => {
+                            url = url.replace("{address}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::City => {
+                            url = url.replace("{city}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::State => {
+                            url = url.replace("{state}", encoded.as_ref());
+                        }
                         spectral_core::PiiField::ZipCode => {
                             url = url.replace("{zip}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Email => {
+                            url = url.replace("{email}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Phone => {
+                            url = url.replace("{phone}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::DateOfBirth => {
+                            url = url.replace("{dob}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::FullName => {
+                            url = url.replace("{full_name}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Country => {
+                            url = url.replace("{country}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Ssn => {
+                            url = url.replace("{ssn}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Employer => {
+                            url = url.replace("{employer}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::JobTitle => {
+                            url = url.replace("{job_title}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Education => {
+                            url = url.replace("{education}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::SocialMedia => {
+                            url = url.replace("{social_media}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::Relatives => {
+                            url = url.replace("{relatives}", encoded.as_ref());
+                        }
+                        spectral_core::PiiField::PreviousAddress => {
+                            url = url.replace("{previous_address}", encoded.as_ref());
                         }
                         _ => {}
                     }

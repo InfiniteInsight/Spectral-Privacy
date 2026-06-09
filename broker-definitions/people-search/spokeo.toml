@@ -20,14 +20,15 @@ template = "https://www.spokeo.com/{first}-{last}/{state}/{city}"
 requires_fields = ["first_name", "last_name", "state", "city"]
 
 [search.result_selectors]
-results_container = ".search-results"
-result_item = ".result-card"
-listing_url = "a.profile-link"
-name = ".name"
-age = ".age"
-location = ".location"
-relatives = ".relatives .name"
-phones = ".phone-number"
+# Selectors verified 2026-05-07 against live SSR HTML (Next.js app)
+# Container and items use stable id/ARIA attributes; link uses Spokeo's
+# own .display-4 design-token class (not a Tailwind utility — stable).
+results_container = "#name-search-results-list"
+result_item = "[role='listitem']"
+listing_url = "a.display-4"
+name = "h3"
+# Age is embedded in h3 text ("Samuel Joseph, Age 72"); no separate element
+location = "div.display-1"
 no_results_indicator = ".no-results-message"
 captcha_required = "iframe[title*='recaptcha' i]"
 

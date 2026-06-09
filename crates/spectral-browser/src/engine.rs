@@ -89,7 +89,14 @@ fn apply_platform_config(
             .arg("--single-process")
             .arg("--no-zygote")
             .arg("--mute-audio")
-            .arg("--disable-software-rasterizer");
+            // WSL2 has no GPU — force software rasterization explicitly.
+            // On Windows and macOS the real GPU is used (no --disable-gpu).
+            .arg("--disable-gpu")
+            .arg("--no-proxy-server")
+            // --headless=new uses a different CDP message format that breaks
+            // chromiumoxide's WS deserialization under --single-process in WSL2.
+            // Override back to --headless=old for this environment.
+            .arg("--headless=old");
     }
 
     config
@@ -134,6 +141,118 @@ fn handle_browser_launch_error(msg: String) -> BrowserError {
     }
 }
 
+/// JS injected into every new document before any page scripts run.
+/// Patches the most common headless-Chrome detection signals so that
+/// Cloudflare, DataDome, and similar systems see a fingerprint that
+/// matches a real desktop Chrome session.
+const STEALTH_JS: &str = r#"
+// 1. Remove navigator.webdriver (the single most-checked signal)
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true });
+
+// 2. Restore navigator.plugins (empty in headless; real Chrome has PDF viewer entries)
+(() => {
+    const mkMime = (type, suffixes, description) => {
+        const mt = Object.create(MimeType.prototype);
+        Object.defineProperties(mt, {
+            type:          { get: () => type },
+            suffixes:      { get: () => suffixes },
+            description:   { get: () => description },
+            enabledPlugin: { get: () => null },
+        });
+        return mt;
+    };
+    const mkPlugin = (name, filename, description, mimes) => {
+        const p = Object.create(Plugin.prototype);
+        Object.defineProperties(p, {
+            name:        { get: () => name },
+            filename:    { get: () => filename },
+            description: { get: () => description },
+            length:      { get: () => mimes.length },
+        });
+        mimes.forEach((m, i) => { p[i] = m; });
+        return p;
+    };
+    const pdf = mkMime('application/pdf', 'pdf', 'Portable Document Format');
+    const tpdf = mkMime('text/pdf', 'pdf', '');
+    const plugins = [
+        mkPlugin('PDF Viewer',               'internal-pdf-viewer', 'Portable Document Format', [pdf, tpdf]),
+        mkPlugin('Chrome PDF Viewer',        'internal-pdf-viewer', '',                          [pdf]),
+        mkPlugin('Chromium PDF Viewer',      'internal-pdf-viewer', '',                          [pdf]),
+        mkPlugin('Microsoft Edge PDF Viewer','internal-pdf-viewer', '',                          [pdf]),
+        mkPlugin('WebKit built-in PDF',      'internal-pdf-viewer', '',                          [pdf]),
+    ];
+    const mkArr = (proto, items) => {
+        const arr = Object.create(proto);
+        Object.defineProperty(arr, 'length', { get: () => items.length });
+        items.forEach((x, i) => { arr[i] = x; });
+        return arr;
+    };
+    Object.defineProperty(navigator, 'plugins', {
+        get: () => {
+            const arr = mkArr(PluginArray.prototype, plugins);
+            arr.item = (i) => plugins[i] ?? null;
+            arr.namedItem = (n) => plugins.find(p => p.name === n) ?? null;
+            arr.refresh = () => {};
+            return arr;
+        },
+        configurable: true,
+    });
+    const allMimes = [pdf, tpdf];
+    Object.defineProperty(navigator, 'mimeTypes', {
+        get: () => {
+            const arr = mkArr(MimeTypeArray.prototype, allMimes);
+            arr.item = (i) => allMimes[i] ?? null;
+            arr.namedItem = (t) => allMimes.find(m => m.type === t) ?? null;
+            return arr;
+        },
+        configurable: true,
+    });
+})();
+
+// 3. navigator.languages
+Object.defineProperty(navigator, 'languages', {
+    get: () => Object.freeze(['en-US', 'en']),
+    configurable: true,
+});
+
+// 4. window.chrome — missing entirely in headless; presence is checked by many sites
+if (!window.chrome) {
+    Object.defineProperty(window, 'chrome', {
+        value: {
+            app: { isInstalled: false },
+            runtime: {},
+            loadTimes: () => ({ requestTime: Date.now() / 1000 - 1, startLoadTime: Date.now() / 1000 - 0.9, commitLoadTime: Date.now() / 1000 - 0.5, finishDocumentLoadTime: 0, finishLoadTime: 0, firstPaintTime: 0, firstPaintAfterLoadTime: 0, navigationType: 'Other', wasFetchedViaSpdy: true, wasNpnNegotiated: true, npnNegotiatedProtocol: 'h2', wasAlternateProtocolAvailable: false, connectionInfo: 'h2' }),
+            csi: () => ({ startE: Date.now() - 100, onloadT: Date.now(), pageT: Date.now(), tran: 15 }),
+        },
+        writable: false, enumerable: true, configurable: false,
+    });
+}
+
+// 5. Notification/permission — headless defaults to 'denied'; spoof as 'default'
+if (window.Permissions && window.Permissions.prototype && window.Permissions.prototype.query) {
+    const _origQuery = window.Permissions.prototype.query;
+    window.Permissions.prototype.query = function(params) {
+        if (params && params.name === 'notifications') {
+            return Promise.resolve(Object.setPrototypeOf({ state: 'default', onchange: null }, PermissionStatus.prototype));
+        }
+        return _origQuery.apply(this, [params]);
+    };
+}
+
+// 6. Broken image dimensions in headless (returns 0; real Chrome returns natural size)
+['height', 'width'].forEach(attr => {
+    const desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, attr);
+    if (desc) {
+        Object.defineProperty(HTMLImageElement.prototype, attr, {
+            get: function() {
+                const v = desc.get.call(this);
+                return (v === 0 && this.complete && this.src && !this.src.startsWith('data:')) ? 16 : v;
+            },
+        });
+    }
+});
+"#;
+
 impl BrowserEngine {
     /// Create a new browser engine with default configuration
     pub async fn new() -> Result<Self> {
@@ -156,13 +275,30 @@ impl BrowserEngine {
             }
         }
 
-        // Use a unique temp user-data-dir per engine instance. A fixed path would
-        // cause exit status 21 if two scans run concurrently (Chrome locks the dir).
-        // nosemgrep: semgrep.use-zeroize-for-secrets — this is a directory name, not a secret
-        let session_id: String = (0..16)
-            .map(|_| format!("{:02x}", rand::random::<u8>()))
-            .collect();
-        let user_data_dir = std::env::temp_dir().join(format!("spectral-chrome-{session_id}"));
+        // Profile directory strategy:
+        // - SPECTRAL_PERSISTENT_PROFILE=1: use a single persistent profile at
+        //   ~/.local/share/spectral/chrome-profiles/default/ so that Cloudflare
+        //   clearance cookies and DataDome trust scores accumulate across scans.
+        //   Only safe when scans run sequentially (one Chrome instance at a time).
+        // - Default: unique temp dir per engine instance (concurrent-safe).
+        let user_data_dir = if std::env::var("SPECTRAL_PERSISTENT_PROFILE").as_deref() == Ok("1") {
+            let base = dirs::data_local_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+                .join("spectral")
+                .join("chrome-profiles")
+                .join("default");
+            tracing::info!(
+                "[browser] Using persistent Chrome profile at {}",
+                base.display()
+            );
+            base
+        } else {
+            // nosemgrep: semgrep.use-zeroize-for-secrets — this is a directory name, not a secret
+            let session_id: String = (0..16)
+                .map(|_| format!("{:02x}", rand::random::<u8>()))
+                .collect();
+            std::env::temp_dir().join(format!("spectral-chrome-{session_id}"))
+        };
         // Chrome will fail with exit status 21 if the profile dir doesn't exist yet
         if let Err(e) = std::fs::create_dir_all(&user_data_dir) {
             tracing::warn!("Could not pre-create Chrome profile dir: {e}");
@@ -177,19 +313,34 @@ impl BrowserEngine {
         let ua = fingerprint.user_agent.clone();
 
         config = config
-            .arg("--headless=old")
-            .arg("--disable-gpu")
+            // --headless=new (Chrome 112+): uses the real GPU pipeline, producing
+            // canvas/WebGL fingerprints indistinguishable from a non-headless session.
+            // --disable-gpu is intentionally omitted here; WSL2 adds it in apply_platform_config.
+            .arg("--headless=new")
             .arg("--no-first-run")
             .arg("--disable-dev-shm-usage")
             .arg("--disable-extensions")
             .arg("--disable-sync")
-            .arg("--disable-background-networking")
             .arg("--disable-default-apps")
             .arg("--disable-hang-monitor")
             .arg("--disable-popup-blocking")
             .arg("--no-default-browser-check")
             .arg("--metrics-recording-only")
+            // Stealth: exclude automation-detection flags
+            .arg("--disable-blink-features=AutomationControlled")
+            .arg("--exclude-switches=enable-automation")
+            // Stealth: realistic window size
+            .arg("--window-size=1920,1080")
             .arg(format!("--user-agent={ua}"));
+
+        // Proxy support: set SPECTRAL_PROXY to route through a residential or
+        // datacenter proxy (e.g. "http://user:pass@proxy.example.com:8080" or
+        // "socks5://127.0.0.1:1080"). Residential proxies bypass IP-reputation
+        // checks that Cloudflare and DataDome use as part of their fingerprint.
+        if let Ok(proxy) = std::env::var("SPECTRAL_PROXY") {
+            tracing::info!("[browser] Using proxy: {}", proxy);
+            config = config.arg(format!("--proxy-server={proxy}"));
+        }
 
         // Apply platform-specific configuration
         config = apply_platform_config(config);
@@ -218,7 +369,7 @@ impl BrowserEngine {
         })
     }
 
-    /// Get or create the current page
+    /// Get or create the current page, with stealth patches pre-installed.
     async fn get_page(&self) -> Result<Page> {
         let mut page_lock = self.current_page.write().await;
 
@@ -228,6 +379,11 @@ impl BrowserEngine {
                 .new_page("about:blank")
                 .await
                 .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+            // Inject stealth patches before any navigation so they fire on every
+            // document load, including redirects and subsequent navigations.
+            if let Err(e) = page.evaluate_on_new_document(STEALTH_JS).await {
+                tracing::warn!("[stealth] Failed to inject stealth patches: {e}");
+            }
             *page_lock = Some(page);
         }
 
@@ -244,6 +400,14 @@ impl BrowserEngine {
     /// Polls every 2 seconds for up to `timeout`. The user sees a real Chrome window
     /// and can interact with it normally.
     pub async fn solve_captcha_interactively(url: &str, timeout: Duration) -> Result<String> {
+        // WSL2 has no display — skip interactive solving immediately.
+        #[cfg(target_os = "linux")]
+        if is_wsl2() {
+            return Err(BrowserError::Timeout(
+                "CAPTCHA solving skipped: no display in WSL2".to_string(),
+            ));
+        }
+
         tracing::info!("[captcha] Opening visible browser for CAPTCHA at {}", url);
 
         let mut config = BrowserConfig::builder().no_sandbox().disable_default_args();
@@ -319,6 +483,46 @@ impl BrowserEngine {
         result
     }
 
+    /// Fetch a page using reqwest (plain HTTP client) — used on WSL2 where
+    /// headless Chrome's network stack cannot reach external hosts.
+    async fn fetch_with_reqwest(&self, url: &str) -> Result<String> {
+        let ua = self.fingerprint.user_agent.clone();
+        let client = reqwest::Client::builder()
+            .user_agent(ua)
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| BrowserError::ChromiumError(format!("reqwest build error: {e}")))?;
+
+        let html = client
+            .get(url)
+            .header(
+                "Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            )
+            .header("Accept-Language", "en-US,en;q=0.9")
+            // Accept-Encoding is managed by reqwest (gzip auto-decompression).
+            // Do NOT override it — setting br/zstd causes the server to send
+            // brotli/zstd which reqwest won't decompress, yielding binary content.
+            .header("DNT", "1")
+            .header("Upgrade-Insecure-Requests", "1")
+            .header("Sec-Fetch-Dest", "document")
+            .header("Sec-Fetch-Mode", "navigate")
+            .header("Sec-Fetch-Site", "none")
+            .header("Sec-Fetch-User", "?1")
+            .header("Sec-CH-UA", r#""Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99""#)
+            .header("Sec-CH-UA-Mobile", "?0")
+            .header("Sec-CH-UA-Platform", r#""Windows""#)
+            .header("Cache-Control", "max-age=0")
+            .send()
+            .await
+            .map_err(|e| BrowserError::NavigationError(format!("reqwest fetch error: {e}")))?
+            .text()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(format!("reqwest body error: {e}")))?;
+
+        Ok(html)
+    }
+
     /// Fetch a page and return its HTML content
     pub async fn fetch_page_content(&self, url: &str) -> Result<String> {
         // Rate-check before acquiring the page lock
@@ -328,6 +532,18 @@ impl BrowserEngine {
             .await
             .check_and_update(&domain)
             .await?;
+
+        // Note: Chrome headless CAN reach external hosts in WSL2. We use Chrome
+        // rather than reqwest so that JavaScript-rendered pages load correctly.
+        // The SPECTRAL_USE_REQWEST env var provides an escape hatch for offline/CI use.
+        #[cfg(target_os = "linux")]
+        if is_wsl2() && std::env::var("SPECTRAL_USE_REQWEST").as_deref() == Ok("1") {
+            tracing::info!(
+                "[browser] WSL2: SPECTRAL_USE_REQWEST=1, using reqwest for {}",
+                url
+            );
+            return self.fetch_with_reqwest(url).await;
+        }
 
         // Hold the write lock for the full navigate+content cycle so that concurrent
         // callers on the same engine cannot swap the page between the two calls.
@@ -341,6 +557,9 @@ impl BrowserEngine {
                         .new_page("about:blank")
                         .await
                         .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+                    if let Err(e) = p.evaluate_on_new_document(STEALTH_JS).await {
+                        tracing::warn!("[stealth] Failed to inject stealth patches: {e}");
+                    }
                     *page_lock = Some(p);
                 }
                 page_lock
@@ -353,6 +572,39 @@ impl BrowserEngine {
                 .await
                 .map_err(|e| BrowserError::NavigationError(e.to_string()))?;
 
+            // Adaptive bot-protection wait: poll every 500 ms until the page is
+            // clear of known challenge markers (Cloudflare "Just a moment",
+            // DataDome interstitial, reCAPTCHA). Falls back to a fixed minimum
+            // wait. Max wait is controlled by SPECTRAL_PAGE_WAIT_MS (default 8 s).
+            let max_wait_ms: u64 = std::env::var("SPECTRAL_PAGE_WAIT_MS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(8000);
+            let poll_interval = Duration::from_millis(500);
+            let deadline = Instant::now() + Duration::from_millis(max_wait_ms);
+            loop {
+                tokio::time::sleep(poll_interval).await;
+                if let Ok(html) = page.content().await {
+                    let lower = html.to_lowercase();
+                    // Challenge markers that indicate the page is not ready
+                    let has_challenge = lower.contains("just a moment")
+                        || lower.contains("checking your browser")
+                        || lower.contains("cf-challenge")
+                        || lower.contains("datadome")
+                        || lower.contains("g-recaptcha")
+                        || lower.contains("recaptcha/api.js");
+                    if !has_challenge {
+                        tracing::debug!("[browser] Page ready (no challenge detected)");
+                        break;
+                    }
+                    tracing::debug!("[browser] Challenge detected, waiting...");
+                }
+                if Instant::now() >= deadline {
+                    tracing::warn!("[browser] Max wait reached for {url}, proceeding anyway");
+                    break;
+                }
+            }
+
             let html = page
                 .content()
                 .await
@@ -361,7 +613,7 @@ impl BrowserEngine {
             Ok::<String, BrowserError>(html)
         };
 
-        tokio::time::timeout(Duration::from_secs(45), page_fut)
+        tokio::time::timeout(Duration::from_secs(55), page_fut)
             .await
             .map_err(|_| BrowserError::Timeout(format!("fetch_page_content timed out for {url}")))?
     }
@@ -452,6 +704,17 @@ impl BrowserActions for BrowserEngine {
             .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
 
         Ok(screenshot)
+    }
+
+    async fn get_current_page_html(&self) -> Result<String> {
+        let page = self.get_page().await?;
+
+        let html = page
+            .content()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        Ok(html)
     }
 }
 

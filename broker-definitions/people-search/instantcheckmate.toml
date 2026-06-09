@@ -24,6 +24,14 @@ first_name = "{first}"
 last_name = "{last}"
 state = "{state}"
 
+[search.form_selectors]
+# Homepage search form selectors — verified selectors depend on live HTML
+first_name_input = "input[name='firstName'], input[placeholder*='First' i], #firstName"
+last_name_input = "input[name='lastName'], input[placeholder*='Last' i], #lastName"
+# email_input repurposed as state selector (see orchestrator convention)
+email_input = "select[name='state'], select#state, input[name='state']"
+submit_button = "button[type='submit'], .search-btn, input[type='submit']"
+
 [search.result_selectors]
 results_container = "#results-container, .search-results"
 result_item = ".result-row, .person-result"

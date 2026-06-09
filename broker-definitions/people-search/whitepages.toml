@@ -1,5 +1,19 @@
 # Whitepages - Phone Number & Address Lookup
-# Last verified: 2025-05-01
+# Last verified: 2026-05-07
+#
+# Bot protection: Cloudflare Managed Challenge + DataDome
+# - Cloudflare: JS fingerprint gate on first request. Bypassed by the headless
+#   Chrome stealth patches (navigator.webdriver, plugins, etc.) + real GPU on
+#   Windows. Residential IP greatly helps.
+# - DataDome: Ongoing behavioral tracking (ddjskey injected on page load).
+#   Typically does not challenge on a simple name search with a clean session.
+#
+# The scan engine's Chrome path (not reqwest) is required for this site.
+# The SERP is SSR-rendered (Nuxt.js), so HTML content is present in page source
+# once the bot gate is cleared.
+#
+# Person listing URL format: /name/{First}-{Last}/{City}-{State}/{wpId}
+# Example confirmed: /name/Samuel-Joseph/Reisterstown-MD/P53kXOGEX8p
 
 [broker]
 id = "whitepages"
@@ -7,10 +21,10 @@ name = "Whitepages"
 url = "https://www.whitepages.com"
 domain = "whitepages.com"
 category = "people-search"
-difficulty = "Medium"
+difficulty = "Hard"
 typical_removal_days = 5
 recheck_interval_days = 30
-last_verified = "2025-05-01"
+last_verified = "2026-05-07"
 scan_priority = "AutoScanTier1"
 region_relevance = ["US", "Global"]
 
@@ -20,17 +34,30 @@ template = "https://www.whitepages.com/name/{first}-{last}/{city}-{state}"
 requires_fields = ["first_name", "last_name", "city", "state"]
 
 [search.result_selectors]
-# Note: These selectors must be verified against actual Whitepages pages
-results_container = ".results-container"
-result_item = ".result"
-listing_url = ".result-link"
-name = ".name"
-age = ".age-range"
-location = ".address"
-relatives = ".associated-people .person"
-phones = ".phone-info .number"
-no_results_indicator = ".no-results-message"
-captcha_required = "iframe[title*='recaptcha']"
+# Selectors verified 2026-05-07 against live SSR HTML from board's Chrome session.
+#
+# Whitepages redirects all name searches directly to a checkout/summary page
+# that shows a "BEST MATCH" card. This IS the result page — there is no
+# separate SERP list. The card is a clickable div (not an <a>), so listing_url
+# targets the unlock button's href as a proxy for the page identity.
+#
+# Confirmed structure:
+#   <div class="flat-top ... summary-card ... card">   ← result_item
+#     <div class="display-2 fw-b">Samuel Joseph</div>  ← name
+#     <div class="d-flex graphite--text my-1 ...">
+#       <div><span>Age</span> 65+</div>                ← age (text node)
+#       <span class="mx-1">|</span>
+#       <div>Reisterstown, MD</div>                    ← location (last div)
+#     </div>
+#   </div>
+results_container = ".flat-top.summary-card"
+result_item = ".flat-top.summary-card"
+listing_url = ".flat-top.summary-card a.wp-button, .unlock-report-button a"
+name = ".display-2.fw-b"
+age = ".d-flex.graphite--text.my-1 div:first-child"
+location = ".d-flex.graphite--text.my-1 div:last-child"
+no_results_indicator = "[class*='no-results'], [class*='zero-results'], [class*='no-match']"
+captcha_required = "iframe[title*='recaptcha' i], [id*='datadome'], #ddCaptcha"
 
 [removal]
 method = "web-form"

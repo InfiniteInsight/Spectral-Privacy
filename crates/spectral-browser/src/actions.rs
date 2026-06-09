@@ -20,6 +20,12 @@ pub trait BrowserActions {
 
     /// Take a screenshot
     async fn screenshot(&self) -> Result<Vec<u8>>;
+
+    /// Get the HTML content of the current page without navigating away.
+    ///
+    /// This is used after form submission to capture results page HTML
+    /// without re-navigating to the original URL.
+    async fn get_current_page_html(&self) -> Result<String>;
 }
 
 /// Helper to extract domain from URL

@@ -112,7 +112,7 @@ Two-column layout:
 ## Astro Project Structure
 
 ```
-spectral-site/           # separate directory or subdirectory
+spectral-site/           # location TBD: subdirectory of this repo OR a separate repo — decide before implementation
 ├── src/
 │   ├── pages/
 │   │   └── index.astro

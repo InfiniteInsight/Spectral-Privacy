@@ -1,8 +1,9 @@
 # Spectral Development Plan
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-02-09
-> **Total Duration:** ~24 weeks across 4 phases
+> **Version:** 2.0.0
+> **Last Updated:** 2026-05-07
+> **Total Duration:** ~36 weeks across 5 phases (extended for architecture Sections 20–23)
+> **Assessed:** 2026-05-07 by CTO — see `~/tools/paperclip/spectral-status.md` for full findings
 
 This document breaks down the Spectral development roadmap into manageable tasks. Each task is designed to fit within a single AI context window and includes tracking, testing, and commit instructions.
 
@@ -19,6 +20,59 @@ This document breaks down the Spectral development roadmap into manageable tasks
 
 ---
 
+## Plan Health & Self-Healing Alignment
+
+**Purpose:** Keep this plan synchronized with actual code state. Run the checklist below at the start of every sprint or after any significant merge.
+
+### Alignment Routine (run periodically)
+
+```bash
+# 1. Check for TODO/FIXME/STUB markers — these indicate incomplete work
+grep -rn "TODO\|FIXME\|stub\|unimplemented!()\|todo!()" crates/ --include="*.rs" | wc -l
+
+# 2. Check for empty or placeholder implementations
+grep -rn "panic!(\"not implemented\"\|unimplemented!" crates/ --include="*.rs"
+
+# 3. Count passing tests per crate to verify Phase 1 coverage claims
+cargo test --workspace 2>&1 | grep -E "^test result|FAILED|error"
+
+# 4. Verify streaming is not stubbed (known Phase 2 gap)
+grep -n "fake\|stub\|todo" crates/spectral-llm/src/ -r
+
+# 5. Check spectral-auth has real logic (not just error types)
+wc -l crates/spectral-auth/src/*.rs
+
+# 6. Verify scheduler has a task dispatch loop
+grep -n "tokio::spawn\|loop\|interval" crates/spectral-scheduler/src/ -r
+
+# 7. Check IMAP polling has an actual connection
+grep -n "connect\|login\|search" crates/spectral-mail/src/imap.rs
+
+# 8. Count broker definitions (target: >130)
+find brokers/ -name "*.toml" | wc -l
+```
+
+### Drift Detection Checklist
+
+After each sprint, confirm:
+
+- [ ] Status markers in this file match what's in the codebase
+- [ ] `spectral-status.md` reflects any new findings (update within 48h of sprint end)
+- [ ] Any new architecture.md sections (20+) have corresponding tasks in Phase 5
+- [ ] Blockers in this plan are either resolved or tracked as open issues on the board
+- [ ] CI pipeline has run cleanly on `main` since the last update
+
+### Upstream / Downstream Sync
+
+| Document | Sync trigger |
+|----------|-------------|
+| `architecture.md` | New sections added → add Phase 5 tasks here |
+| `spectral-status.md` | New CTO assessment → update task statuses here |
+| Issue board | Task completed or blocked → update status here and close/update issue |
+| `DEVELOPMENT_PLAN.md` (this file) | Sprint boundary → re-run alignment routine above |
+
+---
+
 ## Phase 1: Foundation (v0.1) — ~8 weeks
 
 ### Overview
@@ -27,7 +81,7 @@ Build the core infrastructure: encrypted vault, Tauri shell, LLM abstraction, an
 ---
 
 ### Task 1.1: Core Crate Setup
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create spectral-core with shared types, errors, and configuration
 
 #### Objective
@@ -102,7 +156,7 @@ git push origin master
 ---
 
 ### Task 1.2: Database Layer
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Implement spectral-db with SQLCipher integration
 
 #### Objective
@@ -210,7 +264,7 @@ git push origin master
 ---
 
 ### Task 1.3: Encrypted Vault
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Implement spectral-vault with Argon2id KDF and ChaCha20-Poly1305
 
 #### Objective
@@ -293,7 +347,7 @@ git push origin master
 ---
 
 ### Task 1.4: Tauri Commands - Vault
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Expose vault operations to frontend via Tauri commands
 
 #### Objective
@@ -377,7 +431,7 @@ git push origin master
 ---
 
 ### Task 1.5: Unlock Screen UI
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create the unlock/create vault screen in SvelteKit
 
 #### Objective
@@ -474,7 +528,7 @@ git push origin master
 ---
 
 ### Task 1.6: Profile Setup UI
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create the profile setup wizard for entering PII
 
 #### Objective
@@ -563,7 +617,7 @@ git push origin master
 ---
 
 ### Task 1.7: Broker Definitions Crate
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create spectral-broker with TOML definition loading
 
 #### Objective
@@ -658,7 +712,7 @@ git push origin master
 ---
 
 ### Task 1.8: LLM Abstraction Layer
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create spectral-llm with provider trait and routing
 
 #### Objective
@@ -752,7 +806,7 @@ git push origin master
 ---
 
 ### Task 1.9: Manual Scan Engine
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Implement basic URL-template scanning without browser automation
 
 #### Objective
@@ -842,7 +896,7 @@ git push origin master
 ---
 
 ### Task 1.10: Scan Results UI
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Display scan results in the dashboard
 
 #### Objective
@@ -923,7 +977,7 @@ git push origin master
 ---
 
 ### Task 1.11: Permission System
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Implement granular permissions with first-run wizard
 
 #### Objective
@@ -1021,7 +1075,7 @@ git push origin master
 ---
 
 ### Task 1.12: Command Palette
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create keyboard-accessible command interface (LLM fallback)
 
 #### Objective
@@ -1106,7 +1160,7 @@ git push origin master
 ---
 
 ### Task 1.13: Chat Interface (Basic)
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Create chat UI for status queries with LLM integration
 
 #### Objective
@@ -1197,7 +1251,7 @@ git push origin master
 ---
 
 ### Task 1.14: Settings UI
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create settings page for LLM configuration and preferences
 
 #### Objective
@@ -1282,7 +1336,7 @@ git push origin master
 ---
 
 ### Task 1.15: Phase 1 Integration Testing
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** End-to-end testing of all Phase 1 features
 
 #### Objective
@@ -1372,7 +1426,7 @@ Add browser automation for opt-out form submission, email-based removals, schedu
 ---
 
 ### Task 2.1: Browser Automation Engine
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Create spectral-browser with headless Chromium
 
 #### Objective
@@ -1455,7 +1509,7 @@ git push origin master
 ---
 
 ### Task 2.2: Form-Based Removal
-**Status:** `[ ]`
+**Status:** `[x]`
 **Estimated Scope:** Automate opt-out form submission for Tier 1 brokers
 
 #### Objective
@@ -1537,7 +1591,7 @@ git push origin master
 ---
 
 ### Task 2.3: Email Removal Flow
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Generate and send opt-out emails
 
 #### Objective
@@ -1621,7 +1675,7 @@ git push origin master
 ---
 
 ### Task 2.4: Scan Scheduler
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Background task scheduling for periodic scans
 
 #### Objective
@@ -1713,7 +1767,7 @@ git push origin master
 ---
 
 ### Task 2.5: Dashboard with Privacy Score
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Enhanced dashboard with privacy metrics and timeline
 
 #### Objective
@@ -1791,7 +1845,7 @@ git push origin master
 ---
 
 ### Task 2.6: Additional LLM Providers
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Add OpenAI, LM Studio, llama.cpp providers
 
 #### Objective
@@ -1939,7 +1993,7 @@ git push origin master
 ---
 
 ### Task 2.8: Email Thread Management
-**Status:** `[ ]`
+**Status:** `[~]`
 **Estimated Scope:** Track email conversations with safety guardrails
 
 #### Objective
@@ -3513,3 +3567,177 @@ All commits should follow conventional commits:
 3. Review patterns in `patterns.md`
 4. Check previous similar tasks for patterns
 5. Ask for clarification before proceeding
+
+---
+
+## Phase 5: Extended Privacy (v0.5) — ~12 weeks
+
+> **Added:** 2026-05-07 — covers architecture.md Sections 20–23 which postdate the original 4-phase plan.
+
+### Overview
+Four major feature systems that extend Spectral beyond reactive data-broker removal: guided onboarding that profiles the user's PII footprint, jurisdiction-aware filtering that scopes brokers to the user's legal region, proactive scanning that surfaces new broker listings before users notice them, and a commercial relationship engine that handles deletion of accounts at companies that aren't data brokers.
+
+---
+
+### Task 5.1: User Onboarding & PII Profile Setup
+**Status:** `[ ]`
+**Architecture ref:** Section 20
+**Estimated Scope:** Multi-step onboarding wizard that guides users through profile creation and initial PII discovery
+
+#### Objective
+Replace the current manual profile setup with a guided wizard that: collects identity fields (name, email, DOB, addresses, phone), runs an initial local PII scan against the filesystem, and produces an estimated exposure report before the first broker scan.
+
+#### Implementation Steps
+
+1. **Onboarding state machine** (`crates/spectral-core/src/onboarding.rs`)
+   - `OnboardingStep` enum: `Welcome`, `IdentityFields`, `PiiScan`, `ReviewExposure`, `Done`
+   - Persist progress so users can resume across sessions
+
+2. **Multi-step Svelte wizard** (`src/routes/onboarding/`)
+   - Step components matching each `OnboardingStep` variant
+   - Validation before advancing (required fields, format checks)
+
+3. **Initial exposure report** (reuse `spectral-discovery`)
+   - Run `LocalDiscoveryScanner` against `~/Documents`, `~/Downloads`, Desktop
+   - Summarize file count, PII types found, risk level
+
+4. **Tauri command surface** (`src-tauri/src/commands/onboarding.rs`)
+   - `start_onboarding`, `advance_step`, `get_onboarding_state`, `complete_onboarding`
+
+#### Acceptance Criteria
+- [ ] New install routes to onboarding wizard, not dashboard
+- [ ] Each step persists progress to vault before advancing
+- [ ] PII scan step shows progress indicator and summary
+- [ ] Completion routes to main dashboard with initial broker scan queued
+
+#### Prerequisites
+- Task 1.3 (Encrypted Vault) ✓
+- Task 1.6 (Profile Setup UI) ✓
+- Task 3.6 (Local PII Discovery) — must be functional
+
+---
+
+### Task 5.2: Geolocation & Jurisdiction System
+**Status:** `[ ]`
+**Architecture ref:** Section 21
+**Estimated Scope:** Filter broker list by user's legal jurisdiction; surface applicable privacy rights
+
+#### Objective
+Detect or prompt for user jurisdiction (US state, EU country, etc.), then filter the active broker list to only show brokers that operate in that jurisdiction and expose applicable rights (CCPA, GDPR, CPRA, etc.).
+
+#### Implementation Steps
+
+1. **Jurisdiction model** (`crates/spectral-core/src/jurisdiction.rs`)
+   - `Jurisdiction` enum: `UsState(UsState)`, `EuCountry(EuCountry)`, `Other`
+   - `PrivacyRight` enum: `Ccpa`, `Gdpr`, `Cpra`, `Other(String)`
+   - `applicable_rights(jurisdiction) -> Vec<PrivacyRight>`
+
+2. **Broker jurisdiction metadata** (extend TOML schema)
+   - Add `jurisdictions = ["US-CA", "US-TX", "EU"]` to broker definitions
+   - Add `opt_out_rights = ["CCPA", "GDPR"]` per broker
+
+3. **Jurisdiction filter** (`crates/spectral-broker/src/jurisdiction_filter.rs`)
+   - `filter_brokers_for_jurisdiction(brokers, user_jurisdiction) -> Vec<BrokerDefinition>`
+
+4. **UI jurisdiction selector** (`src/routes/settings/jurisdiction.svelte`)
+   - Country/state picker with auto-detection option
+   - Display applicable rights summary
+
+#### Acceptance Criteria
+- [ ] Broker list shrinks when non-applicable jurisdiction is selected
+- [ ] Each broker shows applicable privacy rights in its detail view
+- [ ] Jurisdiction persists across sessions (stored in vault)
+- [ ] 50+ broker definitions have jurisdiction metadata
+
+---
+
+### Task 5.3: Proactive Broker Scanning Model
+**Status:** `[ ]`
+**Architecture ref:** Section 22
+**Estimated Scope:** Continuous background scanning that detects new broker listings without manual intervention
+
+#### Objective
+Shift from on-demand scans to a continuous model: schedule regular scans for all brokers, detect newly appeared listings since last scan, notify users, and queue removal requests automatically based on configurable thresholds.
+
+#### Implementation Steps
+
+1. **Proactive scan policy** (`crates/spectral-core/src/scan_policy.rs`)
+   - `ScanPolicy`: frequency (daily/weekly), auto-request threshold (confidence score), notification preferences
+   - Store per-broker scan intervals and last-seen state
+
+2. **Change detection** (`crates/spectral-scan/src/change_detector.rs`)
+   - Compare new scan results against previous results stored in DB
+   - Classify: `NewListing`, `ListingRemoved`, `ListingChanged`, `Unchanged`
+   - Emit `ScanChangeEvent` for each delta
+
+3. **Scheduler integration** (extend Task 2.4)
+   - Add `ProactiveScanJob` variant to scheduler
+   - Stagger broker scans to avoid burst load
+
+4. **Notification dispatch**
+   - Surface `NewListing` events as tray notifications
+   - Write to audit log with change diff
+
+#### Acceptance Criteria
+- [ ] Scheduler runs broker scans on configurable interval (default: weekly)
+- [ ] New listings generate tray notifications with broker name and match confidence
+- [ ] Auto-removal requests created when confidence ≥ configured threshold
+- [ ] Scan history shows delta between runs, not just latest results
+
+#### Prerequisites
+- Task 2.4 (Scan Scheduler) — must have task dispatch loop, not just timestamp math
+
+---
+
+### Task 5.4: Commercial Relationship Engine
+**Status:** `[ ]`
+**Architecture ref:** Section 23
+**Estimated Scope:** Account deletion workflows for non-data-broker companies (retail, SaaS, social)
+
+#### Objective
+Extend Spectral beyond data brokers to handle deletion of user accounts at commercial companies. Each company definition describes how to: locate the account (login email, username), find the deletion path (settings URL, support email, GDPR portal), and submit the request.
+
+#### Implementation Steps
+
+1. **Company definition schema** (`company-definitions/*.toml`)
+   - Fields: `name`, `deletion_method` (web_form | email | gdpr_portal | api), `deletion_url`, `support_email`, `gdpr_portal_url`, `difficulty` (easy/medium/hard)
+   - Add 20+ initial definitions (Amazon, Google, Facebook, Netflix, etc.)
+
+2. **Company definition loader** (`crates/spectral-broker/src/company_loader.rs`)
+   - Parallel to `BrokerLoader`; loads TOML from `company-definitions/`
+
+3. **Commercial removal orchestrator** (`crates/spectral-removal/src/commercial.rs`)
+   - Route by `deletion_method` to appropriate handler
+   - Email method: compose deletion request via `spectral-mail`
+   - Web form method: reuse `WebFormSubmitter` from broker removal
+
+4. **UI: Company management** (`src/routes/companies/`)
+   - List known companies with account presence toggle
+   - Show deletion status per company (not requested / requested / confirmed)
+
+#### Acceptance Criteria
+- [ ] 20+ company definitions load from TOML
+- [ ] Email deletion method sends formatted request via `spectral-mail`
+- [ ] Web form method navigates to deletion page and submits form
+- [ ] Company deletion status persists and updates when confirmation received
+
+---
+
+### Task 5.5: Phase 5 Integration Testing
+**Status:** `[ ]`
+**Estimated Scope:** End-to-end validation of all Phase 5 features
+
+#### Objective
+Verify Phase 5 features work together: onboarding flows into proactive scanning, jurisdiction filters company list correctly, commercial engine processes deletions without breaking broker removal workflows.
+
+#### Test Scenarios
+
+1. **Onboarding → first scan**: new user completes wizard, broker scan auto-starts, findings appear in dashboard
+2. **Jurisdiction filter**: switching from US-CA to EU changes visible brokers and displayed rights
+3. **Proactive scan cycle**: scheduler fires, new listing detected, notification appears, auto-removal queued
+4. **Commercial deletion**: email deletion request sent, IMAP poller detects confirmation, status updated
+
+#### Acceptance Criteria
+- [ ] All four test scenarios pass with no manual intervention beyond initial configuration
+- [ ] No regression in existing Phase 1–4 functionality
+- [ ] Alignment routine (see Plan Health section) runs clean

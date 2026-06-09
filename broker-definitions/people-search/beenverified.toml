@@ -24,6 +24,14 @@ first_name = "{first}"
 last_name = "{last}"
 state = "{state}"
 
+[search.form_selectors]
+# Search form at https://www.beenverified.com/search
+first_name_input = "input[name='first_name'], input[name='firstName'], input[placeholder*='First' i]"
+last_name_input = "input[name='last_name'], input[name='lastName'], input[placeholder*='Last' i]"
+# email_input repurposed as state selector (see orchestrator convention)
+email_input = "select[name='state'], select#state"
+submit_button = "button[type='submit'], .search-submit"
+
 [search.result_selectors]
 # Note: These selectors must be verified against actual BeenVerified pages
 results_container = ".search-results-container"
