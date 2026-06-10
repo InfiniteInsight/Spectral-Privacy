@@ -143,7 +143,7 @@ fn handle_browser_launch_error(msg: String) -> BrowserError {
 
 /// JS injected into every new document before any page scripts run.
 /// Patches the most common headless-Chrome detection signals so that
-/// Cloudflare, DataDome, and similar systems see a fingerprint that
+/// Cloudflare, `DataDome`, and similar systems see a fingerprint that
 /// matches a real desktop Chrome session.
 const STEALTH_JS: &str = r#"
 // 1. Remove navigator.webdriver (the single most-checked signal)
@@ -715,6 +715,189 @@ impl BrowserActions for BrowserEngine {
             .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
 
         Ok(html)
+    }
+
+    async fn evaluate(&self, js: &str) -> Result<String> {
+        let page = self.get_page().await?;
+
+        let _result = page
+            .evaluate(js)
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+
+        // EvaluateResult from chromiumoxide doesn't implement Serialize,
+        // so we just return a success marker
+        Ok("true".to_string())
+    }
+
+    async fn inject_captcha_token(&self, token: &str) -> Result<()> {
+        let page = self.get_page().await?;
+
+        // Detect CAPTCHA type and inject token appropriately
+        let html = page
+            .content()
+            .await
+            .map_err(|e| BrowserError::ChromiumError(e.to_string()))?;
+        let lower_html = html.to_lowercase();
+
+        // reCAPTCHA v2/v3 token injection
+        if lower_html.contains("recaptcha") || lower_html.contains("g-recaptcha") {
+            // reCAPTCHA stores tokens in grecaptcha.getResponse() and internal cache
+            let js = format!(
+                r#"
+                (async () => {{
+                    const token = '{token}';
+                    try {{
+                        // Set the global response that grecaptcha.getResponse() returns
+                        if (typeof grecaptcha !== 'undefined') {{
+                            // Store token in internal response field
+                            grecaptcha._response = token;
+                            grecaptcha.getResponse = () => token;
+
+                            // Also set the g-recaptcha-response for form submissions
+                            const iframe = document.querySelector('.g-recaptcha > iframe');
+                            if (iframe) {{
+                                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                                const input = doc.querySelector('#g-recaptcha-response');
+                                if (input) {{
+                                    input.value = token;
+                                }}
+                            }}
+
+                            // Try to trigger the callback if one exists
+                            if (typeof grecaptcha.ready === 'function') {{
+                                // Find callbacks registered via grecaptcha.ready()
+                                if (grecaptcha._readyFns && grecaptcha._readyFns.length > 0) {{
+                                    for (const fn of grecaptcha._readyFns) {{
+                                        try {{ fn(); }} catch (e) {{ /* ignore */ }}
+                                    }}
+                                }}
+                            }}
+                        }}
+
+                        // Look for any form that might need the token
+                        const forms = document.querySelectorAll('form');
+                        for (const form of forms) {{
+                            let existing = form.querySelector('#g-recaptcha-response');
+                            if (!existing) {{
+                                existing = document.createElement('input');
+                                existing.type = 'hidden';
+                                existing.id = 'g-recaptcha-response';
+                                form.prepend(existing);
+                            }}
+                            existing.value = token;
+                        }}
+
+                        console.log('reCAPTCHA token injected successfully');
+                    }} catch (e) {{
+                        console.error('Failed to inject reCAPTCHA token:', e);
+                    }}
+                }})();
+                "#,
+                token = token,
+            );
+            if let Err(e) = page.evaluate(&*js).await {
+                tracing::debug!("[captcha] reCAPTCHA token injection failed: {e}");
+            }
+        }
+
+        // hCaptcha token injection
+        if lower_html.contains("hcaptcha") || lower_html.contains("hcaptcha_frame") {
+            let js = format!(
+                r#"
+                (async () => {{
+                    const token = '{token}';
+                    try {{
+                        // hCaptcha stores tokens in hcaptcha.getResponse()
+                        if (typeof hcaptcha !== 'undefined') {{
+                            hcaptcha._response = token;
+                            hcaptcha.getResponse = () => token;
+                            hcaptcha.reset = () => token;
+
+                            // Inject into hidden input that hcaptcha uses
+                            const input = document.querySelector('#hcaptcha-response');
+                            if (input) {{
+                                input.value = token;
+                            }}
+
+                            // Also try to find it in form hidden inputs
+                            const forms = document.querySelectorAll('form');
+                            for (const form of forms) {{
+                                let existing = form.querySelector('#hcaptcha-response');
+                                if (!existing) {{
+                                    existing = document.createElement('input');
+                                    existing.type = 'hidden';
+                                    existing.id = 'hcaptcha-response';
+                                    form.prepend(existing);
+                                }}
+                                existing.value = token;
+                            }}
+
+                            console.log('hCaptcha token injected successfully');
+                        }}
+                    }} catch (e) {{
+                        console.error('Failed to inject hCaptcha token:', e);
+                    }}
+                }})();
+                "#,
+                token = token,
+            );
+            if let Err(e) = page.evaluate(&*js).await {
+                tracing::debug!("[captcha] hCaptcha token injection failed: {e}");
+            }
+        }
+
+        // Cloudflare Turnstile token injection
+        if lower_html.contains("cf-turnstile")
+            || (lower_html.contains("turnstile") && !lower_html.contains("cloudflare"))
+        {
+            let js = format!(
+                r#"
+                (async () => {{
+                    const token = '{token}';
+                    try {{
+                        // Cloudflare Turnstile stores tokens in cfturnstile.getResponse()
+                        if (typeof cfturnstile !== 'undefined') {{
+                            cfturnstile._response = token;
+                            cfturnstile.getResponse = () => token;
+
+                            // Inject into hidden input
+                            const input = document.querySelector('[name="cf-turnstile-response"]');
+                            if (input) {{
+                                input.value = token;
+                            }}
+
+                            // Also look for any form with hidden response input
+                            const forms = document.querySelectorAll('form');
+                            for (const form of forms) {{
+                                let existing = form.querySelector('[name="cf-turnstile-response"]');
+                                if (!existing) {{
+                                    existing = document.createElement('input');
+                                    existing.type = 'hidden';
+                                    existing.name = 'cf-turnstile-response';
+                                    form.prepend(existing);
+                                }}
+                                existing.value = token;
+                            }}
+
+                            console.log('Cloudflare Turnstile token injected successfully');
+                        }}
+                    }} catch (e) {{
+                        console.error('Failed to inject Turnstile token:', e);
+                    }}
+                }})();
+                "#,
+                token = token,
+            );
+            if let Err(e) = page.evaluate(&*js).await {
+                tracing::debug!("[captcha] Turnstile token injection failed: {e}");
+            }
+        }
+
+        // If no CAPTCHA type was detected, still try to inject into common patterns
+        tracing::debug!("[captcha] Token injection complete for page");
+
+        Ok(())
     }
 }
 

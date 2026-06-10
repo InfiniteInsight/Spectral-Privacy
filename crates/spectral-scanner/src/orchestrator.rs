@@ -4,11 +4,12 @@
 //! of scan jobs across multiple brokers with retry logic, error handling,
 //! and findings storage.
 
+use crate::captcha::CaptchaSolver;
 use crate::error::{Result, ScanError};
 use crate::filter::BrokerFilter;
 use futures::stream::{FuturesUnordered, StreamExt};
 use spectral_broker::{BrokerDefinition, BrokerRegistry};
-use spectral_browser::BrowserEngine;
+use spectral_browser::{BrowserActions, BrowserEngine, BrowserError, RetryKind};
 use spectral_core::BrokerId;
 use spectral_db::{scan_jobs, Database};
 use spectral_vault::UserProfile;
@@ -45,6 +46,8 @@ pub struct ScanOrchestrator {
     db: Arc<Database>,
     /// Maximum concurrent scans
     max_concurrent_scans: usize,
+    /// CAPTCHA solver for automated challenge resolution
+    captcha_solver: Option<CaptchaSolver>,
 }
 
 impl ScanOrchestrator {
@@ -55,11 +58,23 @@ impl ScanOrchestrator {
         browser_engine: Arc<BrowserEngine>,
         db: Arc<Database>,
     ) -> Self {
+        Self::new_with_captcha(broker_registry, browser_engine, db, None)
+    }
+
+    /// Create a new scan orchestrator with an optional CAPTCHA solver.
+    #[must_use]
+    pub fn new_with_captcha(
+        broker_registry: Arc<BrokerRegistry>,
+        browser_engine: Arc<BrowserEngine>,
+        db: Arc<Database>,
+        captcha_solver: Option<CaptchaSolver>,
+    ) -> Self {
         Self {
             broker_registry,
             browser_engine,
             db,
             max_concurrent_scans: 5,
+            captcha_solver,
         }
     }
 
@@ -118,6 +133,7 @@ impl ScanOrchestrator {
             browser_engine: self.browser_engine.clone(),
             db: self.db.clone(),
             max_concurrent_scans: self.max_concurrent_scans,
+            captcha_solver: self.captcha_solver.clone(),
         });
 
         // Clone job_id for background task
@@ -228,7 +244,7 @@ impl ScanOrchestrator {
                     .ok()
                     .map_or("Unknown".to_string(), |b| b.broker.name.clone());
 
-                results.push(broker_result);
+                results.push(broker_result.clone());
                 // Increment progress counter
                 if let Err(e) = self
                     .increment_scan_progress(scan_job_id, &broker_name)
@@ -238,8 +254,16 @@ impl ScanOrchestrator {
                 }
             }
             Err(e) => {
-                tracing::error!("Scan failed: {}", e);
-                // Increment even on error (failure counts as completion)
+                // In soft-fail mode, log warnings and continue; the scan is not aborted.
+                tracing::warn!("[soft-fail] broker scan failed for scan {scan_job_id}: {e}");
+
+                // Record a failure result so progress tracking works
+                results.push(BrokerScanResult {
+                    broker_id: BrokerId::new("unknown")
+                        .unwrap_or_else(|_| BrokerId::new("err").expect("err is valid broker id")),
+                    findings_count: 0,
+                    error: Some(e.to_string()),
+                });
                 if let Err(e) = self.increment_scan_progress(scan_job_id, "Unknown").await {
                     tracing::warn!("Failed to increment scan progress: {}", e);
                 }
@@ -525,19 +549,77 @@ impl ScanOrchestrator {
     /// Fetch a page with retry logic and exponential backoff.
     ///
     /// Retries transient errors up to `MAX_RETRIES` times with exponential backoff.
-    /// Rate limit errors use longer backoff. CAPTCHA errors are not retried.
+    /// Uses `BrowserError::retry_kind()` to distinguish retryable (429/502/503/504,
+    /// timeouts) from non-retryable errors. CAPTCHA triggers interactive solving.
     async fn fetch_with_retry(&self, url: &str, broker_id: &BrokerId) -> Result<String> {
         let mut last_error = None;
-        let mut backoff_multiplier = 1;
 
         for attempt in 0..MAX_RETRIES {
+            tracing::debug!(
+                "[fetch] {} attempt {}/{} for {}",
+                broker_id,
+                attempt + 1,
+                MAX_RETRIES,
+                url
+            );
+
             match self.browser_engine.fetch_page_content(url).await {
                 Ok(html) => {
-                    // If a CAPTCHA is present, open a visible browser window so the
-                    // user can solve it interactively, then resume with the result.
+                    // If a CAPTCHA is present, attempt automated solving first,
+                    // then fall back to interactive solving if needed.
                     if Self::detect_captcha(&html) {
                         tracing::info!(
-                            "[scan] CAPTCHA detected for {}, opening visible browser",
+                            "[scan] CAPTCHA detected for {}, attempting automated solve",
+                            broker_id
+                        );
+                        if let Some(ref solver) = self.captcha_solver {
+                            match solver.solve(&html, url, broker_id).await {
+                                Ok(solution) => {
+                                    tracing::info!(
+                                        "[scan] CAPTCHA solved via API for {}, injecting token",
+                                        broker_id
+                                    );
+                                    // Reload the page to clear the CAPTCHA challenge
+                                    // and re-fetch the content
+                                    if let Err(e) = self.browser_engine.navigate(url).await {
+                                        tracing::warn!(
+                                            "[scan] failed to reload page after CAPTCHA solve: {e}"
+                                        );
+                                    }
+                                    // Wait for CAPTCHA widgets to initialize
+                                    tokio::time::sleep(Duration::from_secs(2)).await;
+                                    // Inject the solved token
+                                    if let Err(e) = self
+                                        .browser_engine
+                                        .inject_captcha_token(&solution.token)
+                                        .await
+                                    {
+                                        tracing::warn!(
+                                            "[scan] failed to inject CAPTCHA token: {e}"
+                                        );
+                                    }
+                                    // Small delay to let the page process the token
+                                    tokio::time::sleep(Duration::from_secs(1)).await;
+                                    // Fetch the page content again after CAPTCHA resolution
+                                    return self
+                                        .browser_engine
+                                        .fetch_page_content(url)
+                                        .await
+                                        .map_err(ScanError::Browser);
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "[scan] automated CAPTCHA solving failed for {}: {e}, falling back to interactive",
+                                        broker_id
+                                    );
+                                    // Fall through to interactive solving below
+                                }
+                            }
+                        }
+
+                        // Fall back to interactive solving
+                        tracing::info!(
+                            "[scan] Falling back to interactive CAPTCHA solving for {}",
                             broker_id
                         );
                         return spectral_browser::BrowserEngine::solve_captcha_interactively(
@@ -550,57 +632,64 @@ impl ScanOrchestrator {
                     return Ok(html);
                 }
                 Err(e) => {
-                    // Check if this is a rate limit error
-                    if Self::is_rate_limited(&e) {
-                        backoff_multiplier = RATE_LIMIT_BACKOFF_MULTIPLIER;
-                        tracing::warn!("Rate limited for {}, using longer backoff", broker_id);
-                    }
+                    last_error = Some(e.clone());
 
-                    last_error = Some(e);
+                    // Check if this error is worth retrying
+                    match e.retry_kind() {
+                        RetryKind::NoRetry => {
+                            tracing::warn!(
+                                "[fetch] non-retryable error for {} (attempt {}/{}): {}",
+                                broker_id,
+                                attempt + 1,
+                                MAX_RETRIES,
+                                e
+                            );
+                            break;
+                        }
+                        RetryKind::Retry => {
+                            let is_rate_limit = matches!(
+                                &e,
+                                BrowserError::RateLimitExceeded(_)
+                                    | BrowserError::HttpResponse { status: 429, .. }
+                            );
+                            let backoff = if is_rate_limit {
+                                RATE_LIMIT_BACKOFF_MULTIPLIER
+                            } else {
+                                1
+                            };
 
-                    if attempt < MAX_RETRIES - 1 {
-                        let delay = Duration::from_millis(
-                            RETRY_DELAY_MS * backoff_multiplier * (u64::from(attempt) + 1),
-                        );
+                            if attempt < MAX_RETRIES - 1 {
+                                let delay = Duration::from_millis(
+                                    RETRY_DELAY_MS * backoff * (u64::from(attempt) + 1),
+                                );
 
-                        tracing::warn!(
-                            "Fetch failed for {} (attempt {}/{}), retrying in {:?}...",
-                            broker_id,
-                            attempt + 1,
-                            MAX_RETRIES,
-                            delay
-                        );
+                                tracing::warn!(
+                                    "[fetch] retryable error for {} (attempt {}/{}): {}, retrying in {:?}",
+                                    broker_id,
+                                    attempt + 1,
+                                    MAX_RETRIES,
+                                    e,
+                                    delay
+                                );
 
-                        tokio::time::sleep(delay).await;
+                                tokio::time::sleep(delay).await;
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // If we exhausted retries due to rate limiting, return specific error
-        if let Some(e) = &last_error {
-            if Self::is_rate_limited(e) {
-                return Err(ScanError::RateLimited {
-                    broker_id: broker_id.clone(),
-                    retry_after: Duration::from_secs(300), // 5 minutes
-                });
-            }
-        }
-
+        // Return the last error after all retries are exhausted
         Err(ScanError::Browser(last_error.expect(
             "last_error should be Some after MAX_RETRIES attempts",
         )))
     }
 
-    /// Check if a browser error indicates rate limiting.
-    fn is_rate_limited(error: &spectral_browser::BrowserError) -> bool {
-        matches!(error, spectral_browser::BrowserError::RateLimitExceeded(_))
-    }
-
     /// Detect CAPTCHA challenges in HTML content.
     ///
     /// Looks for common CAPTCHA indicators including Google reCAPTCHA, Cloudflare
-    /// Turnstile, DataDome, hCaptcha, and other bot-detection markers.
+    /// Turnstile, `DataDome`, hCaptcha, and other bot-detection markers.
     fn detect_captcha(html: &str) -> bool {
         let lower = html.to_lowercase();
 

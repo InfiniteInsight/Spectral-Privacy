@@ -19,6 +19,7 @@ spectral-vault = { path = "../spectral-vault" }
 anyhow.workspace = true
 chrono.workspace = true
 futures.workspace = true
+reqwest.workspace = true
 base64 = "0.22"
 scraper = "0.20"
 serde.workspace = true

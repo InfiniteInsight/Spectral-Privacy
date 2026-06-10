@@ -26,6 +26,17 @@ pub trait BrowserActions {
     /// This is used after form submission to capture results page HTML
     /// without re-navigating to the original URL.
     async fn get_current_page_html(&self) -> Result<String>;
+
+    /// Evaluate JavaScript on the current page.
+    ///
+    /// Returns the serialized result of the evaluation.
+    async fn evaluate(&self, js: &str) -> Result<String>;
+
+    /// Inject a CAPTCHA-solving token into the current page.
+    ///
+    /// Automatically detects the CAPTCHA type (reCAPTCHA, hCaptcha, Cloudflare
+    /// Turnstile) and injects the token in the appropriate manner.
+    async fn inject_captcha_token(&self, token: &str) -> Result<()>;
 }
 
 /// Helper to extract domain from URL

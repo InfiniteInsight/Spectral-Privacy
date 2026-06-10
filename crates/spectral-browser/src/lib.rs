@@ -10,4 +10,4 @@ pub mod fingerprint;
 
 pub use actions::BrowserActions;
 pub use engine::BrowserEngine;
-pub use error::{BrowserError, Result};
+pub use error::{BrowserError, Result, RetryKind};

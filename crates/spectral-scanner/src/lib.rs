@@ -39,6 +39,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
 
+pub mod captcha;
 pub mod error;
 #[allow(missing_docs)]
 pub mod filter;
